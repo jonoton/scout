@@ -1,0 +1,9 @@
+email:
+  - "EMAIL1"
+sms:
+  verizon:
+    - "PHONE_NUMBER1"
+  att:
+    - "PHONE_NUMBER2"
+  tmobile:
+    - "PHONE_NUMBER3"

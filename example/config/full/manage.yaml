@@ -1,0 +1,6 @@
+monitors:
+  - name: cam1
+    config: cam1.yaml
+  - name: cam2
+    config: cam2.yaml
+data: /scout/data

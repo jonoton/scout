@@ -1,0 +1,9 @@
+skip: false
+padding: 0
+modelFile: "res10_300x300_ssd_iter_140000.caffemodel"
+configFile: "deploy.prototxt"
+minConfidencePercentage: 50
+maxPercentage: 50
+minOverlapPercentage: 75
+highlightColor: green
+highlightThickness: 3

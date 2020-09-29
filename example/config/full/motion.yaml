@@ -1,0 +1,8 @@
+skip: false
+padding: 0
+minPercentage: 2
+maxPercentage: 75
+maxMotions: 20
+thresholdPercent: 40
+highlightColor: purple
+highlightThickness: 3

@@ -1,0 +1,14 @@
+# choose filename or url monitor type
+# filename: /home/user/Videos/cam2.mp4
+url: "rtsp://USER:PASS@IP:PORT/SUB_URL"
+maxSourceFps: 8
+maxOutputFps: 2
+quality: 100
+staleTimeout: 20
+staleMaxRetry: 10
+motion: motion.yaml
+tensor: tensor.yaml
+face: face.yaml
+notifyRx: notify-rx.yaml
+record: record.yaml
+alert: alert.yaml

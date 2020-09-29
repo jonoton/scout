@@ -1,0 +1,8 @@
+port: 8080
+limitPerSecond: 100
+users:
+    - user: "USER1"
+      password: "PASSWORD1"
+    - user: "USER2"
+      password: "PASSWORD2"
+signInExpireDays: 7

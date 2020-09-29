@@ -1,0 +1,9 @@
+intervalMinutes: 5
+maxImagesPerInterval: 1
+saveQuality: 75
+saveOriginal: false
+saveHighlighted: true
+saveObjectsCount: 4
+saveFacesCount: 4
+deleteAfterHours: 24
+deleteAfterGB: 2

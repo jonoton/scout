@@ -1,0 +1,39 @@
+version: "3"
+services:
+  nginx-proxy-manager:
+    container_name: nginx-proxy-manager
+    image: jc21/nginx-proxy-manager:latest
+    restart: always
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    volumes:
+      - /home/server/docker/nginx-proxy-manager/mnt/config.json:/app/config/production.json
+      - /home/server/docker/nginx-proxy-manager/mnt/data:/data
+      - /home/server/docker/nginx-proxy-manager/mnt/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - mariadb
+    environment:
+    # if you want pretty colors in your docker logs:
+    - FORCE_COLOR=1
+  mariadb:
+    container_name: mariadb
+    image: yobasystems/alpine-mariadb
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=proxy
+      - MYSQL_DATABASE=proxy
+      - MYSQL_USER=proxy
+      - MYSQL_PASSWORD=proxy
+    volumes:
+      - /home/server/docker/nginx-proxy-manager/mnt/data/mysql:/var/lib/mysql
+  ddclient-scout:
+    container_name: ddclient-scout
+    image: linuxserver/ddclient
+    environment:
+      - PUID=1001
+      - PGID=1001
+    volumes:
+      - /home/server/docker/ddclient/scout.conf:/config/ddclient.conf
+    restart: always

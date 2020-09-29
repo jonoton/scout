@@ -1,0 +1,6 @@
+recordObjects: true
+maxPreSec: 4
+timeoutSec: 10
+maxSec: 120
+deleteAfterHours: 24
+deleteAfterGB: 2

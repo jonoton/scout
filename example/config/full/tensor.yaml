@@ -1,0 +1,18 @@
+skip: false
+padding: 0
+modelFile: "frozen_inference_graph.pb"
+configFile: "ssd_mobilenet_v1_coco_2017_11_17.pbtxt"
+descFile: "coco.names"
+minConfidencePercentage: 50
+minMotionFrames: 1
+minPercentage: 2
+maxPercentage: 50
+minOverlapPercentage: 75
+sameOverlapPercentage: 85
+allowedList:
+    - person
+    - car
+    - truck
+    - boat
+highlightColor: blue
+highlightThickness: 3
