@@ -44,7 +44,7 @@ https://www.jonoton-innovation.com
 ### Android
 The official Android App for Scout.
 
-[View App in Google Play Store](https://play.google.com/store)
+[View App in Google Play Store](https://play.google.com/store/apps/details?id=com.jonoton.scout)
 
 ### iOS
 The official IOS App for Scout is coming soon.
