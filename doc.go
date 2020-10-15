@@ -35,7 +35,7 @@ Mobile Client Features
   * Scroll through alerts
   * Fullscreen with Pan and Zoom
   * Share or Download alerts
-  * Android Notifications for Object, Person, and Face detection
+  * Platform Notifications for Object, Person, and Face detection
  * Recordings
   * Scroll through recordings
   * Fullscreen with Progressive loading
