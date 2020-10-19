@@ -1,7 +1,7 @@
 // scout documentation
 
 /*
-Scout is a standalone open source software solution for the DIY video security system.
+Scout is a standalone open source software solution for DIY video security.
 
 https://www.jonoton-innovation.com
 
@@ -30,22 +30,22 @@ Mobile Client Features
   * Home and Away settings
  * Live view of monitors
   * Quick view of all monitors
-  * Fullscreen with Pan and Zoom
+  * Live Fullscreen with Pan and Zoom
  * Alerts
   * Scroll through alerts
-  * Fullscreen with Pan and Zoom
+  * Alerts Fullscreen with Pan and Zoom
   * Share or Download alerts
   * Platform Notifications for Object, Person, and Face detection
  * Recordings
   * Scroll through recordings
-  * Fullscreen with Progressive loading
+  * Recordings Fullscreen with Progressive loading
   * Share or Download recordings
 
  Android
- The official Android App for Scout.
+ View App in Google Play Store at https://play.google.com/store/apps/details?id=com.jonoton.scout
 
  iOS
- The official IOS App for Scout is coming soon.
+ Coming soon.
 
 Web Client Limited Features
  * Verify setup visually
