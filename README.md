@@ -44,6 +44,8 @@ https://www.jonoton-innovation.com
 ### Android
 [View App in Google Play Store](https://play.google.com/store/apps/details?id=com.jonoton.scout)
 
+[View App in Amazon Appstore](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout)
+
 ### iOS
 Coming soon.
 

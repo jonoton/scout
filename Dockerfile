@@ -5,6 +5,8 @@
 #   docker run -it --rm -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config scout:latest
 # Run in background and keep:
 #   docker run -d -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config scout:latest
+# Keep Host Date Time Localization
+#   Add to the lines above: -v /etc/localtime:/etc/localtime:ro
 
 
 # GoCV
