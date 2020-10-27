@@ -1,4 +1,7 @@
 # scout
+[![Go Report Card](https://goreportcard.com/badge/github.com/jonoton/scout?)](https://goreportcard.com/report/github.com/jonoton/scout)
+[![Docker pulls](https://img.shields.io/docker/pulls/jonotoninnovation/scout.svg)](https://hub.docker.com/r/jonotoninnovation/scout)
+
 Scout is a standalone open source software solution for DIY video security.
 
 https://www.jonoton-innovation.com
