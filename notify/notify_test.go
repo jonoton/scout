@@ -1,3 +1,5 @@
+// +build config
+
 package notify
 
 import (
