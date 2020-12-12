@@ -1,3 +1,5 @@
+// +build gocv
+
 package videosource
 
 import (
