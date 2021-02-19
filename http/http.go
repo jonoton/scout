@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html/template"
+	"log"
 	"path/filepath"
 	"sort"
 	"time"
@@ -21,21 +22,27 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	jwtware "github.com/gofiber/jwt"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Http manages the http server
 type Http struct {
-	httpConfig *Config
-	fiber      *fiber.App
-	manage     *manage.Manage
+	httpConfig   *Config
+	fiber        *fiber.App
+	manage       *manage.Manage
+	loginLogger  *log.Logger
+	accessLogger *log.Logger
 }
 
 // NewHttp returns a new Http
 func NewHttp(manage *manage.Manage) *Http {
 	h := &Http{
-		httpConfig: NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
-		fiber:      fiber.New(),
-		manage:     manage,
+		httpConfig:   NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
+		fiber:        fiber.New(),
+		manage:       manage,
+		loginLogger:  &log.Logger{},
+		accessLogger: &log.Logger{},
 	}
 	h.setup()
 	return h
@@ -46,19 +53,34 @@ func getMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func (h *Http) validUser(user string, pass string) bool {
+func (h *Http) validUser(user string, pass string) (bool, string) {
 	if h.httpConfig == nil {
-		return false
+		return false, ""
 	}
 	for _, cur := range h.httpConfig.Users {
 		if getMD5Hash(cur.User) == user && getMD5Hash(cur.Password) == pass {
-			return true
+			return true, cur.User
 		}
 	}
-	return false
+	return false, ""
 }
 
 func (h *Http) setup() {
+	logDir := runtime.GetRuntimeDirectory(".logs")
+	h.loginLogger.SetOutput(&lumberjack.Logger{
+		Filename:   logDir + "logins",
+		MaxSize:    1,
+		MaxBackups: 5,
+		MaxAge:     28,
+		Compress:   false,
+	})
+	h.accessLogger.SetOutput(&lumberjack.Logger{
+		Filename:   logDir + "access",
+		MaxSize:    1,
+		MaxBackups: 5,
+		MaxAge:     28,
+		Compress:   false,
+	})
 	loginNeeded := h.httpConfig != nil && len(h.httpConfig.Users) > 0
 	loginKey := uuid.New().String()
 	limitPerSecond := 100
@@ -66,8 +88,8 @@ func (h *Http) setup() {
 		limitPerSecond = h.httpConfig.LimitPerSecond
 	}
 	cfg := limiter.Config{
-		Duration: 1 * time.Second, // seconds
-		Max:      limitPerSecond,  // requests
+		Expiration: 1 * time.Second, // seconds
+		Max:        limitPerSecond,  // requests
 	}
 
 	h.fiber.Use(limiter.New(cfg))
@@ -89,25 +111,29 @@ func (h *Http) setup() {
 		h.fiber.Post("/login", func(c *fiber.Ctx) error {
 			user := c.FormValue("a")
 			pass := c.FormValue("b")
-			if h.validUser(user, pass) {
+			timeNow := time.Now()
+			if valid, vUser := h.validUser(user, pass); valid {
 				// Create token
 				token := jwt.New(jwt.SigningMethodHS256)
 
 				// Set claims
 				claims := token.Claims.(jwt.MapClaims)
 				claims["user"] = user
-				claims["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix()
+				claims["exp"] = timeNow.Add(time.Hour * 24 * 7).Unix()
 				if h.httpConfig != nil && h.httpConfig.SignInExpireDays > 0 {
-					claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(h.httpConfig.SignInExpireDays)).Unix()
+					claims["exp"] = timeNow.Add(time.Hour * 24 * time.Duration(h.httpConfig.SignInExpireDays)).Unix()
 				}
 
 				// Generate encoded token and send it as response.
 				t, err := token.SignedString([]byte(loginKey))
 				if err != nil {
+					h.loginLogger.Printf("%s,error,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
 					return c.SendStatus(fiber.StatusInternalServerError)
 				}
+				h.loginLogger.Printf("%s,success,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
 				return c.JSON(fiber.Map{"c": t})
 			}
+			h.loginLogger.Printf("%s,unauthorized,,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), c.IP(), c.IPs())
 			return c.SendStatus(fiber.StatusUnauthorized)
 		})
 	}
@@ -127,6 +153,14 @@ func (h *Http) setup() {
 	if loginNeeded {
 		h.fiber.Use(jwtware.New(jwtware.Config{
 			SigningKey: []byte(loginKey),
+			SuccessHandler: func(c *fiber.Ctx) error {
+				h.accessLogger.Printf("%s,access,%s,%s\r\n", getFormattedKitchenTimestamp(time.Now()), c.IP(), c.IPs())
+				return c.Next()
+			},
+			ErrorHandler: func(c *fiber.Ctx, e error) error {
+				h.accessLogger.Printf("%s,%s,%s,%s\r\n", getFormattedKitchenTimestamp(time.Now()), e, c.IP(), c.IPs())
+				return c.SendStatus(fiber.StatusUnauthorized)
+			},
 		}))
 	}
 
@@ -255,4 +289,8 @@ func (h *Http) Listen() {
 		port = fmt.Sprintf(":%d", portNum)
 	}
 	h.fiber.Listen(port)
+}
+
+func getFormattedKitchenTimestamp(t time.Time) string {
+	return t.Format("03:04:05 PM 01-02-2006")
 }

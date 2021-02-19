@@ -2,9 +2,9 @@
 # Build:
 #   docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t scout:latest .
 # Run in foreground and remove after:
-#   docker run -it --rm -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config scout:latest
+#   docker run -it --rm -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:latest
 # Run in background and keep:
-#   docker run -d -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config scout:latest
+#   docker run -d -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:latest
 # Keep Host Date Time Localization
 #   Add to the lines above: -v /etc/localtime:/etc/localtime:ro
 
@@ -30,6 +30,7 @@ WORKDIR /go/src/github.com/jonoton/scout
 COPY . .
 RUN chown -R $UID:$GID /go
 USER $UNAME
-RUN mkdir -p /scout/data && mkdir -p /scout/.config && ln -s /scout/.config /go/src/github.com/jonoton/scout/.config
+RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
+RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
 RUN go get -d -v ./... && go install -v ./...
 CMD /go/bin/scout
