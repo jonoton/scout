@@ -1,0 +1,116 @@
+# Scout Docker Image
+# Build:
+#   docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -f Dockerfile.cuda10_2-amd64 -t scout:cuda10_2-amd64 .
+#
+# Requires Host:
+#   GPU with Compute Capability (CC) >= 5.3  See https://developer.nvidia.com/cuda-gpus
+#   CUDA toolkit >= 10.2
+#   CUDA Docker Runtime Support
+#
+# Install CUDA Docker Runtime Support:
+#   distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+#   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+#   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+#   sudo apt update && sudo apt install -y nvidia-docker2
+#   sudo systemctl restart docker
+#
+# Run in foreground and remove after:
+#   docker run -it --rm --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:cuda10_2-amd64
+# Run in background and keep:
+#   docker run -d --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:cuda10_2-amd64
+# Keep Host Date Time Localization
+#   Add to the lines above: -v /etc/localtime:/etc/localtime:ro
+
+
+# Ubuntu 18.04 CUDA 10.2 cudnn8
+FROM ubuntu:18.04 AS cuda10_2-cudnn8-amd64
+ENV CUDA_VERSION 10.2.89
+ENV CUDA_PKG_VERSION 10-2=$CUDA_VERSION-1
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_REQUIRE_CUDA "cuda>=10.2 brand=tesla,driver>=396,driver<397 brand=tesla,driver>=410,driver<411 brand=tesla,driver>=418,driver<419 brand=tesla,driver>=440,driver<441"
+ENV NCCL_VERSION 2.8.4
+RUN apt update && apt install -y --no-install-recommends \
+    gnupg2 curl ca-certificates && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub | apt-key add - && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt purge --autoremove -y curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y --no-install-recommends \
+    cuda-cudart-$CUDA_PKG_VERSION \
+    cuda-compat-10-2 \
+    && ln -s cuda-10.2 /usr/local/cuda && \
+    rm -rf /var/lib/apt/lists/*
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+ENV PATH /usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64
+RUN apt update && apt install -y --no-install-recommends \
+    cuda-libraries-$CUDA_PKG_VERSION \
+    cuda-npp-$CUDA_PKG_VERSION \
+    cuda-nvtx-$CUDA_PKG_VERSION \
+    libcublas10=10.2.2.89-1 \
+    libnccl2=$NCCL_VERSION-1+cuda10.2 \
+    && apt-mark hold libnccl2 \
+    && rm -rf /var/lib/apt/lists/*
+ENV CUDNN_VERSION 8.0.0.180
+LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
+RUN apt update && apt install -y --no-install-recommends \
+    libcudnn8=$CUDNN_VERSION-1+cuda10.2 \
+    && apt-mark hold libcudnn8 && \
+    rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y --no-install-recommends \
+    cuda-nvml-dev-$CUDA_PKG_VERSION \
+    cuda-command-line-tools-$CUDA_PKG_VERSION \
+    cuda-nvprof-$CUDA_PKG_VERSION \
+    cuda-npp-dev-$CUDA_PKG_VERSION \
+    cuda-libraries-dev-$CUDA_PKG_VERSION \
+    cuda-minimal-build-$CUDA_PKG_VERSION \
+    libcublas-dev=10.2.2.89-1 \
+    libnccl-dev=2.8.4-1+cuda10.2 \
+    && apt-mark hold libnccl-dev \
+    && rm -rf /var/lib/apt/lists/*
+ENV LIBRARY_PATH /usr/local/cuda/lib64/stubs
+RUN apt update && apt install -y --no-install-recommends \
+    libcudnn8=$CUDNN_VERSION-1+cuda10.2 \
+    libcudnn8-dev=$CUDNN_VERSION-1+cuda10.2 \
+    && apt-mark hold libcudnn8 && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# GoCV
+FROM cuda10_2-cudnn8-amd64 AS gocv-cuda10_2-cudnn8-amd64
+LABEL maintainer="jonotoninnovation"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV TZ="America/New_York"
+RUN apt update && apt install -y sudo git wget
+RUN apt purge -y golang
+RUN mkdir /Downloads
+RUN wget -c https://golang.org/dl/go1.15.8.linux-amd64.tar.gz -O - | tar -xz -C /Downloads
+ENV GOROOT="/Downloads/go"
+ENV PATH=$PATH:$GOROOT/bin
+RUN which go && go version
+ENV GOPATH=/go
+RUN mkdir -p "$GOPATH/src"
+WORKDIR /go/src
+RUN go get -u -d gocv.io/x/gocv && cd gocv.io/x/gocv && make install_cuda && go install gocv.io/x/gocv
+
+
+# Scout
+FROM gocv-cuda10_2-cudnn8-amd64 AS scout-cuda10_2-cudnn8-amd64
+LABEL maintainer="jonotoninnovation"
+ARG UNAME=user
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g $GID -o $UNAME
+RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
+RUN mkdir /scout && chown $UID:$GID /scout
+WORKDIR /go/src/github.com/jonoton/scout
+COPY . .
+RUN chown -R $UID:$GID /go
+USER $UNAME
+RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
+RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
+RUN go get -d -v ./... && go install -v ./...
+CMD /go/bin/scout

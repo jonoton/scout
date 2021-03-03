@@ -10,6 +10,7 @@ import (
 
 	"gocv.io/x/gocv"
 
+	"github.com/jonoton/scout/cuda"
 	"github.com/jonoton/scout/runtime"
 	"github.com/jonoton/scout/videosource"
 )
@@ -38,13 +39,21 @@ type Tensor struct {
 
 // NewTensor creates a new Tensor
 func NewTensor() *Tensor {
+	// check cuda available
+	backend := gocv.NetBackendDefault
+	target := gocv.NetTargetCPU
+	if cuda.HasCudaInstalled() {
+		backend = gocv.NetBackendCUDA
+		target = gocv.NetTargetCUDA
+	}
+
 	t := &Tensor{
 		padding:                 0,
 		modelFile:               "frozen_inference_graph.pb",
 		configFile:              "ssd_mobilenet_v1_coco_2017_11_17.pbtxt",
 		descFile:                "coco.names",
-		backend:                 gocv.NetBackendDefault,
-		target:                  gocv.NetTargetCPU,
+		backend:                 backend,
+		target:                  target,
 		minConfidencePercentage: 50,
 		minMotionFrames:         1,
 		minPercentage:           2,
@@ -117,8 +126,23 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 			log.Printf("Error reading network model from : %v %v\n", modelFile, configFile)
 			return
 		}
-		net.SetPreferableBackend(gocv.NetBackendType(t.backend))
-		net.SetPreferableTarget(gocv.NetTargetType(t.target))
+
+		targetName := "Unknown"
+		if t.target == gocv.NetTargetCUDA {
+			targetName = "CUDA"
+		} else if t.target == gocv.NetTargetCPU {
+			targetName = "CPU"
+		}
+		if err := net.SetPreferableBackend(gocv.NetBackendType(t.backend)); err != nil {
+			net.SetPreferableBackend(gocv.NetBackendType(gocv.NetBackendDefault))
+			net.SetPreferableTarget(gocv.NetTargetType(gocv.NetTargetCPU))
+			targetName = "CPU"
+		}
+		if err := net.SetPreferableTarget(gocv.NetTargetType(t.target)); err != nil {
+			net.SetPreferableBackend(gocv.NetBackendType(gocv.NetBackendDefault))
+			net.SetPreferableTarget(gocv.NetTargetType(gocv.NetTargetCPU))
+			targetName = "CPU"
+		}
 
 		var descriptions []string
 		if t.descFile != "" {
@@ -130,7 +154,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 			descriptions = descs
 		}
 
-		log.Infof("Tensor using %s and %s with %s\n", modelFile, configFile, descFile)
+		log.Infof("Tensor %s using %s and %s with %s\n", targetName, modelFile, configFile, descFile)
 
 		var ratio float64
 		var mean gocv.Scalar

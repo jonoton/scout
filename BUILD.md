@@ -5,7 +5,16 @@
 ```
 go get -u -d gocv.io/x/gocv
 cd $GOPATH/src/gocv.io/x/gocv
+```
+#### Install
+```
 make install
+```
+#### Install w/ CUDA
+```
+make install_cuda
+```
+```
 go install gocv.io/x/gocv
 ```
 

@@ -1,0 +1,92 @@
+# Scout Docker Image
+# Build:
+#   docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -f Dockerfile.jetson -t scout:jetson .
+#       Change build arg SOC for chip family on jetson
+#
+# Requires Host:
+#   GPU with Compute Capability (CC) >= 5.3  See https://developer.nvidia.com/cuda-gpus
+#   CUDA toolkit >= 10.2
+#   CUDA Docker Runtime Support
+#     Use jetpack provided, Set Hold:
+#       sudo apt-mark hold docker docker.io nvidia-docker2 nvidia-container-*
+#
+# Run in foreground and remove after:
+#   docker run -it --rm --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:jetson
+# Run in background and keep:
+#   docker run -d --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:jetson
+# Keep Host Date Time Localization
+#   Add to the lines above: -v /etc/localtime:/etc/localtime:ro
+
+
+# Ubuntu 18.04 CUDA 10.2 cudnn8
+FROM ubuntu:18.04 AS cuda10_2-cudnn8-arm64
+ARG SOC="t194"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_REQUIRE_CUDA "cuda>=10.2"
+ADD --chown=root:root https://repo.download.nvidia.com/jetson/jetson-ota-public.asc /etc/apt/trusted.gpg.d/jetson-ota-public.asc
+RUN chmod 644 /etc/apt/trusted.gpg.d/jetson-ota-public.asc
+RUN apt update && apt install -y --no-install-recommends \
+    gnupg2 curl ca-certificates
+RUN echo "deb https://repo.download.nvidia.com/jetson/common r32.5 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
+    && echo "deb https://repo.download.nvidia.com/jetson/${SOC} r32.5 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list \
+    && apt update \
+    && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y --no-install-recommends \
+    cuda-libraries-10-2 \
+    cuda-libraries-dev-10-2 \
+    cuda-minimal-build-10-2 \
+    cuda-command-line-tools-10-2 \
+    cuda-nvtx-10-2 \
+    cuda-cudart-10-2 \
+    cuda-cudart-dev-10-2 \
+    cuda-license-10-2 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN ln -s /usr/local/cuda-10.2 /usr/local/cuda
+RUN echo "/usr/lib/aarch64-linux-gnu/tegra" >> /etc/ld.so.conf.d/nvidia-tegra.conf && \
+    echo "/usr/lib/aarch64-linux-gnu/tegra-egl" >> /etc/ld.so.conf.d/nvidia-tegra.conf && \
+    echo "/usr/local/cuda/targets/aarch64-linux/lib" >> /etc/ld.so.conf.d/nvidia.conf
+ENV PATH /usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/cuda/targets/aarch64-linux/lib:${LD_LIBRARY_PATH}
+RUN ldconfig
+RUN apt update && apt install -y --no-install-recommends \
+    libcudnn8 libcudnn8-dev
+
+
+# GoCV 
+FROM cuda10_2-cudnn8-arm64 AS gocv-cuda10_2-cudnn8-arm64
+LABEL maintainer="jonotoninnovation"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV TZ="America/New_York"
+RUN apt update && apt install -y sudo git wget
+RUN apt purge -y golang
+RUN mkdir /Downloads
+RUN wget -c https://golang.org/dl/go1.15.8.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
+ENV GOROOT="/Downloads/go"
+ENV PATH=$PATH:$GOROOT/bin
+RUN which go && go version
+ENV GOPATH=/go
+RUN mkdir -p "$GOPATH/src"
+WORKDIR /go/src
+RUN go get -u -d gocv.io/x/gocv && cd gocv.io/x/gocv && make install_cuda && go run ./cmd/version/main.go && go install gocv.io/x/gocv
+
+
+# Scout
+FROM gocv-cuda10_2-cudnn8-arm64 AS scout-cuda10_2-arm64
+LABEL maintainer="jonotoninnovation"
+ARG UNAME=user
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g $GID -o $UNAME
+RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
+RUN mkdir /scout && chown $UID:$GID /scout
+WORKDIR /go/src/github.com/jonoton/scout
+COPY . .
+RUN chown -R $UID:$GID /go
+USER $UNAME
+RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
+RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
+RUN go get -d -v ./... && go install -v ./...
+CMD /go/bin/scout

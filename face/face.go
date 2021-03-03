@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/jonoton/scout/cuda"
 	"github.com/jonoton/scout/runtime"
 	"github.com/jonoton/scout/videosource"
 	"gocv.io/x/gocv"
@@ -29,12 +30,19 @@ type Face struct {
 
 // NewFace creates a new Face
 func NewFace() *Face {
+	// check cuda available
+	backend := gocv.NetBackendDefault
+	target := gocv.NetTargetCPU
+	if cuda.HasCudaInstalled() {
+		backend = gocv.NetBackendCUDA
+		target = gocv.NetTargetCUDA
+	}
 	f := &Face{
 		padding:                 0,
 		modelFile:               "res10_300x300_ssd_iter_140000.caffemodel",
 		configFile:              "deploy.prototxt",
-		backend:                 gocv.NetBackendDefault,
-		target:                  gocv.NetTargetCPU,
+		backend:                 backend,
+		target:                  target,
 		minConfidencePercentage: 50,
 		maxPercentage:           50,
 		minOverlapPercentage:    75,
@@ -87,9 +95,25 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			log.Printf("Error reading network model from : %v %v\n", modelFile, configFile)
 			return
 		}
-		net.SetPreferableBackend(gocv.NetBackendType(f.backend))
-		net.SetPreferableTarget(gocv.NetTargetType(f.target))
-		log.Infof("Face using %s and %s\n", modelFile, configFile)
+
+		targetName := "Unknown"
+		if f.target == gocv.NetTargetCUDA {
+			targetName = "CUDA"
+		} else if f.target == gocv.NetTargetCPU {
+			targetName = "CPU"
+		}
+		if err := net.SetPreferableBackend(gocv.NetBackendType(f.backend)); err != nil {
+			net.SetPreferableBackend(gocv.NetBackendType(gocv.NetBackendDefault))
+			net.SetPreferableTarget(gocv.NetTargetType(gocv.NetTargetCPU))
+			targetName = "CPU"
+		}
+		if err := net.SetPreferableTarget(gocv.NetTargetType(f.target)); err != nil {
+			net.SetPreferableBackend(gocv.NetBackendType(gocv.NetBackendDefault))
+			net.SetPreferableTarget(gocv.NetTargetType(gocv.NetTargetCPU))
+			targetName = "CPU"
+		}
+
+		log.Infof("Face %s using %s and %s\n", targetName, modelFile, configFile)
 
 		var ratio float64
 		var mean gocv.Scalar
