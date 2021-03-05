@@ -51,8 +51,10 @@ RUN echo "/usr/lib/aarch64-linux-gnu/tegra" >> /etc/ld.so.conf.d/nvidia-tegra.co
 ENV PATH /usr/local/cuda/bin:${PATH}
 ENV LD_LIBRARY_PATH /usr/local/cuda/targets/aarch64-linux/lib:${LD_LIBRARY_PATH}
 RUN ldconfig
+ENV CUDNN_VERSION 8.0.0.180
 RUN apt update && apt install -y --no-install-recommends \
-    libcudnn8 libcudnn8-dev
+    libcudnn8=$CUDNN_VERSION-1+cuda10.2 \
+    libcudnn8-dev=$CUDNN_VERSION-1+cuda10.2
 
 
 # GoCV 
@@ -81,6 +83,7 @@ ARG UID=1000
 ARG GID=1000
 RUN groupadd -g $GID -o $UNAME
 RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
+RUN usermod -a -G video $UNAME
 RUN mkdir /scout && chown $UID:$GID /scout
 WORKDIR /go/src/github.com/jonoton/scout
 COPY . .
