@@ -16,6 +16,7 @@ import (
 // Monitor contains the video source
 type Monitor struct {
 	Name                string
+	ConfigPaths         []string
 	reader              *videosource.VideoReader
 	record              *Record
 	notifier            *notify.Notify

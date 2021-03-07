@@ -11,6 +11,7 @@ import (
 	"github.com/jonoton/scout/motion"
 	"github.com/jonoton/scout/tensor"
 
+	"github.com/radovskyb/watcher"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/scout/monitor"
@@ -26,6 +27,7 @@ type Manage struct {
 	manageConf       Config
 	notifySenderConf *notify.SenderConfig
 	notifier         *notify.Notify
+	wtr              *watcher.Watcher
 	done             chan bool
 }
 
@@ -37,6 +39,7 @@ func NewManage() *Manage {
 		manageConf:       *NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
 		notifier:         nil,
+		wtr:              watcher.New(),
 		done:             make(chan bool),
 	}
 	if m.notifySenderConf != nil {
@@ -53,6 +56,9 @@ func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
 	m.mons[mon.Name] = mon
 	m.monGuard.Unlock()
+	for _, pathName := range mon.ConfigPaths {
+		m.wtr.Add(pathName)
+	}
 	go func() {
 		mon.Start()
 		mon.Wait()
@@ -106,13 +112,16 @@ func (m *Manage) Start() {
 		}
 	}
 	m.checkStaleMonitors()
+	m.monitorConfigChanges()
 }
 
 func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Monitor) {
 	if configPath == "" {
 		return
 	}
-	monConf := monitor.NewConfig(runtime.GetRuntimeDirectory(".config") + configPath)
+	runtimeConfigDir := runtime.GetRuntimeDirectory(".config")
+	monConfigPath := runtimeConfigDir + configPath
+	monConf := monitor.NewConfig(monConfigPath)
 	if monConf == nil {
 		log.Errorln("Could not setup", name)
 		return
@@ -138,26 +147,39 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	}
 	videoReader.SetQuality(monConf.Quality)
 	mon = monitor.NewMonitor(name, videoReader)
+	mon.ConfigPaths = append(mon.ConfigPaths, monConfigPath)
 	if monConf.RecordFilename != "" {
-		mon.SetRecord(m.manageConf.Data, monitor.NewRecordConfig(runtime.GetRuntimeDirectory(".config")+monConf.RecordFilename))
+		recordConfigPath := runtimeConfigDir + monConf.RecordFilename
+		mon.SetRecord(m.manageConf.Data, monitor.NewRecordConfig(recordConfigPath))
+		mon.ConfigPaths = append(mon.ConfigPaths, recordConfigPath)
 	}
 	if monConf.AlertFilename != "" {
-		alertSettings := monitor.NewAlertConfig(runtime.GetRuntimeDirectory(".config") + monConf.AlertFilename)
+		alertPath := runtimeConfigDir + monConf.AlertFilename
+		alertSettings := monitor.NewAlertConfig(alertPath)
+		mon.ConfigPaths = append(mon.ConfigPaths, alertPath)
 		if monConf.NotifyRxFilename != "" {
-			notifyRxConf := notify.NewRxConfig(runtime.GetRuntimeDirectory(".config") + monConf.NotifyRxFilename)
+			notifyRxPath := runtimeConfigDir + monConf.NotifyRxFilename
+			notifyRxConf := notify.NewRxConfig(notifyRxPath)
+			mon.ConfigPaths = append(mon.ConfigPaths, notifyRxPath)
 			mon.SetAlert(m.notifier, notifyRxConf, m.manageConf.Data, alertSettings)
 		} else {
 			mon.SetAlert(m.notifier, nil, m.manageConf.Data, alertSettings)
 		}
 	}
 	if monConf.MotionFilename != "" {
-		mon.SetMotion(motion.NewConfig(runtime.GetRuntimeDirectory(".config") + monConf.MotionFilename))
+		motionPath := runtimeConfigDir + monConf.MotionFilename
+		mon.SetMotion(motion.NewConfig(motionPath))
+		mon.ConfigPaths = append(mon.ConfigPaths, motionPath)
 	}
 	if monConf.TensorFilename != "" {
-		mon.SetTensor(tensor.NewConfig(runtime.GetRuntimeDirectory(".config") + monConf.TensorFilename))
+		tensorPath := runtimeConfigDir + monConf.TensorFilename
+		mon.SetTensor(tensor.NewConfig(tensorPath))
+		mon.ConfigPaths = append(mon.ConfigPaths, tensorPath)
 	}
 	if monConf.FaceFilename != "" {
-		mon.SetFace(face.NewConfig(runtime.GetRuntimeDirectory(".config") + monConf.FaceFilename))
+		facePath := runtimeConfigDir + monConf.FaceFilename
+		mon.SetFace(face.NewConfig(facePath))
+		mon.ConfigPaths = append(mon.ConfigPaths, facePath)
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)
 	return mon
@@ -206,11 +228,7 @@ func (m *Manage) checkStaleMonitors() {
 				}
 				m.monGuard.RUnlock()
 				for _, stale := range staleList {
-					stale.Stop()
-					stale.Wait()
-					m.monGuard.Lock()
-					delete(m.mons, stale.Name)
-					m.monGuard.Unlock()
+					m.RemoveMonitor(stale)
 					if stale.StaleRetry == 0 {
 						break
 					}
@@ -234,6 +252,74 @@ func (m *Manage) checkStaleMonitors() {
 				}
 				lastStaleList = staleList
 			}
+		}
+	}()
+}
+
+// RemoveMonitor will stop, wait, and remove from manage
+func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
+	mon.Stop()
+	mon.Wait()
+	uniquePaths := make(map[string]bool)
+	for _, pathName := range mon.ConfigPaths {
+		uniquePaths[pathName] = true
+	}
+	for _, cur := range m.mons {
+		if cur == mon {
+			continue
+		}
+		for _, pathName := range cur.ConfigPaths {
+			if _, found := uniquePaths[pathName]; found {
+				uniquePaths[pathName] = false
+			}
+		}
+	}
+	for pathName, unique := range uniquePaths {
+		if unique {
+			m.wtr.Remove(pathName)
+		}
+	}
+	m.monGuard.Lock()
+	delete(m.mons, mon.Name)
+	m.monGuard.Unlock()
+}
+
+func (m *Manage) monitorConfigChanges() {
+	go func() {
+		for {
+			select {
+			case event := <-m.wtr.Event:
+				modPath := event.Path
+				log.Infoln("Config changed", modPath)
+				aMons := make([]*monitor.Monitor, 0)
+				for _, cur := range m.mons {
+					for _, configPath := range cur.ConfigPaths {
+						if configPath == modPath {
+							aMons = append(aMons, cur)
+							break
+						}
+					}
+				}
+				for _, cur := range aMons {
+					m.RemoveMonitor(cur)
+					for _, conf := range m.manageConf.Monitors {
+						if conf.Name == cur.Name {
+							newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
+							m.AddMonitor(newMon)
+							log.Infoln("Config restarted monitor", newMon.Name)
+							break
+						}
+					}
+				}
+			case <-m.wtr.Closed:
+				return
+			}
+		}
+	}()
+	go func() {
+		if err := m.wtr.Start(time.Millisecond * 500); err != nil {
+			log.Errorln(err)
+			return
 		}
 	}()
 }
