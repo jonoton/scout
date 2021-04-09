@@ -8,6 +8,10 @@ https://www.jonoton-innovation.com
 
 [![Gift!](https://img.shields.io/badge/Gift!-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=RLF3ZHK79YL3W&currency_code=USD&source=url)
 
+<img alt="Scout Android Slides" src="https://lh3.googleusercontent.com/pzG5Xph-bu8GHTXgK4t0sspZGY3vaiSM4kkVwCZd-8q3PVoHoTDtbHDz8yVRr3TAyK1bvKe7TmpG9YNWKKjuu1Xx_GmFmu81IvqZXkwj9HndTe1Jfot3pgAenCP99HmKvA=w1280" height="270px" style="margin:5px;" />
+
+<img alt="Scout Web Browser Slides" src="https://lh4.googleusercontent.com/Q6vtefGT1pCMWLCyWKxfGDqXvp07DkC6G4zMN0BY2T7bJpEu2saEpAZqk2jbBwtBdZfjuNQhKyfROjkeHg1BRzsD_jt1Lm9xjXigtYCa8OK4VSge_G7xHu3zn-SeQlS7iw=w1280" height="270px" style="margin:5px;" />
+
 ## Features
 * No monthly fees!
 * Easy Installation
