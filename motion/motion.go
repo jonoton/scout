@@ -15,6 +15,7 @@ type Motion struct {
 	maximumPercentage  int
 	maxMotions         int
 	thresholdPercent   int
+	noiseReduction     int
 	highlightColor     string
 	highlightThickness int
 }
@@ -27,6 +28,7 @@ func NewMotion() *Motion {
 		maximumPercentage:  75,
 		maxMotions:         20,
 		thresholdPercent:   40,
+		noiseReduction:     10,
 		highlightColor:     "purple",
 		highlightThickness: 3,
 	}
@@ -37,25 +39,28 @@ func NewMotion() *Motion {
 func (m *Motion) SetConfig(config *Config) {
 	if config != nil {
 		m.Skip = config.Skip
-		if config.Padding != 0 {
+		if config.Padding > 0 {
 			m.padding = config.Padding
 		}
-		if config.MinimumPercentage != 0 {
+		if config.MinimumPercentage > 0 {
 			m.minimumPercentage = config.MinimumPercentage
 		}
-		if config.MaximumPercentage != 0 {
+		if config.MaximumPercentage > 0 {
 			m.maximumPercentage = config.MaximumPercentage
 		}
-		if config.MaxMotions != 0 {
+		if config.MaxMotions > 0 {
 			m.maxMotions = config.MaxMotions
 		}
-		if config.ThresholdPercent != 0 {
+		if config.ThresholdPercent > 0 {
 			m.thresholdPercent = config.ThresholdPercent
+		}
+		if config.NoiseReduction > 0 {
+			m.noiseReduction = config.NoiseReduction
 		}
 		if config.HighlightColor != "" {
 			m.highlightColor = config.HighlightColor
 		}
-		if config.HighlightThickness != 0 {
+		if config.HighlightThickness > 0 {
 			m.highlightThickness = config.HighlightThickness
 		}
 	}
@@ -75,22 +80,26 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				r <- result
 				continue
 			}
-			mat := result.Original.Mat.Clone()
+			highlightedMat := result.Original.Mat.Clone()
+			blurMat := gocv.NewMat()
+			// reduce noise - must be odd number
+			if m.noiseReduction%2 == 0 {
+				m.noiseReduction++
+			}
+			gocv.GaussianBlur(result.Original.Mat, &blurMat, image.Pt(m.noiseReduction, m.noiseReduction), 0, 0, gocv.BorderDefault)
 			matDelta := gocv.NewMat()
 			matThresh := gocv.NewMat()
-			// first phase of cleaning up image, obtain foreground only
-			mog2.Apply(mat, &matDelta)
-			// remaining cleanup of the image to use for finding contours.
-			// first use threshold
+			// obtain foreground only
+			mog2.Apply(blurMat, &matDelta)
 			// threshold range is 0-255, lower is more sensitive
 			threshold := 255 * m.thresholdPercent / 100
 			gocv.Threshold(matDelta, &matThresh, float32(threshold), 255, gocv.ThresholdBinary)
 			matDelta.Close()
-			// then dilate
+			// dilate
 			kernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
 			gocv.Dilate(matThresh, &matThresh, kernel)
 			kernel.Close()
-			// now find contours
+			// find contours
 			contours := gocv.FindContours(matThresh, gocv.RetrievalExternal, gocv.ChainApproxSimple)
 			matThresh.Close()
 			minimumArea := float64(cur.Height() * cur.Width() * m.minimumPercentage / 100)
@@ -127,15 +136,16 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				finalRect := videosource.RectPadded(cur, rect, m.padding)
 				region := cur.GetRegion(finalRect)
 				rectColor := videosource.StringToColor(m.highlightColor)
-				gocv.Rectangle(&mat, finalRect, rectColor.GetRGBA(), m.highlightThickness)
+				gocv.Rectangle(&highlightedMat, finalRect, rectColor.GetRGBA(), m.highlightThickness)
 				result.Motions = append(result.Motions, region)
 				result.MotionRects = append(result.MotionRects, finalRect)
 				numMotions++
 			}
 			if numMotions > 0 {
-				result.HighlightedMotion = *videosource.NewImage(mat.Clone())
+				result.HighlightedMotion = *videosource.NewImage(highlightedMat.Clone())
 			}
-			mat.Close()
+			blurMat.Close()
+			highlightedMat.Close()
 			r <- result
 		}
 		mog2.Close()

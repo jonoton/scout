@@ -16,6 +16,7 @@ type Config struct {
 	MaximumPercentage  int    `yaml:"maxPercentage,omitempty"`
 	MaxMotions         int    `yaml:"maxMotions,omitempty"`
 	ThresholdPercent   int    `yaml:"thresholdPercent,omitempty"`
+	NoiseReduction     int    `yaml:"noiseReduction,omitempty"`
 	HighlightColor     string `yaml:"highlightColor,omitempty"`
 	HighlightThickness int    `yaml:"highlightThickness,omitempty"`
 }
