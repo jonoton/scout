@@ -71,7 +71,7 @@ func NewTensor() *Tensor {
 func (t *Tensor) SetConfig(config *Config) {
 	if config != nil {
 		t.Skip = config.Skip
-		if config.Padding != 0 {
+		if config.Padding > 0 {
 			t.padding = config.Padding
 		}
 		if config.ModelFile != "" {
@@ -83,22 +83,22 @@ func (t *Tensor) SetConfig(config *Config) {
 		if config.DescFile != "" {
 			t.descFile = config.DescFile
 		}
-		if config.MinConfidencePercentage != 0 {
+		if config.MinConfidencePercentage > 0 {
 			t.minConfidencePercentage = config.MinConfidencePercentage
 		}
-		if config.MinMotionFrames != 0 {
+		if config.MinMotionFrames > 0 {
 			t.minMotionFrames = config.MinMotionFrames
 		}
-		if config.MinPercentage != 0 {
+		if config.MinPercentage >= 0 {
 			t.minPercentage = config.MinPercentage
 		}
-		if config.MaxPercentage != 0 {
+		if config.MaxPercentage > 0 {
 			t.maxPercentage = config.MaxPercentage
 		}
-		if config.MinOverlapPercentage != 0 {
+		if config.MinOverlapPercentage > 0 {
 			t.minOverlapPercentage = config.MinOverlapPercentage
 		}
-		if config.SameOverlapPercentage != 0 {
+		if config.SameOverlapPercentage > 0 {
 			t.sameOverlapPercentage = config.SameOverlapPercentage
 		}
 		if len(config.AllowedList) > 0 {
@@ -107,7 +107,7 @@ func (t *Tensor) SetConfig(config *Config) {
 		if config.HighlightColor != "" {
 			t.highlightColor = config.HighlightColor
 		}
-		if config.HighlightThickness != 0 {
+		if config.HighlightThickness > 0 {
 			t.highlightThickness = config.HighlightThickness
 		}
 	}

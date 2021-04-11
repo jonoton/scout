@@ -42,7 +42,7 @@ func (m *Motion) SetConfig(config *Config) {
 		if config.Padding > 0 {
 			m.padding = config.Padding
 		}
-		if config.MinimumPercentage > 0 {
+		if config.MinimumPercentage >= 0 {
 			m.minimumPercentage = config.MinimumPercentage
 		}
 		if config.MaximumPercentage > 0 {

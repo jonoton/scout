@@ -23,7 +23,9 @@ type Config struct {
 
 // NewConfig creates a new Config
 func NewConfig(configPath string) *Config {
-	c := &Config{}
+	c := &Config{
+		MinimumPercentage: -1,
+	}
 	yamlFile, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
