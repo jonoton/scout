@@ -22,6 +22,12 @@ func NewObjectInfo(img Image) *ObjectInfo {
 	return o
 }
 
+// Ref will reference the ObjectInfo and underlying SharedMat
+func (o *ObjectInfo) Ref() *ObjectInfo {
+	o.Object.Ref()
+	return o
+}
+
 // Clone will clone the ObjectInfo
 func (o *ObjectInfo) Clone() *ObjectInfo {
 	c := &ObjectInfo{
@@ -60,6 +66,12 @@ func NewFaceInfo(img Image) *FaceInfo {
 		Face:       img,
 		Percentage: 0,
 	}
+	return f
+}
+
+// Ref will reference the FaceInfo and underlying SharedMat
+func (f *FaceInfo) Ref() *FaceInfo {
+	f.Face.Ref()
 	return f
 }
 
@@ -114,6 +126,24 @@ func NewProcessedImage(original Image) *ProcessedImage {
 		ObjectRects:       make([]image.Rectangle, 0),
 		Faces:             make([]FaceInfo, 0),
 		FaceRects:         make([]image.Rectangle, 0),
+	}
+	return p
+}
+
+// Ref will reference the ProcessedImage and underlying SharedMats
+func (p *ProcessedImage) Ref() *ProcessedImage {
+	p.Original.Ref()
+	p.HighlightedMotion.Ref()
+	p.HighlightedObject.Ref()
+	p.HighlightedFace.Ref()
+	for _, cur := range p.Motions {
+		cur.Ref()
+	}
+	for _, cur := range p.Objects {
+		cur.Ref()
+	}
+	for _, cur := range p.Faces {
+		cur.Ref()
 	}
 	return p
 }
@@ -248,7 +278,8 @@ func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 				curImage.Cleanup()
 				curImage = img
 			case <-writeTick.C:
-				outChan <- *curImage.Clone()
+				outChan <- curImage
+				curImage = ProcessedImage{}
 			}
 		}
 	}()
@@ -257,7 +288,7 @@ func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 
 // Send ProcessedImage to channel
 func (p *ProcessedImageFpsChan) Send(img ProcessedImage) {
-	p.streamChan <- *img.Clone()
+	p.streamChan <- img
 }
 
 // Close notified by caller that input stream is done/closed

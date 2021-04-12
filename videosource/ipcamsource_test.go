@@ -39,7 +39,7 @@ func TestIPCamSource(t *testing.T) {
 	window := gocv.NewWindow("Test Window")
 	defer window.Close()
 	for img := range images {
-		mat := img.Mat
+		mat := img.SharedMat.Mat
 		window.IMShow(mat)
 		window.WaitKey(5)
 	}

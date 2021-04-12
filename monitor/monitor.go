@@ -177,15 +177,15 @@ func (m *Monitor) Start() {
 			for cur := range faceOutput {
 				m.subGuard.RLock()
 				for _, val := range m.subscriptions {
-					val <- *cur.Clone()
+					val <- *cur.Ref()
 				}
 				m.subGuard.RUnlock()
 
 				if m.alert != nil {
-					m.alert.Push(cur)
+					m.alert.Push(*cur.Ref())
 				}
 				if m.record != nil {
-					m.record.Send(cur)
+					m.record.Send(*cur.Ref())
 				}
 				cur.Cleanup()
 			}

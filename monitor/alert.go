@@ -100,8 +100,10 @@ func (a *Alert) Start() {
 // Push a processed image to buffer
 func (a *Alert) Push(img videosource.ProcessedImage) {
 	if img.HighlightedObject.IsValid() {
-		popped := a.ringBuffer.Push(*img.Clone())
+		popped := a.ringBuffer.Push(img)
 		popped.Cleanup()
+	} else {
+		img.Cleanup()
 	}
 }
 

@@ -49,9 +49,7 @@ func (i *IPCamSource) ReadImage() (done bool, image Image) {
 		return
 	}
 	mat := gocv.NewMat()
-	if done = !i.gocvVideoCapture.Read(&mat); !done {
-		image = *NewImage(mat.Clone())
-	}
-	mat.Close()
+	done = !i.gocvVideoCapture.Read(&mat)
+	image = *NewImage(mat)
 	return
 }

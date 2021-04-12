@@ -49,9 +49,7 @@ func (f *FileSource) ReadImage() (done bool, image Image) {
 		return
 	}
 	mat := gocv.NewMat()
-	if done = !f.gocvVideoCapture.Read(&mat); !done {
-		image = *NewImage(mat.Clone())
-	}
-	mat.Close()
+	done = !f.gocvVideoCapture.Read(&mat)
+	image = *NewImage(mat)
 	return
 }

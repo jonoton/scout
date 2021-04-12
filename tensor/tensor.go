@@ -20,6 +20,7 @@ const fileLocation = "data/tensor"
 // Tensor detects objects within images
 type Tensor struct {
 	Skip                    bool
+	forceCpu                bool
 	padding                 int
 	modelFile               string
 	configFile              string
@@ -48,7 +49,8 @@ func NewTensor() *Tensor {
 	}
 
 	t := &Tensor{
-		padding:                 0,
+		forceCpu:                false,
+		padding:                 0,		
 		modelFile:               "frozen_inference_graph.pb",
 		configFile:              "ssd_mobilenet_v1_coco_2017_11_17.pbtxt",
 		descFile:                "coco.names",
@@ -71,6 +73,11 @@ func NewTensor() *Tensor {
 func (t *Tensor) SetConfig(config *Config) {
 	if config != nil {
 		t.Skip = config.Skip
+		t.forceCpu = config.ForceCpu
+		if t.forceCpu {
+			t.backend = gocv.NetBackendDefault
+			t.target = gocv.NetTargetCPU
+		}
 		if config.Padding > 0 {
 			t.padding = config.Padding
 		}
@@ -177,17 +184,18 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 				r <- result
 				continue
 			}
-			mat := cur.Original.Mat.Clone()
-			matType := mat.Type()
+			
+			tmpMat := cur.Original.SharedMat.Mat.Clone()
+			matType := tmpMat.Type()
 			// need to convert for blob usage
-			mat.ConvertTo(&mat, gocv.MatTypeCV32F)
+			tmpMat.ConvertTo(&tmpMat, gocv.MatTypeCV32F)
 			// convert image Mat to 300x300 blob that the object detector can analyze
-			blob := gocv.BlobFromImage(mat, ratio, image.Pt(300, 300), mean, swapRGB, false)
+			blob := gocv.BlobFromImage(tmpMat, ratio, image.Pt(300, 300), mean, swapRGB, false)
 			// feed the blob into the detector
 			net.SetInput(blob, "")
 			// run a forward pass thru the network
 			prob := net.Forward("")
-			mat.ConvertTo(&mat, matType)
+			tmpMat.ConvertTo(&tmpMat, matType)
 
 			minConfidence := float32(t.minConfidencePercentage) / float32(100)
 			minimumArea := cur.Original.Height() * cur.Original.Width() * t.minPercentage / 100
@@ -200,10 +208,10 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 			for i := 0; i < prob.Total(); i += 7 {
 				confidence := prob.GetFloatAt(0, i+2)
 				if confidence > minConfidence {
-					left := int(prob.GetFloatAt(0, i+3) * float32(mat.Cols()))
-					top := int(prob.GetFloatAt(0, i+4) * float32(mat.Rows()))
-					right := int(prob.GetFloatAt(0, i+5) * float32(mat.Cols()))
-					bottom := int(prob.GetFloatAt(0, i+6) * float32(mat.Rows()))
+					left := int(prob.GetFloatAt(0, i+3) * float32(tmpMat.Cols()))
+					top := int(prob.GetFloatAt(0, i+4) * float32(tmpMat.Rows()))
+					right := int(prob.GetFloatAt(0, i+5) * float32(tmpMat.Cols()))
+					bottom := int(prob.GetFloatAt(0, i+6) * float32(tmpMat.Rows()))
 					classID := int(prob.GetFloatAt(0, i+1))
 					desc := ""
 					if classID > 0 && classID <= len(descriptions) {
@@ -266,17 +274,17 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					result.ObjectRects = append(result.ObjectRects, finalRect)
 				}
 			}
-			mat.Close()
+			tmpMat.Close()
 			prob.Close()
 			blob.Close()
 			if len(result.ObjectRects) > 0 {
-				mat := cur.Original.Mat.Clone()
+				highlightedImage := *cur.Original.Clone()
+				mat := highlightedImage.SharedMat.Mat
 				for _, rect := range result.ObjectRects {
 					rectColor := videosource.StringToColor(t.highlightColor)
 					gocv.Rectangle(&mat, rect, rectColor.GetRGBA(), t.highlightThickness)
 				}
-				result.HighlightedObject = *videosource.NewImage(mat.Clone())
-				mat.Close()
+				result.HighlightedObject = highlightedImage
 			}
 			r <- result
 		}

@@ -77,7 +77,6 @@ func (r *Record) process(img videosource.ProcessedImage) {
 		r.writer.Record = true
 	}
 	r.writer.Send(img)
-	img.Cleanup()
 }
 
 func (r *Record) prune() {
@@ -118,7 +117,7 @@ func (r *Record) deleteWhenFull() {
 
 // Send a processed image to buffer
 func (r *Record) Send(img videosource.ProcessedImage) {
-	r.streamChan <- *img.Clone()
+	r.streamChan <- img
 }
 
 // Close notified by caller that input stream is done/closed

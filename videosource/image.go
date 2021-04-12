@@ -5,46 +5,69 @@ import (
 	"math"
 	"time"
 
+	"github.com/jonoton/scout/sharedmat"
 	"gocv.io/x/gocv"
 )
 
 // Image contains an image
 type Image struct {
-	Mat         gocv.Mat
+	SharedMat   *sharedmat.SharedMat
 	CreatedTime time.Time
 }
 
 // NewImage creates a new Image
 func NewImage(mat gocv.Mat) *Image {
 	i := &Image{
-		Mat:         gocv.Mat{},
+		SharedMat:   sharedmat.NewSharedMat(mat),
 		CreatedTime: time.Now(),
-	}
-	if mat.Ptr() != nil && !mat.Empty() {
-		i.Mat = mat
 	}
 	return i
 }
 
 // IsValid checks the underlying image for validity
 func (i *Image) IsValid() bool {
-	return i.Mat.Ptr() != nil && !i.Mat.Empty()
+	if i.SharedMat == nil {
+		return false
+	}
+	i.SharedMat.Guard.RLock()
+	defer i.SharedMat.Guard.RUnlock()
+	return sharedmat.Valid(&i.SharedMat.Mat)
 }
 
 // Height returns the Image height or -1
 func (i *Image) Height() int {
-	if !i.IsValid() {
+	if i.SharedMat == nil {
 		return -1
 	}
-	return i.Mat.Rows()
+	i.SharedMat.Guard.RLock()
+	defer i.SharedMat.Guard.RUnlock()
+	result := -1
+	if sharedmat.Valid(&i.SharedMat.Mat) {
+		result = i.SharedMat.Mat.Rows()
+	}
+	return result
 }
 
 // Width returns the Image width or -1
 func (i *Image) Width() int {
-	if !i.IsValid() {
+	if i.SharedMat == nil {
 		return -1
 	}
-	return i.Mat.Cols()
+	i.SharedMat.Guard.RLock()
+	defer i.SharedMat.Guard.RUnlock()
+	result := -1
+	if sharedmat.Valid(&i.SharedMat.Mat) {
+		result = i.SharedMat.Mat.Cols()
+	}
+	return result
+}
+
+// Ref will reference the Image and underlying SharedMat
+func (i *Image) Ref() *Image {
+	if i.SharedMat != nil {
+		i.SharedMat.Ref()
+	}
+	return i
 }
 
 // Clone will clone the Image
@@ -52,27 +75,29 @@ func (i *Image) Clone() *Image {
 	clone := &Image{
 		CreatedTime: i.CreatedTime,
 	}
-	if i.IsValid() {
-		clone.Mat = i.Mat.Clone()
+	if i.SharedMat != nil {
+		clone.SharedMat = i.SharedMat.Clone()
 	}
 	return clone
 }
 
 // Cleanup will cleanup the Image
 func (i *Image) Cleanup() {
-	if i.IsValid() {
-		i.Mat.Close()
+	if i.SharedMat != nil {
+		i.SharedMat.Cleanup()
 	}
 }
 
 // GetRegion will return a new Image per rectangle parameter
 func (i *Image) GetRegion(rect image.Rectangle) (region Image) {
-	if !i.IsValid() {
+	if i.SharedMat == nil {
 		return
 	}
+	i.SharedMat.Guard.RLock()
+	defer i.SharedMat.Guard.RUnlock()
 	corrRect := CorrectRectangle(*i, rect)
-	if !corrRect.Empty() {
-		matRegion := i.Mat.Region(corrRect)
+	if !corrRect.Empty() && sharedmat.Valid(&i.SharedMat.Mat) {
+		matRegion := i.SharedMat.Mat.Region(corrRect)
 		region = *NewImage(matRegion.Clone())
 		matRegion.Close()
 	}
@@ -81,34 +106,53 @@ func (i *Image) GetRegion(rect image.Rectangle) (region Image) {
 
 // ChangeQuality will change the Image quality to percent param
 func (i *Image) ChangeQuality(percent int) {
-	if !i.IsValid() {
+	if i.SharedMat == nil {
 		return
 	}
-	jpgParams := []int{gocv.IMWriteJpegQuality, percent}
-	encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.Mat, jpgParams)
-	if err != nil {
-		return
+	i.SharedMat.Guard.RLock()
+	if sharedmat.Valid(&i.SharedMat.Mat) {
+		jpgParams := []int{gocv.IMWriteJpegQuality, percent}
+		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
+		i.SharedMat.Guard.RUnlock()
+		if err == nil {
+			newMat, err := gocv.IMDecode(encoded, gocv.IMReadUnchanged)
+			if err == nil {
+				i.SharedMat.Cleanup()
+				i.SharedMat = sharedmat.NewSharedMat(newMat)
+			}
+		}
+	} else {
+		i.SharedMat.Guard.RUnlock()
 	}
-	newMat, err := gocv.IMDecode(encoded, gocv.IMReadUnchanged)
-	if err != nil {
-		return
-	}
-	i.Mat.Close()
-	i.Mat = newMat
 }
 
 // ScaleToWidth will change the Image to scale to width
 func (i *Image) ScaleToWidth(width int) {
-	if !i.IsValid() || width <= 0 {
+	if width <= 0 {
 		return
+	}
+	if i.SharedMat == nil {
+		return
+	}
+	// scale down
+	var interpolationFlags = gocv.InterpolationArea
+	// scale up
+	if width > i.Width() {
+		interpolationFlags = gocv.InterpolationCubic
 	}
 	scaleWidth := float64(width) / float64(i.Width())
 	scaleHeight := float64(width) / float64(i.Height())
 	scaleEvenly := math.Min(scaleWidth, scaleHeight)
 	dstMat := gocv.NewMat()
-	gocv.Resize(i.Mat, &dstMat, image.Point{}, scaleEvenly, scaleEvenly, gocv.InterpolationArea)
-	i.Mat.Close()
-	i.Mat = dstMat
+	i.SharedMat.Guard.RLock()
+	if sharedmat.Valid(&i.SharedMat.Mat) {
+		gocv.Resize(i.SharedMat.Mat, &dstMat, image.Point{}, scaleEvenly, scaleEvenly, interpolationFlags)
+	} else {
+		dstMat.Close()
+	}
+	i.SharedMat.Guard.RUnlock()
+	i.SharedMat.Cleanup()
+	i.SharedMat = sharedmat.NewSharedMat(dstMat)
 }
 
 // ImageByCreatedTime sorting ascending order

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonoton/scout/gzip"
 	"github.com/jonoton/scout/http/websockets"
+	"github.com/jonoton/scout/sharedmat"
 	"github.com/jonoton/scout/videosource"
 	"gocv.io/x/gocv"
 )
@@ -81,19 +82,25 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					}
 					var imgArray []byte
 					jpgParams := []int{gocv.IMWriteJpegQuality, jpegQuality}
-					var selectedImage *videosource.Image
+					var selectedImage videosource.Image
 					if img.HighlightedFace.IsValid() {
-						selectedImage = img.HighlightedFace.Clone()
+						selectedImage = *img.HighlightedFace.Ref()
 					} else if img.HighlightedObject.IsValid() {
-						selectedImage = img.HighlightedObject.Clone()
+						selectedImage = *img.HighlightedObject.Ref()
 					} else if img.HighlightedMotion.IsValid() {
-						selectedImage = img.HighlightedMotion.Clone()
+						selectedImage = *img.HighlightedMotion.Ref()
 					} else {
-						selectedImage = img.Original.Clone()
+						selectedImage = *img.Original.Ref()
 					}
 					selectedImage.ScaleToWidth(width)
-					encoded, _ := gocv.IMEncodeWithParams(gocv.JPEGFileExt, selectedImage.Mat, jpgParams)
-					imgArray = encoded
+					if selectedImage.SharedMat != nil {
+						selectedImage.SharedMat.Guard.RLock()
+						if sharedmat.Valid(&selectedImage.SharedMat.Mat) {
+							encoded, _ := gocv.IMEncodeWithParams(gocv.JPEGFileExt, selectedImage.SharedMat.Mat, jpgParams)
+							imgArray = encoded
+						}
+						selectedImage.SharedMat.Guard.RUnlock()
+					}
 					selectedImage.Cleanup()
 
 					img.Cleanup()

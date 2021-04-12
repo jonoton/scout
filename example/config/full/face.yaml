@@ -1,4 +1,5 @@
 skip: false
+forceCpu: false
 padding: 0
 modelFile: "res10_300x300_ssd_iter_140000.caffemodel"
 configFile: "deploy.prototxt"

@@ -16,6 +16,7 @@ const fileLocation = "data/face"
 // Face detects faces within images
 type Face struct {
 	Skip                    bool
+	forceCpu                bool
 	padding                 int
 	modelFile               string
 	configFile              string
@@ -38,6 +39,7 @@ func NewFace() *Face {
 		target = gocv.NetTargetCUDA
 	}
 	f := &Face{
+		forceCpu:                false,
 		padding:                 0,
 		modelFile:               "res10_300x300_ssd_iter_140000.caffemodel",
 		configFile:              "deploy.prototxt",
@@ -56,6 +58,11 @@ func NewFace() *Face {
 func (f *Face) SetConfig(config *Config) {
 	if config != nil {
 		f.Skip = config.Skip
+		f.forceCpu = config.ForceCpu
+		if f.forceCpu {
+			f.backend = gocv.NetBackendDefault
+			f.target = gocv.NetTargetCPU
+		}
 		if config.Padding != 0 {
 			f.padding = config.Padding
 		}
@@ -129,17 +136,17 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 				r <- result
 				continue
 			}
-			mat := cur.Original.Mat.Clone()
-			matType := mat.Type()
+			tmpMat := cur.Original.SharedMat.Mat.Clone()
+			matType := tmpMat.Type()
 			// need to convert for blob usage
-			mat.ConvertTo(&mat, gocv.MatTypeCV32F)
+			tmpMat.ConvertTo(&tmpMat, gocv.MatTypeCV32F)
 			// convert image Mat to 300x300 blob that the object detector can analyze
-			blob := gocv.BlobFromImage(mat, ratio, image.Pt(300, 300), mean, swapRGB, false)
+			blob := gocv.BlobFromImage(tmpMat, ratio, image.Pt(300, 300), mean, swapRGB, false)
 			// feed the blob into the detector
 			net.SetInput(blob, "")
 			// run a forward pass thru the network
 			prob := net.Forward("")
-			mat.ConvertTo(&mat, matType)
+			tmpMat.ConvertTo(&tmpMat, matType)
 
 			minConfidence := float32(f.minConfidencePercentage) / float32(100)
 			maximumArea := cur.Original.Height() * cur.Original.Width() * f.maxPercentage / 100
@@ -151,10 +158,10 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			for i := 0; i < prob.Total(); i += 7 {
 				confidence := prob.GetFloatAt(0, i+2)
 				if confidence > minConfidence {
-					left := int(prob.GetFloatAt(0, i+3) * float32(mat.Cols()))
-					top := int(prob.GetFloatAt(0, i+4) * float32(mat.Rows()))
-					right := int(prob.GetFloatAt(0, i+5) * float32(mat.Cols()))
-					bottom := int(prob.GetFloatAt(0, i+6) * float32(mat.Rows()))
+					left := int(prob.GetFloatAt(0, i+3) * float32(tmpMat.Cols()))
+					top := int(prob.GetFloatAt(0, i+4) * float32(tmpMat.Rows()))
+					right := int(prob.GetFloatAt(0, i+5) * float32(tmpMat.Cols()))
+					bottom := int(prob.GetFloatAt(0, i+6) * float32(tmpMat.Rows()))
 					rect := image.Rect(left, top, right, bottom)
 					rectArea := rect.Dx() * rect.Dy()
 					if rectArea > maximumArea {
@@ -197,17 +204,17 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					result.FaceRects = append(result.FaceRects, finalRect)
 				}
 			}
-			mat.Close()
+			tmpMat.Close()
 			prob.Close()
 			blob.Close()
 			if len(result.FaceRects) > 0 {
-				mat := cur.Original.Mat.Clone()
+				highlightedImage := *cur.Original.Clone()
+				mat := highlightedImage.SharedMat.Mat
 				for _, rect := range result.FaceRects {
 					rectColor := videosource.StringToColor(f.highlightColor)
 					gocv.Rectangle(&mat, rect, rectColor.GetRGBA(), f.highlightThickness)
 				}
-				result.HighlightedFace = *videosource.NewImage(mat.Clone())
-				mat.Close()
+				result.HighlightedFace = highlightedImage
 			}
 			r <- result
 		}

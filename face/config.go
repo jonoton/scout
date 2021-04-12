@@ -11,6 +11,7 @@ import (
 // Config contains the parameters for Face detection
 type Config struct {
 	Skip                    bool   `yaml:"skip,omitempty"`
+	ForceCpu                bool   `yaml:"forceCpu,omitempty"`
 	Padding                 int    `yaml:"padding,omitempty"`
 	ModelFile               string `yaml:"modelFile,omitempty"`
 	ConfigFile              string `yaml:"configFile,omitempty"`

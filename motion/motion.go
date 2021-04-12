@@ -80,13 +80,15 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				r <- result
 				continue
 			}
-			highlightedMat := result.Original.Mat.Clone()
+			highlightedImage := *result.Original.Clone()
+			highlightedMat := highlightedImage.SharedMat.Mat
+
 			blurMat := gocv.NewMat()
 			// reduce noise - must be odd number
 			if m.noiseReduction%2 == 0 {
 				m.noiseReduction++
 			}
-			gocv.GaussianBlur(result.Original.Mat, &blurMat, image.Pt(m.noiseReduction, m.noiseReduction), 0, 0, gocv.BorderDefault)
+			gocv.GaussianBlur(result.Original.SharedMat.Mat, &blurMat, image.Pt(m.noiseReduction, m.noiseReduction), 0, 0, gocv.BorderDefault)
 			matDelta := gocv.NewMat()
 			matThresh := gocv.NewMat()
 			// obtain foreground only
@@ -142,10 +144,10 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				numMotions++
 			}
 			if numMotions > 0 {
-				result.HighlightedMotion = *videosource.NewImage(highlightedMat.Clone())
+				result.HighlightedMotion = *highlightedImage.Ref()
 			}
+			highlightedImage.Cleanup()
 			blurMat.Close()
-			highlightedMat.Close()
 			r <- result
 		}
 		mog2.Close()

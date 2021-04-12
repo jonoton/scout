@@ -73,8 +73,8 @@ func (v *VideoReader) Start() <-chan Image {
 				bufImage = img
 			case <-outTick.C:
 				if bufImage.IsValid() {
-					images <- *bufImage.Clone()
-					bufImage.Cleanup()
+					images <- bufImage
+					bufImage = Image{}
 					v.OutputStats.AddAccepted()
 				}
 				if fps != v.MaxOutputFps {
@@ -125,13 +125,14 @@ func (v *VideoReader) sourceImages() <-chan Image {
 					if v.Quality > 0 && v.Quality < 100 {
 						image.ChangeQuality(v.Quality)
 					}
-					videoImgs <- image
+					videoImgs <- *image.Ref()
 					v.SourceStats.AddAccepted()
 				}
 				if fps != v.MaxSourceFps {
 					fps = v.MaxSourceFps
 					tick = time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 				}
+				image.Cleanup()
 			case <-v.cancel:
 				return
 			}
