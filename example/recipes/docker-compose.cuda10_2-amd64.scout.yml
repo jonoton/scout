@@ -1,0 +1,14 @@
+version: "3"
+services:
+  scout:
+    container_name: scout
+    image: jonotoninnovation/scout:cuda10_2-amd64-v1.4
+    restart: always
+    runtime: nvidia
+    ports:
+      - 8080:8080/tcp
+    volumes:
+      - /home/server/docker/scout/mnt/.logs:/scout/.logs
+      - /home/server/docker/scout/mnt/.config:/scout/.config
+      - /home/server/docker/scout/mnt/data:/scout/data
+      - /etc/localtime:/etc/localtime:ro

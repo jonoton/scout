@@ -56,11 +56,15 @@ func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
 	m.mons[mon.Name] = mon
 	m.monGuard.Unlock()
+	m.monGuard.RLock()
 	for _, pathName := range mon.ConfigPaths {
 		m.wtr.Add(pathName)
 	}
+	m.monGuard.RUnlock()
 	go func() {
+		m.monGuard.Lock()
 		mon.Start()
+		m.monGuard.Unlock()
 		mon.Wait()
 	}()
 }
@@ -147,6 +151,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	}
 	videoReader.SetQuality(monConf.Quality)
 	mon = monitor.NewMonitor(name, videoReader)
+	m.monGuard.Lock()
 	mon.ConfigPaths = append(mon.ConfigPaths, monConfigPath)
 	if monConf.RecordFilename != "" {
 		recordConfigPath := runtimeConfigDir + monConf.RecordFilename
@@ -182,6 +187,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, facePath)
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)
+	m.monGuard.Unlock()
 	return mon
 }
 
@@ -258,7 +264,9 @@ func (m *Manage) checkStaleMonitors() {
 
 // RemoveMonitor will stop, wait, and remove from manage
 func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
+	m.monGuard.Lock()
 	mon.Stop()
+	m.monGuard.Unlock()
 	mon.Wait()
 	uniquePaths := make(map[string]bool)
 	for _, pathName := range mon.ConfigPaths {
