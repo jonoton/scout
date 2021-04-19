@@ -112,7 +112,8 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			maximumHeight := cur.Height() * m.maximumPercentage / 100
 
 			numMotions := 0
-			for _, c := range contours {
+			for index := 0; index < contours.Size(); index++ {
+				c := contours.At(index)
 				if numMotions > m.maxMotions {
 					numMotions = 0
 					for _, motion := range result.Motions {

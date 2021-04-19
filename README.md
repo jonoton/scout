@@ -1,4 +1,5 @@
 # scout
+[![Go Reference](https://pkg.go.dev/badge/github.com/jonoton/scout.svg)](https://pkg.go.dev/github.com/jonoton/scout)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jonoton/scout?)](https://goreportcard.com/report/github.com/jonoton/scout)
 [![Docker pulls](https://img.shields.io/docker/pulls/jonotoninnovation/scout.svg)](https://hub.docker.com/r/jonotoninnovation/scout)
 

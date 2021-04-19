@@ -3,7 +3,7 @@ package websockets
 import (
 	"sync"
 
-	"github.com/gofiber/websocket"
+	websocket "github.com/gofiber/websocket/v2"
 )
 
 // Run is a wrapper for gofiber websocket

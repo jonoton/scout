@@ -10,9 +10,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gofiber/fiber"
-	"github.com/gofiber/fiber/middleware/compress"
-	"github.com/gofiber/fiber/middleware/limiter"
+	fiber "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/google/uuid"
 	"github.com/jonoton/scout/dir"
 	"github.com/jonoton/scout/manage"
@@ -21,7 +21,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	jwtware "github.com/gofiber/jwt"
+	jwtware "github.com/gofiber/jwt/v2"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )

@@ -6,8 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/gofiber/fiber"
-	"github.com/gofiber/websocket"
+	fiber "github.com/gofiber/fiber/v2"
+	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"github.com/jonoton/scout/gzip"
 	"github.com/jonoton/scout/http/websockets"
