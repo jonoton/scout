@@ -77,6 +77,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 				defer wg.Done()
 				writeOut := func() (ok bool) {
 					img := ringBuffer.Pop()
+					defer img.Cleanup()
 					if !img.Original.IsValid() {
 						return true
 					}
@@ -84,15 +85,14 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					jpgParams := []int{gocv.IMWriteJpegQuality, jpegQuality}
 					var selectedImage videosource.Image
 					if img.HighlightedFace.IsValid() {
-						selectedImage = *img.HighlightedFace.Ref()
+						selectedImage = *img.HighlightedFace.ScaleToWidth(width)
 					} else if img.HighlightedObject.IsValid() {
-						selectedImage = *img.HighlightedObject.Ref()
+						selectedImage = *img.HighlightedObject.ScaleToWidth(width)
 					} else if img.HighlightedMotion.IsValid() {
-						selectedImage = *img.HighlightedMotion.Ref()
+						selectedImage = *img.HighlightedMotion.ScaleToWidth(width)
 					} else {
-						selectedImage = *img.Original.Ref()
+						selectedImage = *img.Original.ScaleToWidth(width)
 					}
-					selectedImage.ScaleToWidth(width)
 					if selectedImage.SharedMat != nil {
 						selectedImage.SharedMat.Guard.RLock()
 						if sharedmat.Valid(&selectedImage.SharedMat.Mat) {
@@ -102,8 +102,6 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 						selectedImage.SharedMat.Guard.RUnlock()
 					}
 					selectedImage.Cleanup()
-
-					img.Cleanup()
 					zipped := gzip.Encode(imgArray, nil)
 					err := c.WriteMessage(websocket.BinaryMessage, zipped)
 					if err != nil {

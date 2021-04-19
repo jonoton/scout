@@ -29,8 +29,7 @@ func SaveImage(img Image, t time.Time, saveDirectory string, jpegQuality int, na
 // SavePreview will save a smaller Image
 func SavePreview(img Image, t time.Time, saveDirectory string, name string, title string, percentage string) (savePath string) {
 	savePath = GetImageFilename(t, saveDirectory, name, title, percentage)
-	previewImg := img.Clone()
-	previewImg.ScaleToWidth(128)
+	previewImg := img.ScaleToWidth(128)
 	if previewImg.SharedMat != nil {
 		previewImg.SharedMat.Guard.RLock()
 		if sharedmat.Valid(&previewImg.SharedMat.Mat) {
@@ -124,6 +123,7 @@ func (v *VideoWriter) Start() {
 						// close
 						v.closeRecord()
 					}
+					img.Cleanup()
 					return
 				}
 				if (v.activityType == ActivityObject && len(img.Objects) > 0) ||
@@ -136,11 +136,11 @@ func (v *VideoWriter) Start() {
 					popped := v.preRingBuffer.PopAll()
 					preFrames := *NewImageList()
 					preFrames.Set(popped)
-					v.openRecord(&firstFrame)
+					v.openRecord(firstFrame)
 					firstFrame.Cleanup()
 					for preFrames.Len() > 0 {
 						cur := preFrames.Pop()
-						v.writeRecord(&cur)
+						v.writeRecord(cur)
 						cur.Cleanup()
 					}
 					v.recording = true
@@ -150,16 +150,16 @@ func (v *VideoWriter) Start() {
 					v.recording = false
 				}
 
-				saveImg := *img.Original.Ref()
-				if saveImg.IsValid() {
+				origImg := *img.Original.Ref()
+				if origImg.IsValid() {
 					if v.recording {
 						// write
-						v.writeRecord(&saveImg)
-						saveImg.Cleanup()
+						v.writeRecord(origImg)
+						origImg.Cleanup()
 						v.VideoStats.AddAccepted()
 					} else {
 						// buffer
-						oldest := v.preRingBuffer.Push(saveImg)
+						oldest := v.preRingBuffer.Push(origImg)
 						if oldest.IsValid() {
 							v.VideoStats.AddDropped()
 						}
@@ -198,7 +198,7 @@ func (v *VideoWriter) Wait() {
 	v.VideoStats.Cleanup()
 }
 
-func (v *VideoWriter) openRecord(img *Image) {
+func (v *VideoWriter) openRecord(img Image) {
 	timeNow := time.Now()
 	saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
 	wFull, err := gocv.VideoWriterFile(saveFilenameFull,
@@ -208,22 +208,23 @@ func (v *VideoWriter) openRecord(img *Image) {
 		v.startTime = timeNow
 		v.writerFull = wFull
 		if v.savePreview {
-			SavePreview(*img, timeNow, v.saveDirectory, v.name, "", "")
+			SavePreview(img, timeNow, v.saveDirectory, v.name, "", "")
 		}
 	} else {
 		log.Error("Could not open gocv writer full")
 	}
 	if v.savePortable {
-		img.ScaleToWidth(v.PortableWidth)
+		scaled := img.ScaleToWidth(v.PortableWidth)
 		saveFilenamePortable := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, true)
 		wPortable, err := gocv.VideoWriterFile(saveFilenamePortable,
 			strings.ToUpper(v.codec), float64(v.outFps),
-			img.Width(), img.Height(), true)
+			scaled.Width(), scaled.Height(), true)
 		if err == nil {
 			v.writerPortable = wPortable
 		} else {
 			log.Error("Could not open gocv writer portable")
 		}
+		scaled.Cleanup()
 	}
 	return
 }
@@ -249,7 +250,7 @@ func (v *VideoWriter) isRecordExpired(start time.Time) bool {
 	return time.Now().Sub(start) > (time.Duration(v.maxSec) * time.Second)
 }
 
-func (v *VideoWriter) writeRecord(img *Image) {
+func (v *VideoWriter) writeRecord(img Image) {
 	if v.writerFull != nil {
 		if img.SharedMat != nil {
 			img.SharedMat.Guard.RLock()
@@ -260,14 +261,15 @@ func (v *VideoWriter) writeRecord(img *Image) {
 		}
 	}
 	if v.writerPortable != nil {
-		img.ScaleToWidth(v.PortableWidth)
-		if img.SharedMat != nil {
-			img.SharedMat.Guard.RLock()
-			if sharedmat.Valid(&img.SharedMat.Mat) {
-				v.writerPortable.Write(img.SharedMat.Mat)
+		scaled := img.ScaleToWidth(v.PortableWidth)
+		if scaled.SharedMat != nil {
+			scaled.SharedMat.Guard.RLock()
+			if sharedmat.Valid(&scaled.SharedMat.Mat) {
+				v.writerPortable.Write(scaled.SharedMat.Mat)
 			}
-			img.SharedMat.Guard.RUnlock()
+			scaled.SharedMat.Guard.RUnlock()
 		}
+		scaled.Cleanup()
 	}
 }
 

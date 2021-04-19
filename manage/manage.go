@@ -54,19 +54,15 @@ func NewManage() *Manage {
 // AddMonitor adds a new monitor to manage
 func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
+	defer m.monGuard.Unlock()
+	m.addMonitor(mon)
+}
+func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	m.mons[mon.Name] = mon
-	m.monGuard.Unlock()
-	m.monGuard.RLock()
 	for _, pathName := range mon.ConfigPaths {
 		m.wtr.Add(pathName)
 	}
-	m.monGuard.RUnlock()
-	go func() {
-		m.monGuard.Lock()
-		mon.Start()
-		m.monGuard.Unlock()
-		mon.Wait()
-	}()
+	mon.Start()
 }
 
 // GetMonitorNames returns a list of monitor names
@@ -151,7 +147,6 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	}
 	videoReader.SetQuality(monConf.Quality)
 	mon = monitor.NewMonitor(name, videoReader)
-	m.monGuard.Lock()
 	mon.ConfigPaths = append(mon.ConfigPaths, monConfigPath)
 	if monConf.RecordFilename != "" {
 		recordConfigPath := runtimeConfigDir + monConf.RecordFilename
@@ -187,7 +182,6 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, facePath)
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)
-	m.monGuard.Unlock()
 	return mon
 }
 
@@ -215,6 +209,42 @@ func (m *Manage) Unsubscribe(monitorName string, key string) {
 	}
 }
 
+func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleList []*monitor.Monitor) {
+	m.monGuard.Lock()
+	defer m.monGuard.Unlock()
+	staleList = make([]*monitor.Monitor, 0)
+	for _, cur := range m.mons {
+		if cur.IsStale {
+			staleList = append(staleList, cur)
+			log.Warningln("Stale monitor", cur.Name)
+		}
+	}
+	for _, stale := range staleList {
+		m.removeMonitor(stale)
+		if stale.StaleRetry == 0 {
+			continue
+		}
+		if found, conf := m.getMonitorConf(stale.Name); found {
+			newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
+			if newMon == nil {
+				continue
+			}
+			for _, lastStale := range lastStaleList {
+				if lastStale.Name == newMon.Name {
+					newMon.StaleRetry = stale.StaleRetry - 1
+					log.Warningln("Stale retry decremented monitor", newMon.Name)
+					if newMon.StaleRetry == 0 {
+						log.Errorln("Stale last retry for", newMon.Name)
+					}
+				}
+			}
+			m.addMonitor(newMon)
+			log.Infoln("Stale restarted monitor", newMon.Name)
+		}
+	}
+	return
+}
+
 func (m *Manage) checkStaleMonitors() {
 	go func() {
 		defer close(m.done)
@@ -224,39 +254,7 @@ func (m *Manage) checkStaleMonitors() {
 		for {
 			select {
 			case <-staleTicker.C:
-				staleList := make([]*monitor.Monitor, 0)
-				m.monGuard.RLock()
-				for _, cur := range m.mons {
-					if cur.IsStale {
-						staleList = append(staleList, cur)
-						log.Warningln("Stale monitor", cur.Name)
-					}
-				}
-				m.monGuard.RUnlock()
-				for _, stale := range staleList {
-					m.RemoveMonitor(stale)
-					if stale.StaleRetry == 0 {
-						break
-					}
-					for _, conf := range m.manageConf.Monitors {
-						if conf.Name == stale.Name {
-							newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
-							for _, lastStale := range lastStaleList {
-								if lastStale.Name == newMon.Name {
-									newMon.StaleRetry = stale.StaleRetry - 1
-									log.Warningln("Stale retry decremented monitor", newMon.Name)
-									if newMon.StaleRetry == 0 {
-										log.Errorln("Stale last retry for", newMon.Name)
-									}
-								}
-							}
-							m.AddMonitor(newMon)
-							log.Infoln("Stale restarted monitor", newMon.Name)
-							break
-						}
-					}
-				}
-				lastStaleList = staleList
+				lastStaleList = m.doCheckStaleMonitors(lastStaleList)
 			}
 		}
 	}()
@@ -265,8 +263,12 @@ func (m *Manage) checkStaleMonitors() {
 // RemoveMonitor will stop, wait, and remove from manage
 func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
+	defer m.monGuard.Unlock()
+	m.removeMonitor(mon)
+}
+
+func (m *Manage) removeMonitor(mon *monitor.Monitor) {
 	mon.Stop()
-	m.monGuard.Unlock()
 	mon.Wait()
 	uniquePaths := make(map[string]bool)
 	for _, pathName := range mon.ConfigPaths {
@@ -287,9 +289,25 @@ func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 			m.wtr.Remove(pathName)
 		}
 	}
-	m.monGuard.Lock()
 	delete(m.mons, mon.Name)
-	m.monGuard.Unlock()
+}
+
+func (m *Manage) doMonitorConfigChanges(modPath string) {
+	m.monGuard.Lock()
+	defer m.monGuard.Unlock()
+	log.Infoln("Config changed", modPath)
+	aMons := m.associatedMonitors(modPath)
+	for _, cur := range aMons {
+		m.removeMonitor(cur)
+		if found, conf := m.getMonitorConf(cur.Name); found {
+			newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
+			if newMon == nil {
+				continue
+			}
+			m.addMonitor(newMon)
+			log.Infoln("Config restarted monitor", newMon.Name)
+		}
+	}
 }
 
 func (m *Manage) monitorConfigChanges() {
@@ -297,28 +315,7 @@ func (m *Manage) monitorConfigChanges() {
 		for {
 			select {
 			case event := <-m.wtr.Event:
-				modPath := event.Path
-				log.Infoln("Config changed", modPath)
-				aMons := make([]*monitor.Monitor, 0)
-				for _, cur := range m.mons {
-					for _, configPath := range cur.ConfigPaths {
-						if configPath == modPath {
-							aMons = append(aMons, cur)
-							break
-						}
-					}
-				}
-				for _, cur := range aMons {
-					m.RemoveMonitor(cur)
-					for _, conf := range m.manageConf.Monitors {
-						if conf.Name == cur.Name {
-							newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
-							m.AddMonitor(newMon)
-							log.Infoln("Config restarted monitor", newMon.Name)
-							break
-						}
-					}
-				}
+				m.doMonitorConfigChanges(event.Path)
 			case <-m.wtr.Closed:
 				return
 			}
@@ -330,4 +327,28 @@ func (m *Manage) monitorConfigChanges() {
 			return
 		}
 	}()
+}
+
+func (m *Manage) associatedMonitors(modPath string) (result []*monitor.Monitor) {
+	result = make([]*monitor.Monitor, 0)
+	for _, cur := range m.mons {
+		for _, configPath := range cur.ConfigPaths {
+			if configPath == modPath {
+				result = append(result, cur)
+				break
+			}
+		}
+	}
+	return
+}
+
+func (m *Manage) getMonitorConf(name string) (found bool, result mon) {
+	for _, conf := range m.manageConf.Monitors {
+		if conf.Name == name {
+			found = true
+			result = conf
+			break
+		}
+	}
+	return
 }

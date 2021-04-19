@@ -127,12 +127,12 @@ func (i *Image) ChangeQuality(percent int) {
 }
 
 // ScaleToWidth will change the Image to scale to width
-func (i *Image) ScaleToWidth(width int) {
-	if width <= 0 {
-		return
+func (i *Image) ScaleToWidth(width int) (scaled *Image) {
+	if width <= 0 || width == i.Width() {
+		return i.Ref()
 	}
 	if i.SharedMat == nil {
-		return
+		return i.Ref()
 	}
 	// scale down
 	var interpolationFlags = gocv.InterpolationArea
@@ -147,12 +147,12 @@ func (i *Image) ScaleToWidth(width int) {
 	i.SharedMat.Guard.RLock()
 	if sharedmat.Valid(&i.SharedMat.Mat) {
 		gocv.Resize(i.SharedMat.Mat, &dstMat, image.Point{}, scaleEvenly, scaleEvenly, interpolationFlags)
-	} else {
-		dstMat.Close()
+		scaled = NewImage(dstMat.Clone())
+		scaled.CreatedTime = i.CreatedTime
 	}
 	i.SharedMat.Guard.RUnlock()
-	i.SharedMat.Cleanup()
-	i.SharedMat = sharedmat.NewSharedMat(dstMat)
+	dstMat.Close()
+	return
 }
 
 // ImageByCreatedTime sorting ascending order
