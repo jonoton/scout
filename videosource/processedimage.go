@@ -265,14 +265,15 @@ func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 	go func() {
 		defer close(p.done)
 		var curImage ProcessedImage
+		defer curImage.Cleanup()
 		writeTick := time.NewTicker(time.Duration(1000/p.outFps) * time.Millisecond)
 		defer writeTick.Stop()
-		defer curImage.Cleanup()
 		defer close(outChan)
 		for {
 			select {
 			case img, ok := <-p.streamChan:
 				if !ok {
+					img.Cleanup()
 					return
 				}
 				curImage.Cleanup()

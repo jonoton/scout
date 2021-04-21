@@ -66,6 +66,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					select {
 					case img, ok := <-images:
 						if !ok {
+							img.Cleanup()
 							return
 						}
 						popped := ringBuffer.Push(img)
@@ -77,31 +78,33 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 				defer wg.Done()
 				writeOut := func() (ok bool) {
 					img := ringBuffer.Pop()
-					defer img.Cleanup()
 					if !img.Original.IsValid() {
+						img.Cleanup()
 						return true
 					}
 					var imgArray []byte
 					jpgParams := []int{gocv.IMWriteJpegQuality, jpegQuality}
 					var selectedImage videosource.Image
 					if img.HighlightedFace.IsValid() {
-						selectedImage = *img.HighlightedFace.ScaleToWidth(width)
+						selectedImage = img.HighlightedFace
 					} else if img.HighlightedObject.IsValid() {
-						selectedImage = *img.HighlightedObject.ScaleToWidth(width)
+						selectedImage = img.HighlightedObject
 					} else if img.HighlightedMotion.IsValid() {
-						selectedImage = *img.HighlightedMotion.ScaleToWidth(width)
+						selectedImage = img.HighlightedMotion
 					} else {
-						selectedImage = *img.Original.ScaleToWidth(width)
+						selectedImage = img.Original
 					}
-					if selectedImage.SharedMat != nil {
-						selectedImage.SharedMat.Guard.RLock()
-						if sharedmat.Valid(&selectedImage.SharedMat.Mat) {
-							encoded, _ := gocv.IMEncodeWithParams(gocv.JPEGFileExt, selectedImage.SharedMat.Mat, jpgParams)
+					scaledImage := selectedImage.ScaleToWidth(width)
+					if scaledImage.SharedMat != nil {
+						scaledImage.SharedMat.Guard.RLock()
+						if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
+							encoded, _ := gocv.IMEncodeWithParams(gocv.JPEGFileExt, scaledImage.SharedMat.Mat, jpgParams)
 							imgArray = encoded
 						}
-						selectedImage.SharedMat.Guard.RUnlock()
+						scaledImage.SharedMat.Guard.RUnlock()
 					}
-					selectedImage.Cleanup()
+					scaledImage.Cleanup()
+					img.Cleanup()
 					zipped := gzip.Encode(imgArray, nil)
 					err := c.WriteMessage(websocket.BinaryMessage, zipped)
 					if err != nil {

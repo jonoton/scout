@@ -29,15 +29,15 @@ func SaveImage(img Image, t time.Time, saveDirectory string, jpegQuality int, na
 // SavePreview will save a smaller Image
 func SavePreview(img Image, t time.Time, saveDirectory string, name string, title string, percentage string) (savePath string) {
 	savePath = GetImageFilename(t, saveDirectory, name, title, percentage)
-	previewImg := img.ScaleToWidth(128)
-	if previewImg.SharedMat != nil {
-		previewImg.SharedMat.Guard.RLock()
-		if sharedmat.Valid(&previewImg.SharedMat.Mat) {
-			gocv.IMWrite(savePath, previewImg.SharedMat.Mat)
+	scaledImage := img.ScaleToWidth(128)
+	if scaledImage.SharedMat != nil {
+		scaledImage.SharedMat.Guard.RLock()
+		if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
+			gocv.IMWrite(savePath, scaledImage.SharedMat.Mat)
 		}
-		previewImg.SharedMat.Guard.RUnlock()
+		scaledImage.SharedMat.Guard.RUnlock()
 	}
-	previewImg.Cleanup()
+	scaledImage.Cleanup()
 	os.Rename(savePath, savePath+".preview")
 	return
 }
@@ -137,6 +137,7 @@ func (v *VideoWriter) Start() {
 					preFrames := *NewImageList()
 					preFrames.Set(popped)
 					v.openRecord(firstFrame)
+					v.writeRecord(firstFrame)
 					firstFrame.Cleanup()
 					for preFrames.Len() > 0 {
 						cur := preFrames.Pop()
@@ -150,16 +151,15 @@ func (v *VideoWriter) Start() {
 					v.recording = false
 				}
 
-				origImg := *img.Original.Ref()
+				origImg := img.Original
 				if origImg.IsValid() {
 					if v.recording {
 						// write
 						v.writeRecord(origImg)
-						origImg.Cleanup()
 						v.VideoStats.AddAccepted()
 					} else {
 						// buffer
-						oldest := v.preRingBuffer.Push(origImg)
+						oldest := v.preRingBuffer.Push(*origImg.Ref())
 						if oldest.IsValid() {
 							v.VideoStats.AddDropped()
 						}
@@ -214,17 +214,17 @@ func (v *VideoWriter) openRecord(img Image) {
 		log.Error("Could not open gocv writer full")
 	}
 	if v.savePortable {
-		scaled := img.ScaleToWidth(v.PortableWidth)
+		scaledImage := img.ScaleToWidth(v.PortableWidth)
 		saveFilenamePortable := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, true)
 		wPortable, err := gocv.VideoWriterFile(saveFilenamePortable,
 			strings.ToUpper(v.codec), float64(v.outFps),
-			scaled.Width(), scaled.Height(), true)
+			scaledImage.Width(), scaledImage.Height(), true)
 		if err == nil {
 			v.writerPortable = wPortable
 		} else {
 			log.Error("Could not open gocv writer portable")
 		}
-		scaled.Cleanup()
+		scaledImage.Cleanup()
 	}
 	return
 }
@@ -261,15 +261,15 @@ func (v *VideoWriter) writeRecord(img Image) {
 		}
 	}
 	if v.writerPortable != nil {
-		scaled := img.ScaleToWidth(v.PortableWidth)
-		if scaled.SharedMat != nil {
-			scaled.SharedMat.Guard.RLock()
-			if sharedmat.Valid(&scaled.SharedMat.Mat) {
-				v.writerPortable.Write(scaled.SharedMat.Mat)
+		scaledImage := img.ScaleToWidth(v.PortableWidth)
+		if scaledImage.SharedMat != nil {
+			scaledImage.SharedMat.Guard.RLock()
+			if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
+				v.writerPortable.Write(scaledImage.SharedMat.Mat)
 			}
-			scaled.SharedMat.Guard.RUnlock()
+			scaledImage.SharedMat.Guard.RUnlock()
 		}
-		scaled.Cleanup()
+		scaledImage.Cleanup()
 	}
 }
 

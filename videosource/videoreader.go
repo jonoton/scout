@@ -55,6 +55,7 @@ func (v *VideoReader) Start() <-chan Image {
 		}
 		videoImgs := v.sourceImages()
 		bufImage := Image{}
+		defer bufImage.Cleanup()
 		fps := v.MaxOutputFps
 		outTick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 		defer outTick.Stop()
@@ -63,7 +64,7 @@ func (v *VideoReader) Start() <-chan Image {
 			select {
 			case img, ok := <-videoImgs:
 				if !ok {
-					bufImage.Cleanup()
+					img.Cleanup()
 					return
 				}
 				if bufImage.IsValid() {
@@ -119,6 +120,7 @@ func (v *VideoReader) sourceImages() <-chan Image {
 			case <-tick.C:
 				done, image := v.videoSource.ReadImage()
 				if done {
+					image.Cleanup()
 					log.Infoln("Done source", v.videoSource.GetName())
 					return
 				} else if image.IsValid() {
