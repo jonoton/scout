@@ -112,9 +112,8 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 // Start runs the processes
 func (v *VideoWriter) Start() {
 	go func() {
-		defer close(v.done)
-		defer cleanupRingBuffer(&v.preRingBuffer)
 		streamChan := v.streamChan.Start()
+	Loop:
 		for {
 			select {
 			case img, ok := <-streamChan:
@@ -124,7 +123,7 @@ func (v *VideoWriter) Start() {
 						v.closeRecord()
 					}
 					img.Cleanup()
-					return
+					break Loop
 				}
 				if (v.activityType == ActivityObject && len(img.Objects) > 0) ||
 					(v.activityType == ActivityFace && len(img.Faces) > 0) {
@@ -160,10 +159,9 @@ func (v *VideoWriter) Start() {
 					} else {
 						// buffer
 						oldest := v.preRingBuffer.Push(*origImg.Ref())
-						if oldest.IsValid() {
+						if oldest.Cleanup() {
 							v.VideoStats.AddDropped()
 						}
-						oldest.Cleanup()
 					}
 				}
 				img.Cleanup()
@@ -178,6 +176,10 @@ func (v *VideoWriter) Start() {
 				}
 			}
 		}
+		v.timeoutTick.Stop()
+		v.secTick.Stop()
+		cleanupRingBuffer(&v.preRingBuffer)
+		close(v.done)
 	}()
 }
 
@@ -226,7 +228,6 @@ func (v *VideoWriter) openRecord(img Image) {
 		}
 		scaledImage.Cleanup()
 	}
-	return
 }
 
 func (v *VideoWriter) closeRecord() {

@@ -82,10 +82,12 @@ func (i *Image) Clone() *Image {
 }
 
 // Cleanup will cleanup the Image
-func (i *Image) Cleanup() {
+func (i *Image) Cleanup() bool {
+	result := false
 	if i.SharedMat != nil {
-		i.SharedMat.Cleanup()
+		result = i.SharedMat.Cleanup()
 	}
+	return result
 }
 
 // GetRegion will return a new Image per rectangle parameter
@@ -126,14 +128,33 @@ func (i *Image) ChangeQuality(percent int) {
 	}
 }
 
-// ScaleToWidth will change the Image to scale to width
-func (i *Image) ScaleToWidth(width int) (scaled *Image) {
+// EncodedQuality returns a JPEG byte array with the given quality percentage
+func (i *Image) EncodedQuality(percent int) []byte {
+	imgArray := make([]byte, 0)
+	if i.SharedMat == nil {
+		return imgArray
+	}
+	i.SharedMat.Guard.RLock()
+	if sharedmat.Valid(&i.SharedMat.Mat) {
+		jpgParams := []int{gocv.IMWriteJpegQuality, percent}
+		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
+		if err == nil {
+			imgArray = encoded
+		}
+	}
+	i.SharedMat.Guard.RUnlock()
+	return imgArray
+}
+
+// ScaleToWidth will return a copy of the Image to scale given the width
+func (i *Image) ScaleToWidth(width int) *Image {
 	if width <= 0 || width == i.Width() {
 		return i.Ref()
 	}
 	if i.SharedMat == nil {
 		return i.Ref()
 	}
+	var scaled *Image
 	// scale down
 	var interpolationFlags = gocv.InterpolationArea
 	// scale up
@@ -149,10 +170,12 @@ func (i *Image) ScaleToWidth(width int) (scaled *Image) {
 		gocv.Resize(i.SharedMat.Mat, &dstMat, image.Point{}, scaleEvenly, scaleEvenly, interpolationFlags)
 		scaled = NewImage(dstMat.Clone())
 		scaled.CreatedTime = i.CreatedTime
+	} else {
+		scaled = NewImage(dstMat.Clone())
 	}
 	i.SharedMat.Guard.RUnlock()
 	dstMat.Close()
-	return
+	return scaled
 }
 
 // ImageByCreatedTime sorting ascending order

@@ -60,7 +60,8 @@ func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	m.mons[mon.Name] = mon
 	for _, pathName := range mon.ConfigPaths {
-		m.wtr.Add(pathName)
+		// TODO look into watcher deadlocks
+		go m.wtr.Add(pathName)
 	}
 	mon.Start()
 }
@@ -185,6 +186,20 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	return mon
 }
 
+// Stop the manage
+func (m *Manage) Stop() {
+	m.monGuard.Lock()
+	defer m.monGuard.Unlock()
+	tmpMap := make(monitor.Map)
+	for k, v := range m.mons {
+		tmpMap[k] = v
+	}
+	for _, v := range tmpMap {
+		m.removeMonitor(v)
+	}
+	close(m.done)
+}
+
 // Wait until done
 func (m *Manage) Wait() {
 	<-m.done
@@ -247,16 +262,18 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 
 func (m *Manage) checkStaleMonitors() {
 	go func() {
-		defer close(m.done)
 		staleTicker := time.NewTicker(time.Second)
-		defer staleTicker.Stop()
 		lastStaleList := make([]*monitor.Monitor, 0)
+	Loop:
 		for {
 			select {
 			case <-staleTicker.C:
 				lastStaleList = m.doCheckStaleMonitors(lastStaleList)
+			case <-m.done:
+				break Loop
 			}
 		}
+		staleTicker.Stop()
 	}()
 }
 
@@ -286,7 +303,8 @@ func (m *Manage) removeMonitor(mon *monitor.Monitor) {
 	}
 	for pathName, unique := range uniquePaths {
 		if unique {
-			m.wtr.Remove(pathName)
+			// TODO look into watcher deadlocks
+			go m.wtr.Remove(pathName)
 		}
 	}
 	delete(m.mons, mon.Name)

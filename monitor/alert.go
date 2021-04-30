@@ -80,13 +80,13 @@ func (a *Alert) Wait() {
 // Start the processes
 func (a *Alert) Start() {
 	go func() {
-		defer close(a.done)
+	Loop:
 		for {
 			select {
 			case <-a.cancel:
 				a.prune()
 				a.doAlerts()
-				return
+				break Loop
 			case <-a.hourTick.C:
 				a.hourSent = 0
 				a.prune()
@@ -94,6 +94,9 @@ func (a *Alert) Start() {
 				a.doAlerts()
 			}
 		}
+		a.intervalTick.Stop()
+		a.hourTick.Stop()
+		close(a.done)
 	}()
 }
 

@@ -12,27 +12,28 @@ import (
 //   send - push out msgs and return when server is done with the websocket
 //   cleanup - will be called when all goroutines are finished
 func Run(c *websocket.Conn, socketClosed chan bool, receive func(int, []byte), send func(*websocket.Conn), cleanup func()) {
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	// Read goroutine will cleanup after websocket closes no need to wait for it
 	go func() {
-		defer close(socketClosed)
+	Loop:
 		for {
 			msgType, data, err := c.ReadMessage()
 			if err != nil {
 				// socket closed
-				return
+				break Loop
 			}
 			if receive != nil {
 				receive(msgType, data)
 			}
 		}
+		close(socketClosed)
 	}()
 	go func() {
-		defer wg.Done()
 		if send != nil {
 			send(c)
 		}
+		wg.Done()
 	}()
 	wg.Wait()
 	if cleanup != nil {

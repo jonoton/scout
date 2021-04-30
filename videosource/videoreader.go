@@ -4,6 +4,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gocv.io/x/gocv"
 )
 
 // VideoReader reads a VideoSource
@@ -47,43 +48,45 @@ func (v *VideoReader) SetQuality(percent int) {
 func (v *VideoReader) Start() <-chan Image {
 	images := make(chan Image)
 	go func() {
-		defer close(v.done)
-		defer close(images)
-		defer v.videoSource.Cleanup()
 		if !v.videoSource.Initialize() {
 			return
 		}
 		videoImgs := v.sourceImages()
-		bufImage := Image{}
-		defer bufImage.Cleanup()
+		bufImage := NewImage(gocv.Mat{})
 		fps := v.MaxOutputFps
 		outTick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
-		defer outTick.Stop()
-		defer v.OutputStats.Cleanup()
+	Loop:
 		for {
 			select {
 			case img, ok := <-videoImgs:
 				if !ok {
 					img.Cleanup()
-					return
+					break Loop
 				}
-				if bufImage.IsValid() {
-					bufImage.Cleanup()
+				if bufImage.Cleanup() {
 					v.OutputStats.AddDropped()
 				}
-				bufImage = img
+				bufImage = &img
 			case <-outTick.C:
 				if bufImage.IsValid() {
-					images <- bufImage
-					bufImage = Image{}
+					images <- *bufImage.Ref()
+					bufImage.Cleanup()
+					bufImage = NewImage(gocv.Mat{})
 					v.OutputStats.AddAccepted()
 				}
 				if fps != v.MaxOutputFps {
 					fps = v.MaxOutputFps
+					outTick.Stop()
 					outTick = time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 				}
 			}
 		}
+		bufImage.Cleanup()
+		outTick.Stop()
+		v.OutputStats.Cleanup()
+		v.videoSource.Cleanup()
+		close(images)
+		close(v.done)
 	}()
 
 	return images
@@ -110,11 +113,9 @@ func (v *VideoReader) getTickMs(fps int) time.Duration {
 func (v *VideoReader) sourceImages() <-chan Image {
 	videoImgs := make(chan Image)
 	go func() {
-		defer close(videoImgs)
 		fps := v.MaxSourceFps
 		tick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
-		defer tick.Stop()
-		defer v.SourceStats.Cleanup()
+	Loop:
 		for {
 			select {
 			case <-tick.C:
@@ -122,7 +123,7 @@ func (v *VideoReader) sourceImages() <-chan Image {
 				if done {
 					image.Cleanup()
 					log.Infoln("Done source", v.videoSource.GetName())
-					return
+					break Loop
 				} else if image.IsValid() {
 					if v.Quality > 0 && v.Quality < 100 {
 						image.ChangeQuality(v.Quality)
@@ -132,13 +133,17 @@ func (v *VideoReader) sourceImages() <-chan Image {
 				}
 				if fps != v.MaxSourceFps {
 					fps = v.MaxSourceFps
+					tick.Stop()
 					tick = time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 				}
 				image.Cleanup()
 			case <-v.cancel:
-				return
+				break Loop
 			}
 		}
+		tick.Stop()
+		v.SourceStats.Cleanup()
+		close(videoImgs)
 	}()
 	return videoImgs
 }

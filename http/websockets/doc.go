@@ -12,82 +12,70 @@ Example:
 	}
 	log.Println("Websocket opened")
 
-	stuffChan := h.myEngine.Subscribe("stuff")
-
 	socketClosed := make(chan bool)
 	sourceDone := make(chan bool)
+
 	// use or implement custom buffer so non blocking
 	// see videosource.RingBufferProcessedImage for an example which allows for drops
 	// some services must guarantee msgs sent, use appropriate buffer type
-	ringBuffer := customringbuffer.NewRingBuffer(10)
+	ringBuffer := customringbuffer.NewRingBuffer(1)
+	stuffChan := h.myEngine.Subscribe("stuff")
+	go func() {
+		for cur := range stuffChan {
+			popped := ringBuffer.Push(cur)
+			if popped.IsValid() {
+				log.Println("Dropped stuff at websocket, but that's expected/ok")
+			}
+			popped.Cleanup()
+		}
+		close(sourceDone)
+	}()
 
 	receive := func(msgType int, data []byte) {
 		log.Println("Read Func called")
-		// do something here with msgs
 	}
 	send := func(c *websocket.Conn) {
-		wg := sync.WaitGroup{}
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			defer close(sourceDone)
-			for {
-				select {
-				case cur, ok := <-stuffChan:
-					if !ok {
-						return
+		writeOut := func() (ok bool) {
+			stuff := ringBuffer.Pop()
+			if !stuff.IsValid() {
+				stuff.Cleanup()
+				return true
+			}
+			var stuffArray []byte
+			// serialize stuff into stuffAray
+			stuff.Cleanup()
+			err := c.WriteMessage(websocket.BinaryMessage, stuffArray)
+			if err != nil {
+				// socket closed
+				h.myEngine.Unsubscribe("stuff")
+				return false
+			}
+			return true
+		}
+	Loop:
+		for {
+			select {
+			case <-socketClosed:
+				h.myEngine.Unsubscribe("stuff")
+				break Loop
+			case <-sourceDone:
+				if ringBuffer.Len() == 0 {
+					break Loop
+				}
+				for ringBuffer.Len() != 0 {
+					if !writeOut() {
+						break Loop
 					}
-					popped := ringBuffer.Push(cur)
-					if popped.IsValid() {
-						log.Println("Dropped stuff at websocket")
-					}
-					popped.Cleanup()
+				}
+			case _, ok := <-ringBuffer.Ready():
+				if !ok {
+					break Loop
+				}
+				if !writeOut() {
+					break Loop
 				}
 			}
-		}()
-		go func() {
-			defer wg.Done()
-			writeOut := func() (ok bool) {
-					stuff := ringBuffer.Pop()
-					if !stuff.IsValid() {
-						return true
-					}
-					var stuffArray []byte
-					// serialize stuff into stuffAray
-					stuff.Cleanup()
-					err := c.WriteMessage(websocket.BinaryMessage, stuffArray)
-					if err != nil {
-						// socket closed
-						h.myEngine.Unsubscribe("stuff")
-						return false
-					}
-					return true
-				}
-			for {
-					select {
-					case <-socketClosed:
-						h.myEngine.Unsubscribe("stuff")
-						return
-					case <-sourceDone:
-						if ringBuffer.Len() == 0 {
-							return
-						}
-						for ringBuffer.Len() != 0 {
-							if !writeOut() {
-								return
-							}
-						}
-					case _, ok := <-ringBuffer.Ready():
-						if !ok {
-							return
-						}
-						if !writeOut() {
-							return
-						}
-					}
-				}
-		}()
-		wg.Wait()
+		}
 	}
 	cleanup := func() {
 		for ringBuffer.Len() > 0 {

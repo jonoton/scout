@@ -3,8 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/jonoton/scout/http"
-	"github.com/jonoton/scout/manage"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,14 +19,5 @@ func init() {
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		log.Printf("How to run:\n\t%s NO ARGS\n", os.Args[0])
-		return
-	}
-
-	m := manage.NewManage()
-	m.Start()
-	h := http.NewHttp(m)
-	h.Listen()
-	m.Wait()
+	doMain()
 }

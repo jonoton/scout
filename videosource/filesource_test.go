@@ -16,14 +16,15 @@ func TestFileSource(t *testing.T) {
 
 	go func() {
 		tick := time.NewTicker(35 * time.Second)
-		defer tick.Stop()
+	Loop:
 		for {
 			select {
 			case <-tick.C:
 				f.Stop()
-				return
+				break Loop
 			}
 		}
+		tick.Stop()
 	}()
 
 	window := gocv.NewWindow("Test Window")

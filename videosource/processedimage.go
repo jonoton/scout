@@ -263,18 +263,15 @@ func NewProcessedImageFpsChan(outFps int) *ProcessedImageFpsChan {
 func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 	outChan := make(chan ProcessedImage)
 	go func() {
-		defer close(p.done)
 		var curImage ProcessedImage
-		defer curImage.Cleanup()
 		writeTick := time.NewTicker(time.Duration(1000/p.outFps) * time.Millisecond)
-		defer writeTick.Stop()
-		defer close(outChan)
+	Loop:
 		for {
 			select {
 			case img, ok := <-p.streamChan:
 				if !ok {
 					img.Cleanup()
-					return
+					break Loop
 				}
 				curImage.Cleanup()
 				curImage = img
@@ -283,6 +280,10 @@ func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 				curImage = ProcessedImage{}
 			}
 		}
+		writeTick.Stop()
+		curImage.Cleanup()
+		close(outChan)
+		close(p.done)
 	}()
 	return outChan
 }

@@ -206,9 +206,9 @@ func (h *Http) setup() {
 	h.fiber.Get("/alerts/latest", func(c *fiber.Ctx) error {
 		monAlertTimes := h.manage.GetMonitorAlertTimes()
 		// RFC RFC3339 time used
-		data := make(map[string]map[string]string, 0)
+		data := make(map[string]map[string]string)
 		for monName, monAlertTime := range monAlertTimes {
-			curAlerts := make(map[string]string, 0)
+			curAlerts := make(map[string]string)
 			if !monAlertTime.Object.IsZero() {
 				curAlerts["Object"] = monAlertTime.Object.Format(time.RFC3339)
 			}
@@ -283,14 +283,21 @@ func (h *Http) setup() {
 
 // Listen on port
 func (h *Http) Listen() {
-	port := ":8080"
-	if h.httpConfig != nil && h.httpConfig.Port > 0 {
-		portNum := h.httpConfig.Port
-		port = fmt.Sprintf(":%d", portNum)
-	}
-	h.fiber.Listen(port)
+	go func() {
+		port := ":8080"
+		if h.httpConfig != nil && h.httpConfig.Port > 0 {
+			portNum := h.httpConfig.Port
+			port = fmt.Sprintf(":%d", portNum)
+		}
+		h.fiber.Listen(port)
+	}()
 }
 
 func getFormattedKitchenTimestamp(t time.Time) string {
 	return t.Format("03:04:05 PM 01-02-2006")
+}
+
+// Stop the http
+func (h *Http) Stop() {
+	h.fiber.Shutdown()
 }

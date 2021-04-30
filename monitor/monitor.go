@@ -109,13 +109,13 @@ func (m *Monitor) SetFace(config *face.Config) {
 func (m *Monitor) Start() {
 	go func() {
 		staleTicker := time.NewTicker(time.Second)
-		defer staleTicker.Stop()
 		staleSec := 0
 		lastTotal := 0
+	Loop:
 		for {
 			select {
 			case <-m.done:
-				return
+				break Loop
 			case <-staleTicker.C:
 				curTotal := m.reader.SourceStats.AcceptedTotal
 				if lastTotal == curTotal {
@@ -128,10 +128,11 @@ func (m *Monitor) Start() {
 				lastTotal = curTotal
 				if staleSec >= m.staleTimeout {
 					m.IsStale = true
-					return
+					break Loop
 				}
 			}
 		}
+		staleTicker.Stop()
 	}()
 	go func() {
 		defer close(m.done)
@@ -147,27 +148,26 @@ func (m *Monitor) Start() {
 		faceInput := make(chan videosource.ProcessedImage)
 		faceOutput := m.face.Run(faceInput)
 
-		wg := sync.WaitGroup{}
+		wg := &sync.WaitGroup{}
 		wg.Add(3)
 		// motion -> tensor
 		go func() {
-			defer wg.Done()
-			defer close(tensorInput)
 			for cur := range motionOutput {
 				tensorInput <- cur
 			}
+			close(tensorInput)
+			wg.Done()
 		}()
 		// tensor -> face
 		go func() {
-			defer wg.Done()
-			defer close(faceInput)
 			for cur := range tensorOutput {
 				faceInput <- cur
 			}
+			close(faceInput)
+			wg.Done()
 		}()
 		// face -> process results
 		go func() {
-			defer wg.Done()
 			if m.record != nil {
 				m.record.Start()
 			}
@@ -198,6 +198,7 @@ func (m *Monitor) Start() {
 				m.record.Wait()
 			}
 			m.clearSubscriptions()
+			wg.Done()
 		}()
 
 		// reader -> motion

@@ -3,7 +3,6 @@ package sharedmat
 import (
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
 
@@ -16,15 +15,22 @@ type SharedMat struct {
 
 // NewSharedMat creates a new SharedMat
 func NewSharedMat(mat gocv.Mat) *SharedMat {
-	s := &SharedMat{
-		Mat:   gocv.Mat{},
-		refs:  1,
-		Guard: sync.RWMutex{},
-	}
-	if Valid(&mat) {
-		s.Mat = mat
-	}
-	return s
+	return newSharedMat(mat)
+}
+
+// Ref returns a SharedMat pointer and increments refs
+func (s *SharedMat) Ref() *SharedMat {
+	return s.ref()
+}
+
+// Clone will clone the SharedMat and attempt to clone the gocv.Mat
+func (s *SharedMat) Clone() *SharedMat {
+	return s.clone()
+}
+
+// Cleanup will decrement refs and attempt to cleanup the SharedMat
+func (s *SharedMat) Cleanup() bool {
+	return s.cleanup()
 }
 
 // NumRefs returns the number of references
@@ -32,43 +38,6 @@ func (s *SharedMat) NumRefs() int {
 	s.Guard.RLock()
 	defer s.Guard.RUnlock()
 	return s.refs
-}
-
-// Ref returns a SharedMat pointer and increments refs
-func (s *SharedMat) Ref() *SharedMat {
-	s.Guard.Lock()
-	defer s.Guard.Unlock()
-	s.refs++
-	return s
-}
-
-// Clone will clone the SharedMat and attempt to clone the gocv.Mat
-func (s *SharedMat) Clone() *SharedMat {
-	s.Guard.RLock()
-	defer s.Guard.RUnlock()
-	clone := &SharedMat{
-		Mat:   gocv.Mat{},
-		refs:  1,
-		Guard: sync.RWMutex{},
-	}
-	if Valid(&s.Mat) {
-		clone.Mat = s.Mat.Clone()
-	}
-	return clone
-}
-
-// Cleanup will decrement refs and attempt to cleanup the SharedMat
-func (s *SharedMat) Cleanup() {
-	s.Guard.Lock()
-	defer s.Guard.Unlock()
-	s.refs--
-	if s.refs <= 0 && Valid(&s.Mat) {
-		s.Mat.Close()
-		log.Debugln("Mat Closed")
-	}
-	if s.refs < 0 {
-		log.Debugf("Refs=%d\n", s.refs)
-	}
 }
 
 // Valid is a helper to check gocv.Mat validity

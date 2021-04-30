@@ -52,7 +52,6 @@ func (r *Record) Wait() {
 // Start the processes
 func (r *Record) Start() {
 	go func() {
-		defer close(r.done)
 		r.writer.Start()
 	Loop:
 		for {
@@ -61,14 +60,17 @@ func (r *Record) Start() {
 				r.prune()
 			case img, ok := <-r.streamChan:
 				if !ok {
+					img.Cleanup()
 					break Loop
 				}
 				r.process(img)
 			}
 		}
+		r.hourTick.Stop()
 		r.prune()
 		r.writer.Close()
 		r.writer.Wait()
+		close(r.done)
 	}()
 }
 

@@ -2,7 +2,6 @@ package http
 
 import (
 	"strconv"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,9 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonoton/scout/gzip"
 	"github.com/jonoton/scout/http/websockets"
-	"github.com/jonoton/scout/sharedmat"
 	"github.com/jonoton/scout/videosource"
-	"gocv.io/x/gocv"
 )
 
 func (h *Http) liveMonitor() func(*fiber.Ctx) error {
@@ -36,7 +33,6 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 
 		uuid := uuid.New().String()
 		monitorName := localsMonName.(string)
-		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
 
 		width, err := strconv.Atoi(localsWidth.(string))
 		if err != nil {
@@ -51,103 +47,92 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		socketClosed := make(chan bool)
 		sourceDone := make(chan bool)
 		ringBuffer := videosource.NewRingBufferProcessedImage(1)
+		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
+		go func() {
+			for img := range images {
+				popped := ringBuffer.Push(img)
+				popped.Cleanup()
+			}
+			close(sourceDone)
+		}()
 
 		receive := func(msgType int, data []byte) {
-			// TBD
-			// log.Infoln("Read Func called")
+			// Nothing
 		}
 		send := func(c *websocket.Conn) {
-			wg := sync.WaitGroup{}
-			wg.Add(2)
-			go func() {
-				defer wg.Done()
-				defer close(sourceDone)
-				for {
-					select {
-					case img, ok := <-images:
-						if !ok {
-							img.Cleanup()
-							return
-						}
-						popped := ringBuffer.Push(img)
-						popped.Cleanup()
-					}
-				}
-			}()
-			go func() {
-				defer wg.Done()
-				writeOut := func() (ok bool) {
-					img := ringBuffer.Pop()
-					if !img.Original.IsValid() {
-						img.Cleanup()
-						return true
-					}
-					var imgArray []byte
-					jpgParams := []int{gocv.IMWriteJpegQuality, jpegQuality}
-					var selectedImage videosource.Image
-					if img.HighlightedFace.IsValid() {
-						selectedImage = img.HighlightedFace
-					} else if img.HighlightedObject.IsValid() {
-						selectedImage = img.HighlightedObject
-					} else if img.HighlightedMotion.IsValid() {
-						selectedImage = img.HighlightedMotion
-					} else {
-						selectedImage = img.Original
-					}
-					scaledImage := selectedImage.ScaleToWidth(width)
-					if scaledImage.SharedMat != nil {
-						scaledImage.SharedMat.Guard.RLock()
-						if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
-							encoded, _ := gocv.IMEncodeWithParams(gocv.JPEGFileExt, scaledImage.SharedMat.Mat, jpgParams)
-							imgArray = encoded
-						}
-						scaledImage.SharedMat.Guard.RUnlock()
-					}
-					scaledImage.Cleanup()
-					img.Cleanup()
-					zipped := gzip.Encode(imgArray, nil)
-					err := c.WriteMessage(websocket.BinaryMessage, zipped)
-					if err != nil {
-						// socket closed
-						h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
-						return false
-					}
-					return true
-				}
-				for {
-					select {
-					case <-socketClosed:
-						h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
-						return
-					case <-sourceDone:
-						if ringBuffer.Len() == 0 {
-							return
-						}
-						for ringBuffer.Len() != 0 {
-							if !writeOut() {
-								return
-							}
-						}
-					case _, ok := <-ringBuffer.Ready():
-						if !ok {
-							return
-						}
-						if !writeOut() {
-							return
-						}
-					}
-				}
-			}()
-			wg.Wait()
+			mySend(h, c, socketClosed, sourceDone, ringBuffer, uuid, monitorName, width, jpegQuality)
 		}
 		cleanup := func() {
-			for ringBuffer.Len() > 0 {
-				img := ringBuffer.Pop()
-				img.Cleanup()
-			}
-			log.Infoln("Websocket closed", uuid)
+			myCleanup(uuid, ringBuffer)
 		}
 
 		websockets.Run(c, socketClosed, receive, send, cleanup)
 	})
+}
+
+func mySend(h *Http, c *websocket.Conn,
+	socketClosed chan bool, sourceDone chan bool,
+	ringBuffer *videosource.RingBufferProcessedImage,
+	uuid string, monitorName string, width int, jpegQuality int) {
+
+	writeOut := func() (ok bool) {
+		img := ringBuffer.Pop()
+		if !img.Original.IsValid() {
+			img.Cleanup()
+			return true
+		}
+		var selectedImage videosource.Image
+		if img.HighlightedFace.IsValid() {
+			selectedImage = *img.HighlightedFace.ScaleToWidth(width)
+		} else if img.HighlightedObject.IsValid() {
+			selectedImage = *img.HighlightedObject.ScaleToWidth(width)
+		} else if img.HighlightedMotion.IsValid() {
+			selectedImage = *img.HighlightedMotion.ScaleToWidth(width)
+		} else {
+			selectedImage = *img.Original.ScaleToWidth(width)
+		}
+		imgArray := selectedImage.EncodedQuality(jpegQuality)
+		selectedImage.Cleanup()
+		img.Cleanup()
+		zipped := gzip.Encode(imgArray, nil)
+		err := c.WriteMessage(websocket.BinaryMessage, zipped)
+		if err != nil {
+			// socket closed
+			h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
+			return false
+		}
+		return true
+	}
+Loop:
+	for {
+		select {
+		case <-socketClosed:
+			h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
+			break Loop
+		case <-sourceDone:
+			if ringBuffer.Len() == 0 {
+				break Loop
+			}
+			for ringBuffer.Len() != 0 {
+				if !writeOut() {
+					break Loop
+				}
+			}
+		case _, ok := <-ringBuffer.Ready():
+			if !ok {
+				break Loop
+			}
+			if !writeOut() {
+				break Loop
+			}
+		}
+	}
+}
+
+func myCleanup(uuid string, ringBuffer *videosource.RingBufferProcessedImage) {
+	for ringBuffer.Len() > 0 {
+		img := ringBuffer.Pop()
+		img.Cleanup()
+	}
+	log.Infoln("Websocket closed", uuid)
 }
