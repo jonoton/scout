@@ -60,8 +60,9 @@ func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	m.mons[mon.Name] = mon
 	for _, pathName := range mon.ConfigPaths {
-		// TODO look into watcher deadlocks
-		go m.wtr.Add(pathName)
+		go func(pathName string) {
+			m.wtr.Add(pathName)
+		}(pathName)
 	}
 	mon.Start()
 }
@@ -303,8 +304,9 @@ func (m *Manage) removeMonitor(mon *monitor.Monitor) {
 	}
 	for pathName, unique := range uniquePaths {
 		if unique {
-			// TODO look into watcher deadlocks
-			go m.wtr.Remove(pathName)
+			go func(pathName string) {
+				m.wtr.Remove(pathName)
+			}(pathName)
 		}
 	}
 	delete(m.mons, mon.Name)

@@ -52,7 +52,7 @@ func (v *VideoReader) Start() <-chan Image {
 			return
 		}
 		videoImgs := v.sourceImages()
-		bufImage := NewImage(gocv.Mat{})
+		bufImage := NewImage(gocv.NewMat())
 		fps := v.MaxOutputFps
 		outTick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 	Loop:
@@ -71,7 +71,7 @@ func (v *VideoReader) Start() <-chan Image {
 				if bufImage.IsValid() {
 					images <- *bufImage.Ref()
 					bufImage.Cleanup()
-					bufImage = NewImage(gocv.Mat{})
+					bufImage = NewImage(gocv.NewMat())
 					v.OutputStats.AddAccepted()
 				}
 				if fps != v.MaxOutputFps {

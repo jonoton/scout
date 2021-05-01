@@ -7,7 +7,7 @@ import (
 )
 
 func TestIncrement(t *testing.T) {
-	sharedMat := NewSharedMat(gocv.Mat{})
+	sharedMat := NewSharedMat(gocv.NewMat())
 	t.Logf("sharedMat refs = %d\n", sharedMat.NumRefs())
 	sharedMat.Ref()
 	if sharedMat.NumRefs() != 2 {
@@ -18,7 +18,7 @@ func TestIncrement(t *testing.T) {
 }
 
 func TestDecrement(t *testing.T) {
-	sharedMat := NewSharedMat(gocv.Mat{})
+	sharedMat := NewSharedMat(gocv.NewMat())
 	t.Logf("sharedMat refs = %d\n", sharedMat.NumRefs())
 	sharedMat.Cleanup()
 	if sharedMat.NumRefs() != 0 {

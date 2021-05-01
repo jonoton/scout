@@ -10,12 +10,9 @@ import (
 
 func newSharedMat(mat gocv.Mat) *SharedMat {
 	s := &SharedMat{
-		Mat:   gocv.Mat{},
+		Mat:   mat,
 		refs:  1,
 		Guard: sync.RWMutex{},
-	}
-	if Valid(&mat) {
-		s.Mat = mat
 	}
 	return s
 }
@@ -30,13 +27,19 @@ func (s *SharedMat) ref() *SharedMat {
 func (s *SharedMat) clone() *SharedMat {
 	s.Guard.RLock()
 	defer s.Guard.RUnlock()
-	clone := &SharedMat{
-		Mat:   gocv.Mat{},
-		refs:  1,
-		Guard: sync.RWMutex{},
-	}
+	var clone *SharedMat
 	if Valid(&s.Mat) {
-		clone.Mat = s.Mat.Clone()
+		clone = &SharedMat{
+			Mat:   s.Mat.Clone(),
+			refs:  1,
+			Guard: sync.RWMutex{},
+		}
+	} else {
+		clone = &SharedMat{
+			Mat:   gocv.NewMat(),
+			refs:  1,
+			Guard: sync.RWMutex{},
+		}
 	}
 	return clone
 }
