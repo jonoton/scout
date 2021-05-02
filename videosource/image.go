@@ -24,14 +24,14 @@ func NewImage(mat gocv.Mat) *Image {
 	return i
 }
 
-// IsValid checks the underlying image for validity
-func (i *Image) IsValid() bool {
+// IsFilled checks the underlying image not empty
+func (i *Image) IsFilled() bool {
 	if i.SharedMat == nil {
 		return false
 	}
 	i.SharedMat.Guard.RLock()
 	defer i.SharedMat.Guard.RUnlock()
-	return sharedmat.Valid(&i.SharedMat.Mat)
+	return sharedmat.Filled(&i.SharedMat.Mat)
 }
 
 // Height returns the Image height or -1
@@ -42,7 +42,7 @@ func (i *Image) Height() int {
 	i.SharedMat.Guard.RLock()
 	defer i.SharedMat.Guard.RUnlock()
 	result := -1
-	if sharedmat.Valid(&i.SharedMat.Mat) {
+	if sharedmat.Filled(&i.SharedMat.Mat) {
 		result = i.SharedMat.Mat.Rows()
 	}
 	return result
@@ -56,7 +56,7 @@ func (i *Image) Width() int {
 	i.SharedMat.Guard.RLock()
 	defer i.SharedMat.Guard.RUnlock()
 	result := -1
-	if sharedmat.Valid(&i.SharedMat.Mat) {
+	if sharedmat.Filled(&i.SharedMat.Mat) {
 		result = i.SharedMat.Mat.Cols()
 	}
 	return result
@@ -98,7 +98,7 @@ func (i *Image) GetRegion(rect image.Rectangle) (region Image) {
 	i.SharedMat.Guard.RLock()
 	defer i.SharedMat.Guard.RUnlock()
 	corrRect := CorrectRectangle(*i, rect)
-	if !corrRect.Empty() && sharedmat.Valid(&i.SharedMat.Mat) {
+	if !corrRect.Empty() && sharedmat.Filled(&i.SharedMat.Mat) {
 		matRegion := i.SharedMat.Mat.Region(corrRect)
 		region = *NewImage(matRegion.Clone())
 		matRegion.Close()
@@ -112,7 +112,7 @@ func (i *Image) ChangeQuality(percent int) {
 		return
 	}
 	i.SharedMat.Guard.RLock()
-	if sharedmat.Valid(&i.SharedMat.Mat) {
+	if sharedmat.Filled(&i.SharedMat.Mat) {
 		jpgParams := []int{gocv.IMWriteJpegQuality, percent}
 		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
 		i.SharedMat.Guard.RUnlock()
@@ -135,7 +135,7 @@ func (i *Image) EncodedQuality(percent int) []byte {
 		return imgArray
 	}
 	i.SharedMat.Guard.RLock()
-	if sharedmat.Valid(&i.SharedMat.Mat) {
+	if sharedmat.Filled(&i.SharedMat.Mat) {
 		jpgParams := []int{gocv.IMWriteJpegQuality, percent}
 		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
 		if err == nil {
@@ -147,14 +147,14 @@ func (i *Image) EncodedQuality(percent int) []byte {
 }
 
 // ScaleToWidth will return a copy of the Image to scale given the width
-func (i *Image) ScaleToWidth(width int) *Image {
+func (i *Image) ScaleToWidth(width int) Image {
 	if width <= 0 || width == i.Width() {
-		return i.Ref()
+		return *i.Ref()
 	}
 	if i.SharedMat == nil {
-		return i.Ref()
+		return *i.Ref()
 	}
-	var scaled *Image
+	var scaled Image
 	// scale down
 	var interpolationFlags = gocv.InterpolationArea
 	// scale up
@@ -166,12 +166,12 @@ func (i *Image) ScaleToWidth(width int) *Image {
 	scaleEvenly := math.Min(scaleWidth, scaleHeight)
 	dstMat := gocv.NewMat()
 	i.SharedMat.Guard.RLock()
-	if sharedmat.Valid(&i.SharedMat.Mat) {
+	if sharedmat.Filled(&i.SharedMat.Mat) {
 		gocv.Resize(i.SharedMat.Mat, &dstMat, image.Point{}, scaleEvenly, scaleEvenly, interpolationFlags)
-		scaled = NewImage(dstMat.Clone())
+		scaled = *NewImage(dstMat.Clone())
 		scaled.CreatedTime = i.CreatedTime
 	} else {
-		scaled = NewImage(dstMat.Clone())
+		scaled = *NewImage(dstMat.Clone())
 	}
 	i.SharedMat.Guard.RUnlock()
 	dstMat.Close()

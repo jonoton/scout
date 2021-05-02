@@ -11,8 +11,8 @@ func TestCleanup(t *testing.T) {
 	image := NewImage(newMat)
 	secondImage := image.Ref()
 	secondImage.Cleanup()
-	if !image.IsValid() {
-		t.Fatalf("sharedMat is not valid, expected to be valid\n")
+	if !image.IsFilled() {
+		t.Fatalf("sharedMat is not filled, expected to be filled\n")
 	}
 	if image.SharedMat.NumRefs() != 1 {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", image.SharedMat.NumRefs())
@@ -34,8 +34,8 @@ func TestScale(t *testing.T) {
 	scaled.Cleanup()
 	scaled = image.ScaleToWidth(5)
 	scaled.Cleanup()
-	if !image.IsValid() {
-		t.Fatalf("sharedMat is not valid, expected to be valid\n")
+	if !image.IsFilled() {
+		t.Fatalf("sharedMat is not filled, expected to be filled\n")
 	}
 	if image.SharedMat.NumRefs() != 1 {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", image.SharedMat.NumRefs())

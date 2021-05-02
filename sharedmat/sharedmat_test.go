@@ -33,8 +33,8 @@ func TestCleanup(t *testing.T) {
 	sharedMat := NewSharedMat(newMat)
 	secondMat := sharedMat.Ref()
 	secondMat.Cleanup()
-	if !Valid(&sharedMat.Mat) {
-		t.Fatalf("sharedMat is not valid, expected to be valid\n")
+	if !Filled(&sharedMat.Mat) {
+		t.Fatalf("sharedMat is not filled, expected to be filled\n")
 	}
 	if sharedMat.NumRefs() != 1 {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", sharedMat.NumRefs())
@@ -50,8 +50,8 @@ func TestCleanup(t *testing.T) {
 func TestDoubleCleanup(t *testing.T) {
 	newMat, _ := gocv.NewMatFromBytes(1, 1, gocv.MatTypeCV16S, make([]byte, 10))
 	sharedMat := NewSharedMat(newMat)
-	if !Valid(&sharedMat.Mat) {
-		t.Fatalf("sharedMat is not valid, expected to be valid\n")
+	if !Filled(&sharedMat.Mat) {
+		t.Fatalf("sharedMat is not filled, expected to be filled\n")
 	}
 	if sharedMat.NumRefs() != 1 {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", sharedMat.NumRefs())
@@ -78,8 +78,8 @@ func TestClone(t *testing.T) {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", sharedMat.NumRefs())
 	}
 	secondMat.Cleanup()
-	if !Valid(&sharedMat.Mat) {
-		t.Fatalf("sharedMat is not valid, expected to be valid\n")
+	if !Filled(&sharedMat.Mat) {
+		t.Fatalf("sharedMat is not filled, expected to be filled\n")
 	}
 	if sharedMat.NumRefs() != 1 {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", sharedMat.NumRefs())

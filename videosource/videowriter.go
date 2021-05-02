@@ -18,7 +18,7 @@ func SaveImage(img Image, t time.Time, saveDirectory string, jpegQuality int, na
 	jpgParams := []int{gocv.IMWriteJpegQuality, jpegQuality}
 	if img.SharedMat != nil {
 		img.SharedMat.Guard.RLock()
-		if sharedmat.Valid(&img.SharedMat.Mat) {
+		if sharedmat.Filled(&img.SharedMat.Mat) {
 			gocv.IMWriteWithParams(savePath, img.SharedMat.Mat, jpgParams)
 		}
 		img.SharedMat.Guard.RUnlock()
@@ -32,7 +32,7 @@ func SavePreview(img Image, t time.Time, saveDirectory string, name string, titl
 	scaledImage := img.ScaleToWidth(128)
 	if scaledImage.SharedMat != nil {
 		scaledImage.SharedMat.Guard.RLock()
-		if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
+		if sharedmat.Filled(&scaledImage.SharedMat.Mat) {
 			gocv.IMWrite(savePath, scaledImage.SharedMat.Mat)
 		}
 		scaledImage.SharedMat.Guard.RUnlock()
@@ -151,7 +151,7 @@ func (v *VideoWriter) Start() {
 				}
 
 				origImg := img.Original
-				if origImg.IsValid() {
+				if origImg.IsFilled() {
 					if v.recording {
 						// write
 						v.writeRecord(origImg)
@@ -255,7 +255,7 @@ func (v *VideoWriter) writeRecord(img Image) {
 	if v.writerFull != nil {
 		if img.SharedMat != nil {
 			img.SharedMat.Guard.RLock()
-			if sharedmat.Valid(&img.SharedMat.Mat) {
+			if sharedmat.Filled(&img.SharedMat.Mat) {
 				v.writerFull.Write(img.SharedMat.Mat)
 			}
 			img.SharedMat.Guard.RUnlock()
@@ -265,7 +265,7 @@ func (v *VideoWriter) writeRecord(img Image) {
 		scaledImage := img.ScaleToWidth(v.PortableWidth)
 		if scaledImage.SharedMat != nil {
 			scaledImage.SharedMat.Guard.RLock()
-			if sharedmat.Valid(&scaledImage.SharedMat.Mat) {
+			if sharedmat.Filled(&scaledImage.SharedMat.Mat) {
 				v.writerPortable.Write(scaledImage.SharedMat.Mat)
 			}
 			scaledImage.SharedMat.Guard.RUnlock()

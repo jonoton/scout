@@ -102,7 +102,7 @@ func (a *Alert) Start() {
 
 // Push a processed image to buffer
 func (a *Alert) Push(img videosource.ProcessedImage) {
-	if img.HighlightedObject.IsValid() {
+	if img.HighlightedObject.IsFilled() {
 		popped := a.ringBuffer.Push(*img.Ref())
 		popped.Cleanup()
 	}
@@ -208,7 +208,7 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			Time: getFormattedKitchenTimestamp(curPop.Original.CreatedTime),
 		}
 		infos := make([]attachedInfo, 0)
-		if a.alertConf.SaveOriginal && curPop.Original.IsValid() {
+		if a.alertConf.SaveOriginal && curPop.Original.IsFilled() {
 			title := "Original"
 			percentage := ""
 			videosource.SavePreview(curPop.Original, curPop.Original.CreatedTime, a.saveDirectory, a.name, title, percentage)
@@ -221,7 +221,7 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			}
 			infos = append(infos, info)
 		}
-		if a.alertConf.SaveHighlighted && curPop.HighlightedObject.IsValid() {
+		if a.alertConf.SaveHighlighted && curPop.HighlightedObject.IsFilled() {
 			title := "Highlighted"
 			percentage := ""
 			videosource.SavePreview(curPop.HighlightedObject, curPop.HighlightedObject.CreatedTime, a.saveDirectory, a.name, title, percentage)
@@ -235,7 +235,7 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			infos = append(infos, info)
 		}
 		for i, cur := range curPop.Objects {
-			if i < a.alertConf.SaveObjectsCount && cur.Object.IsValid() {
+			if i < a.alertConf.SaveObjectsCount && cur.Object.IsFilled() {
 				title := cur.Description
 				percentage := fmt.Sprintf("%d", cur.Percentage)
 				videosource.SavePreview(cur.Object, cur.Object.CreatedTime, a.saveDirectory, a.name, title, percentage)
@@ -250,7 +250,7 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			}
 		}
 		for i, cur := range curPop.Faces {
-			if i < a.alertConf.SaveFacesCount && cur.Face.IsValid() {
+			if i < a.alertConf.SaveFacesCount && cur.Face.IsFilled() {
 				title := "Face"
 				percentage := fmt.Sprintf("%d", cur.Percentage)
 				videosource.SavePreview(cur.Face, cur.Face.CreatedTime, a.saveDirectory, a.name, title, percentage)

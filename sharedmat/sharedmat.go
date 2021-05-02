@@ -40,7 +40,12 @@ func (s *SharedMat) NumRefs() int {
 	return s.refs
 }
 
-// Valid is a helper to check gocv.Mat validity
+// Valid is a helper to check gocv.Mat not nil
 func Valid(mat *gocv.Mat) bool {
+	return mat.Ptr() != nil
+}
+
+// Filled is a helper to check gocv.Mat not empty
+func Filled(mat *gocv.Mat) bool {
 	return mat.Ptr() != nil && !mat.Empty()
 }

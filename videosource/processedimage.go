@@ -3,6 +3,8 @@ package videosource
 import (
 	"image"
 	"time"
+
+	"gocv.io/x/gocv"
 )
 
 // ObjectInfo contains the object information
@@ -263,7 +265,7 @@ func NewProcessedImageFpsChan(outFps int) *ProcessedImageFpsChan {
 func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 	outChan := make(chan ProcessedImage)
 	go func() {
-		var curImage ProcessedImage
+		curImage := *NewProcessedImage(*NewImage(gocv.NewMat()))
 		writeTick := time.NewTicker(time.Duration(1000/p.outFps) * time.Millisecond)
 	Loop:
 		for {
@@ -277,7 +279,7 @@ func (p *ProcessedImageFpsChan) Start() chan ProcessedImage {
 				curImage = img
 			case <-writeTick.C:
 				outChan <- curImage
-				curImage = ProcessedImage{}
+				curImage = *NewProcessedImage(*NewImage(gocv.NewMat()))
 			}
 		}
 		writeTick.Stop()

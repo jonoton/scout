@@ -174,7 +174,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		motionFrames := 0
 		for cur := range input {
 			result := cur
-			if t.Skip || !cur.HighlightedMotion.IsValid() {
+			if t.Skip || !cur.HighlightedMotion.IsFilled() {
 				motionFrames = 0
 				r <- result
 				continue

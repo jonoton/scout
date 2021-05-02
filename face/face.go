@@ -132,7 +132,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 
 		for cur := range input {
 			result := cur
-			if f.Skip || !cur.HighlightedObject.IsValid() {
+			if f.Skip || !cur.HighlightedObject.IsFilled() {
 				r <- result
 				continue
 			}

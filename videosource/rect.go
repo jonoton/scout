@@ -4,7 +4,7 @@ import "image"
 
 // CorrectRectangle will fix a rectangle to fit within the Image i
 func CorrectRectangle(i Image, rect image.Rectangle) (result image.Rectangle) {
-	if !i.IsValid() {
+	if !i.IsFilled() {
 		return
 	}
 	result = rect
@@ -75,7 +75,7 @@ func RectAddHeight(i Image, rect image.Rectangle, height int) (result image.Rect
 
 // RectPadded returns a padded rectangle
 func RectPadded(i Image, rect image.Rectangle, paddingPercent int) (result image.Rectangle) {
-	if !i.IsValid() {
+	if !i.IsFilled() {
 		return
 	}
 	result = CorrectRectangle(i, rect)
@@ -93,7 +93,7 @@ func RectPadded(i Image, rect image.Rectangle, paddingPercent int) (result image
 
 // RectSquare will return a square that fits within the Image i
 func RectSquare(i Image, rect image.Rectangle) (result image.Rectangle) {
-	if !i.IsValid() {
+	if !i.IsFilled() {
 		return
 	}
 	result = CorrectRectangle(i, rect)
@@ -111,7 +111,7 @@ func RectSquare(i Image, rect image.Rectangle) (result image.Rectangle) {
 
 // RectRect will return a rectangle that fits within the Image i
 func RectRect(i Image, rect image.Rectangle) (result image.Rectangle) {
-	if !i.IsValid() {
+	if !i.IsFilled() {
 		return
 	}
 	result = CorrectRectangle(i, rect)

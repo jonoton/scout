@@ -60,7 +60,8 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			// Nothing
 		}
 		send := func(c *websocket.Conn) {
-			mySend(h, c, socketClosed, sourceDone, ringBuffer, uuid, monitorName, width, jpegQuality)
+			mySend(h, c, socketClosed, sourceDone, ringBuffer, uuid,
+				monitorName, width, jpegQuality)
 		}
 		cleanup := func() {
 			myCleanup(uuid, ringBuffer)
@@ -73,36 +74,8 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 func mySend(h *Http, c *websocket.Conn,
 	socketClosed chan bool, sourceDone chan bool,
 	ringBuffer *videosource.RingBufferProcessedImage,
-	uuid string, monitorName string, width int, jpegQuality int) {
-
-	writeOut := func() (ok bool) {
-		img := ringBuffer.Pop()
-		if !img.Original.IsValid() {
-			img.Cleanup()
-			return true
-		}
-		var selectedImage videosource.Image
-		if img.HighlightedFace.IsValid() {
-			selectedImage = *img.HighlightedFace.ScaleToWidth(width)
-		} else if img.HighlightedObject.IsValid() {
-			selectedImage = *img.HighlightedObject.ScaleToWidth(width)
-		} else if img.HighlightedMotion.IsValid() {
-			selectedImage = *img.HighlightedMotion.ScaleToWidth(width)
-		} else {
-			selectedImage = *img.Original.ScaleToWidth(width)
-		}
-		imgArray := selectedImage.EncodedQuality(jpegQuality)
-		selectedImage.Cleanup()
-		img.Cleanup()
-		zipped := gzip.Encode(imgArray, nil)
-		err := c.WriteMessage(websocket.BinaryMessage, zipped)
-		if err != nil {
-			// socket closed
-			h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
-			return false
-		}
-		return true
-	}
+	uuid string, monitorName string,
+	width int, jpegQuality int) {
 Loop:
 	for {
 		select {
@@ -114,7 +87,8 @@ Loop:
 				break Loop
 			}
 			for ringBuffer.Len() != 0 {
-				if !writeOut() {
+				if !writeOut(h, c, ringBuffer, uuid, monitorName,
+					width, jpegQuality) {
 					break Loop
 				}
 			}
@@ -122,11 +96,44 @@ Loop:
 			if !ok {
 				break Loop
 			}
-			if !writeOut() {
+			if !writeOut(h, c, ringBuffer, uuid, monitorName,
+				width, jpegQuality) {
 				break Loop
 			}
 		}
 	}
+}
+
+func writeOut(h *Http, c *websocket.Conn,
+	ringBuffer *videosource.RingBufferProcessedImage,
+	uuid string, monitorName string,
+	width int, jpegQuality int) (ok bool) {
+	img := ringBuffer.Pop()
+	if !img.Original.IsFilled() {
+		img.Cleanup()
+		return true
+	}
+	var selectedImage videosource.Image
+	if img.HighlightedFace.IsFilled() {
+		selectedImage = img.HighlightedFace.ScaleToWidth(width)
+	} else if img.HighlightedObject.IsFilled() {
+		selectedImage = img.HighlightedObject.ScaleToWidth(width)
+	} else if img.HighlightedMotion.IsFilled() {
+		selectedImage = img.HighlightedMotion.ScaleToWidth(width)
+	} else {
+		selectedImage = img.Original.ScaleToWidth(width)
+	}
+	imgArray := selectedImage.EncodedQuality(jpegQuality)
+	selectedImage.Cleanup()
+	img.Cleanup()
+	zipped := gzip.Encode(imgArray, nil)
+	err := c.WriteMessage(websocket.BinaryMessage, zipped)
+	if err != nil {
+		// socket closed
+		h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
+		return false
+	}
+	return true
 }
 
 func myCleanup(uuid string, ringBuffer *videosource.RingBufferProcessedImage) {
