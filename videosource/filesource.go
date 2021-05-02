@@ -27,7 +27,7 @@ func NewFileSource(name string, filename string) VideoSource {
 func (f *FileSource) Initialize() (ok bool) {
 	gocvVideoCapture, err := gocv.VideoCaptureFile(f.filename)
 	if err != nil {
-		log.Printf("Error opening video capture file: %s\n", f.filename)
+		log.Warnf("Could not open video capture file: %s\n", f.filename)
 		return
 	}
 	f.gocvVideoCapture = gocvVideoCapture

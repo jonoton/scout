@@ -27,7 +27,7 @@ func NewIPCamSource(name string, url string) VideoSource {
 func (i *IPCamSource) Initialize() (ok bool) {
 	gocvVideoCapture, err := gocv.VideoCaptureFile(i.url)
 	if err != nil {
-		log.Printf("Error opening video capture url: %s\n", i.url)
+		log.Warnf("Could not open video capture url: %s\n", i.url)
 		return
 	}
 	i.gocvVideoCapture = gocvVideoCapture

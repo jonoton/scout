@@ -49,7 +49,7 @@ func (v *VideoReader) Start() <-chan Image {
 	images := make(chan Image)
 	go func() {
 		if !v.videoSource.Initialize() {
-			return
+			log.Warnln("VideoReader could not initialize", v.videoSource.GetName())
 		}
 		videoImgs := v.sourceImages()
 		bufImage := *NewImage(gocv.NewMat())
