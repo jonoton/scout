@@ -36,6 +36,8 @@ import (
 var SharedMatProfile *pprof.Profile
 var Counter = int64(0)
 var StkSkip = 2
+var StkSkpAdd = StkSkip + 2
+var StkSkpRemove = StkSkip + 1
 var Tracker = make(map[*SharedMat]map[string]*trackSharedMat, 0)
 var GuardProfile = sync.RWMutex{}
 
@@ -56,7 +58,7 @@ type trackSharedMat struct {
 
 func newTrackSharedMat(s *SharedMat) *trackSharedMat {
 	Counter++
-	stk := getStack(StkSkip + 1)
+	stk := getStack(StkSkpAdd)
 	t := &trackSharedMat{
 		s:      s,
 		id:     Counter,
@@ -99,7 +101,7 @@ func (s *SharedMat) removeTracked() {
 			// already cleaned up
 			return
 		}
-		curStk := getStack(StkSkip + 2)
+		curStk := getStack(StkSkpRemove)
 		for i := 0; i < len(curStk); i++ {
 			stkStr := getStackStr(curStk, i)
 			for tkey, t := range tmap {
@@ -134,7 +136,6 @@ func (s *SharedMat) ref() *SharedMat {
 	s.Guard.Lock()
 	defer s.Guard.Unlock()
 	s.refs++
-	s.addTracked()
 	return s
 }
 
