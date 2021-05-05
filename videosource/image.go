@@ -64,10 +64,13 @@ func (i *Image) Width() int {
 
 // Ref will reference the Image and underlying SharedMat
 func (i *Image) Ref() *Image {
-	if i.SharedMat != nil {
-		i.SharedMat.Ref()
+	copy := &Image{
+		CreatedTime: i.CreatedTime,
 	}
-	return i
+	if i.SharedMat != nil {
+		copy.SharedMat = i.SharedMat.Ref()
+	}
+	return copy
 }
 
 // Clone will clone the Image
@@ -82,12 +85,14 @@ func (i *Image) Clone() *Image {
 }
 
 // Cleanup will cleanup the Image
-func (i *Image) Cleanup() bool {
-	result := false
+func (i *Image) Cleanup() (filled bool, closed bool) {
 	if i.SharedMat != nil {
-		result = i.SharedMat.Cleanup()
+		filled, closed = i.SharedMat.Cleanup()
+		if closed {
+			i.SharedMat = nil
+		}
 	}
-	return result
+	return
 }
 
 // GetRegion will return a new Image per rectangle parameter

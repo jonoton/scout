@@ -50,7 +50,7 @@ func NewTensor() *Tensor {
 
 	t := &Tensor{
 		forceCpu:                false,
-		padding:                 0,		
+		padding:                 0,
 		modelFile:               "frozen_inference_graph.pb",
 		configFile:              "ssd_mobilenet_v1_coco_2017_11_17.pbtxt",
 		descFile:                "coco.names",
@@ -184,7 +184,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 				r <- result
 				continue
 			}
-			
+
 			tmpMat := cur.Original.SharedMat.Mat.Clone()
 			matType := tmpMat.Type()
 			// need to convert for blob usage

@@ -150,7 +150,7 @@ func (v *VideoWriter) Start() {
 					v.recording = false
 				}
 
-				origImg := img.Original
+				origImg := *img.Original.Ref()
 				if origImg.IsFilled() {
 					if v.recording {
 						// write
@@ -159,11 +159,12 @@ func (v *VideoWriter) Start() {
 					} else {
 						// buffer
 						oldest := v.preRingBuffer.Push(*origImg.Ref())
-						if oldest.Cleanup() {
+						if filled, closed := oldest.Cleanup(); filled && closed {
 							v.VideoStats.AddDropped()
 						}
 					}
 				}
+				origImg.Cleanup()
 				img.Cleanup()
 			case <-v.timeoutTick.C:
 				if !v.activity {

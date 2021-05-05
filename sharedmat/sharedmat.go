@@ -29,7 +29,7 @@ func (s *SharedMat) Clone() *SharedMat {
 }
 
 // Cleanup will decrement refs and attempt to cleanup the SharedMat
-func (s *SharedMat) Cleanup() bool {
+func (s *SharedMat) Cleanup() (filled bool, closed bool) {
 	return s.cleanup()
 }
 

@@ -144,6 +144,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				result.MotionRects = append(result.MotionRects, finalRect)
 				numMotions++
 			}
+			contours.Close()
 			if numMotions > 0 {
 				result.HighlightedMotion = *highlightedImage.Ref()
 			}

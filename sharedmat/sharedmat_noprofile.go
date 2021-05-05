@@ -44,14 +44,14 @@ func (s *SharedMat) clone() *SharedMat {
 	return clone
 }
 
-func (s *SharedMat) cleanup() bool {
+func (s *SharedMat) cleanup() (filled bool, closed bool) {
 	s.Guard.Lock()
 	defer s.Guard.Unlock()
-	closedMat := false
 	s.refs--
+	filled = Filled(&s.Mat)
 	if s.refs <= 0 && Valid(&s.Mat) {
 		s.Mat.Close()
-		closedMat = true
+		closed = true
 	}
-	return closedMat
+	return
 }

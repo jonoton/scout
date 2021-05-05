@@ -4,7 +4,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gocv.io/x/gocv"
 )
 
 // VideoReader reads a VideoSource
@@ -52,7 +51,7 @@ func (v *VideoReader) Start() <-chan Image {
 			log.Warnln("VideoReader could not initialize", v.videoSource.GetName())
 		}
 		videoImgs := v.sourceImages()
-		bufImage := *NewImage(gocv.NewMat())
+		var bufImage *Image
 		fps := v.MaxOutputFps
 		outTick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 	Loop:
@@ -63,15 +62,17 @@ func (v *VideoReader) Start() <-chan Image {
 					img.Cleanup()
 					break Loop
 				}
-				if bufImage.Cleanup() {
-					v.OutputStats.AddDropped()
+				if bufImage != nil {
+					if filled, closed := bufImage.Cleanup(); filled && closed {
+						v.OutputStats.AddDropped()
+					}
 				}
-				bufImage = img
+				bufImage = &img
 			case <-outTick.C:
-				if bufImage.IsFilled() {
+				if bufImage != nil && bufImage.IsFilled() {
 					images <- *bufImage.Ref()
 					bufImage.Cleanup()
-					bufImage = *NewImage(gocv.NewMat())
+					bufImage = nil
 					v.OutputStats.AddAccepted()
 				}
 				if fps != v.MaxOutputFps {
@@ -81,7 +82,9 @@ func (v *VideoReader) Start() <-chan Image {
 				}
 			}
 		}
-		bufImage.Cleanup()
+		if bufImage != nil {
+			bufImage.Cleanup()
+		}
 		outTick.Stop()
 		v.OutputStats.Cleanup()
 		v.videoSource.Cleanup()
