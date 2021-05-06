@@ -57,7 +57,7 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 		motion:              motion.NewMotion(),
 		tensor:              tensor.NewTensor(),
 		face:                face.NewFace(),
-		subscriptions:       make(map[string]chan videosource.ProcessedImage, 0),
+		subscriptions:       make(map[string]chan videosource.ProcessedImage),
 		subGuard:            sync.RWMutex{},
 		alert:               nil,
 		recordObjects:       false,
@@ -246,7 +246,7 @@ func (m *Monitor) clearSubscriptions() {
 	for _, val := range m.subscriptions {
 		close(val)
 	}
-	m.subscriptions = make(map[string]chan videosource.ProcessedImage, 0)
+	m.subscriptions = make(map[string]chan videosource.ProcessedImage)
 	m.subGuard.Unlock()
 }
 

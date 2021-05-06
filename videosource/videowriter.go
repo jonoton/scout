@@ -249,7 +249,7 @@ func cleanupRingBuffer(ringBuffer *RingBufferImage) {
 }
 
 func (v *VideoWriter) isRecordExpired(start time.Time) bool {
-	return time.Now().Sub(start) > (time.Duration(v.maxSec) * time.Second)
+	return time.Since(start) > (time.Duration(v.maxSec) * time.Second)
 }
 
 func (v *VideoWriter) writeRecord(img Image) {

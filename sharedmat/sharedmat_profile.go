@@ -89,7 +89,7 @@ func (s *SharedMat) addTracked() {
 	t := newTrackSharedMat(s)
 	if tmap, tfound := Tracker[t.tKey]; tfound {
 		if sslice, sfound := tmap[t.stkKey]; sfound {
-			sslice = append(sslice, t)
+			tmap[t.stkKey] = append(sslice, t)
 		} else {
 			tmap[t.stkKey] = []*trackSharedMat{t}
 		}
@@ -129,12 +129,12 @@ func (s *SharedMat) removeTracked() {
 				if sfound {
 					// pop front
 					t := sslice[0]
-					sslice = sslice[1:]
+					tmap[stkKey] = sslice[1:]
 					SharedMatProfile.Remove(t)
 					removedProfile = true
 
 					// check and remove
-					if len(sslice) == 0 {
+					if len(tmap[stkKey]) == 0 {
 						delete(tmap, stkKey)
 					}
 					if len(tmap) == 0 {
@@ -171,10 +171,10 @@ func (s *SharedMat) removeTracked() {
 						for index, t := range sslice {
 							if t.id == oldestId {
 								// remove index
-								sslice = append(sslice[:index], sslice[index+1:]...)
+								tmap[stkKey] = append(sslice[:index], sslice[index+1:]...)
 
 								// check and remove
-								if len(sslice) == 0 {
+								if len(tmap[stkKey]) == 0 {
 									delete(tmap, stkKey)
 								}
 								if len(tmap) == 0 {

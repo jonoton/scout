@@ -93,7 +93,7 @@ func (m *Manage) GetMonitorVideoStats(monitorName string) (readerIn *videosource
 func (m *Manage) GetMonitorAlertTimes() (result map[string]monitor.AlertTimes) {
 	m.monGuard.RLock()
 	defer m.monGuard.RUnlock()
-	result = make(map[string]monitor.AlertTimes, 0)
+	result = make(map[string]monitor.AlertTimes)
 	for _, mon := range m.mons {
 		result[mon.Name] = mon.GetAlertTimes()
 	}
