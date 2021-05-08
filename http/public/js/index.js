@@ -1,4 +1,6 @@
 let hostname = $(location).attr('host');
+let connected = false;
+let webSockets = [];
 
 $(document).ready(function () {
    $.ajaxSetup({
@@ -10,7 +12,11 @@ $(document).ready(function () {
    heartbeat();
 });
 
-let connected = false;
+$(window).on("beforeunload", function () {
+   connected = false;
+   cleanupWebSockets();
+})
+
 function heartbeat() {
    $.ajax({
       type: "GET",
@@ -92,7 +98,8 @@ function initMonitors(monitorNames) {
             </div>
       `;
       $('#monitor-container').append(html);
-      var ws = createWebSocket(monitorName);
+      let ws = createWebSocket(monitorName);
+      webSockets.push(ws);
       getMonitorInfo(monitorName);
    });
 }
@@ -100,7 +107,7 @@ function initMonitors(monitorNames) {
 function createWebSocket(monitorName) {
    let jwt = Cookies.get("token");
    let wsPre = ('https:' == document.location.protocol ? 'wss' : 'ws');
-   var ws = new WebSocket(`${wsPre}://${hostname}/live/${monitorName}?quality=50&token=${jwt}`);
+   let ws = new WebSocket(`${wsPre}://${hostname}/live/${monitorName}?quality=50&token=${jwt}`);
    ws.onopen = function () {
       requestAnimationFrame(function () {
          let monDiv = $(`#${monitorName}-div`);
@@ -111,11 +118,11 @@ function createWebSocket(monitorName) {
    };
    ws.onmessage = function (evt) {
       let blobData = evt.data;
-      blobbase64tostring(blobData, function(b64) {
+      blobbase64tostring(blobData, function (b64) {
          let binData = base64stringtobinaryuint8array(b64);
          let decoded = pako.inflate(binData);
          let decodedBlob = new Blob([decoded]);
-         blobbase64tostring(decodedBlob, function(b64Decoded) {
+         blobbase64tostring(decodedBlob, function (b64Decoded) {
             let srcValue = `data:image/jpg;base64,${b64Decoded}`;
             requestAnimationFrame(function () {
                let monDiv = $(`#${monitorName}-div`);
@@ -136,11 +143,22 @@ function createWebSocket(monitorName) {
 }
 
 function cleanup() {
+   cleanupWebSockets();
    $('#status-body').removeClass('bgColorDark');
    $('#status-body').addClass('bg-warning');
    $('#status').html("Disconnected");
    $('#monitor-container').empty();
    $('#memory-body').addClass('d-none');
+}
+
+function cleanupWebSockets() {
+   for (let i = 0; i < webSockets.length; i++) {
+      let ws = webSockets[i];
+      if (ws.readyState == WebSocket.OPEN) {
+         ws.close();
+      }
+   }
+   webSockets = [];
 }
 
 function getMonitorInfo(monitorName) {
