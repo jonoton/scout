@@ -76,7 +76,7 @@ func (r *Record) Start() {
 
 func (r *Record) process(img videosource.ProcessedImage) {
 	if r.RecordConf.RecordObjects && len(img.Objects) > 0 {
-		r.writer.Record = true
+		r.writer.Trigger()
 	}
 	r.writer.Send(img)
 }

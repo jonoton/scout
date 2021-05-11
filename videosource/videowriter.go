@@ -50,14 +50,13 @@ const (
 
 // VideoWriter writes Images
 type VideoWriter struct {
-	Record         bool
+	record         bool
 	recording      bool
 	startTime      time.Time
 	name           string
 	saveDirectory  string
 	codec          string
 	fileType       string
-	timeoutSec     int
 	maxSec         int
 	outFps         int
 	streamChan     ProcessedImageFpsChan
@@ -66,6 +65,7 @@ type VideoWriter struct {
 	writerPortable *gocv.VideoWriter
 	timeoutTick    *time.Ticker
 	secTick        *time.Ticker
+	recordChan     chan bool
 	activity       bool
 	done           chan bool
 	VideoStats     *VideoStats
@@ -82,22 +82,22 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		return nil
 	}
 	v := &VideoWriter{
-		Record:         false,
+		record:         false,
 		recording:      false,
 		startTime:      time.Time{},
 		name:           name,
 		saveDirectory:  saveDirectory,
 		codec:          codec,
 		fileType:       fileType,
-		timeoutSec:     timeoutSec,
 		maxSec:         maxSec,
 		outFps:         outFps,
 		streamChan:     *NewProcessedImageFpsChan(outFps),
 		preRingBuffer:  *NewRingBufferImage(maxPreSec * outFps),
 		writerFull:     nil,
 		writerPortable: nil,
-		timeoutTick:    time.NewTicker(time.Duration(timeoutSec/2) * time.Second),
+		timeoutTick:    time.NewTicker(time.Duration((timeoutSec*1000)/2) * time.Millisecond),
 		secTick:        time.NewTicker(time.Second),
+		recordChan:     make(chan bool),
 		activity:       false,
 		done:           make(chan bool),
 		VideoStats:     NewVideoStats(),
@@ -116,6 +116,8 @@ func (v *VideoWriter) Start() {
 	Loop:
 		for {
 			select {
+			case <-v.recordChan:
+				v.record = true
 			case img, ok := <-streamChan:
 				if !ok {
 					if v.recording {
@@ -129,7 +131,7 @@ func (v *VideoWriter) Start() {
 					(v.activityType == ActivityFace && len(img.Faces) > 0) {
 					v.activity = true
 				}
-				if v.Record && !v.recording {
+				if v.record && !v.recording {
 					// open
 					firstFrame := v.preRingBuffer.Pop()
 					popped := v.preRingBuffer.PopAll()
@@ -143,13 +145,10 @@ func (v *VideoWriter) Start() {
 						v.writeRecord(cur)
 						cur.Cleanup()
 					}
-					v.recording = true
-				} else if !v.Record && v.recording {
+				} else if !v.record && v.recording {
 					// close
 					v.closeRecord()
-					v.recording = false
 				}
-
 				origImg := *img.Original.Ref()
 				if origImg.IsFilled() {
 					if v.recording {
@@ -168,12 +167,14 @@ func (v *VideoWriter) Start() {
 				img.Cleanup()
 			case <-v.timeoutTick.C:
 				if !v.activity {
-					v.Record = false
+					v.record = false
+					v.closeRecord()
 				}
 				v.activity = false
 			case <-v.secTick.C:
 				if !v.startTime.IsZero() && v.isRecordExpired(v.startTime) {
-					v.Record = false
+					v.record = false
+					v.closeRecord()
 				}
 			}
 		}
@@ -182,6 +183,11 @@ func (v *VideoWriter) Start() {
 		cleanupRingBuffer(&v.preRingBuffer)
 		close(v.done)
 	}()
+}
+
+// Trigger to start recording
+func (v *VideoWriter) Trigger() {
+	v.recordChan <- true
 }
 
 // Send Image to write
@@ -202,6 +208,7 @@ func (v *VideoWriter) Wait() {
 }
 
 func (v *VideoWriter) openRecord(img Image) {
+	v.recording = true
 	timeNow := time.Now()
 	saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
 	wFull, err := gocv.VideoWriterFile(saveFilenameFull,
@@ -239,6 +246,7 @@ func (v *VideoWriter) closeRecord() {
 		v.writerPortable.Close()
 	}
 	v.startTime = time.Time{}
+	v.recording = false
 }
 
 func cleanupRingBuffer(ringBuffer *RingBufferImage) {
