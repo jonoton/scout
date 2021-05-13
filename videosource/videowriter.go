@@ -44,35 +44,38 @@ func SavePreview(img Image, t time.Time, saveDirectory string, name string, titl
 
 // VideoWriter constants
 const (
-	ActivityObject = 0
-	ActivityFace   = 1
+	ActivityImage  = 0
+	ActivityMotion = 1
+	ActivityObject = 2
+	ActivityFace   = 3
 )
 
 // VideoWriter writes Images
 type VideoWriter struct {
-	record         bool
-	recording      bool
-	startTime      time.Time
-	name           string
-	saveDirectory  string
-	codec          string
-	fileType       string
-	maxSec         int
-	outFps         int
-	streamChan     ProcessedImageFpsChan
-	preRingBuffer  RingBufferImage
-	writerFull     *gocv.VideoWriter
-	writerPortable *gocv.VideoWriter
-	timeoutTick    *time.Ticker
-	secTick        *time.Ticker
-	recordChan     chan bool
-	activity       bool
-	done           chan bool
-	VideoStats     *VideoStats
-	savePreview    bool
-	savePortable   bool
-	activityType   int
-	PortableWidth  int
+	record           bool
+	recording        bool
+	startTime        time.Time
+	name             string
+	saveDirectory    string
+	codec            string
+	fileType         string
+	maxSec           int
+	outFps           int
+	streamChan       ProcessedImageFpsChan
+	preRingBuffer    RingBufferImage
+	writerFull       *gocv.VideoWriter
+	writerPortable   *gocv.VideoWriter
+	activitySec      int
+	prevActivityTime time.Time
+	curActivityTime  time.Time
+	secTick          *time.Ticker
+	recordChan       chan bool
+	done             chan bool
+	VideoStats       *VideoStats
+	savePreview      bool
+	savePortable     bool
+	activityType     int
+	PortableWidth    int
 }
 
 // NewVideoWriter creates a new VideoWriter
@@ -82,29 +85,30 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		return nil
 	}
 	v := &VideoWriter{
-		record:         false,
-		recording:      false,
-		startTime:      time.Time{},
-		name:           name,
-		saveDirectory:  saveDirectory,
-		codec:          codec,
-		fileType:       fileType,
-		maxSec:         maxSec,
-		outFps:         outFps,
-		streamChan:     *NewProcessedImageFpsChan(outFps),
-		preRingBuffer:  *NewRingBufferImage(maxPreSec * outFps),
-		writerFull:     nil,
-		writerPortable: nil,
-		timeoutTick:    time.NewTicker(time.Duration((timeoutSec*1000)/2) * time.Millisecond),
-		secTick:        time.NewTicker(time.Second),
-		recordChan:     make(chan bool),
-		activity:       false,
-		done:           make(chan bool),
-		VideoStats:     NewVideoStats(),
-		savePreview:    savePreview,
-		savePortable:   savePortable,
-		activityType:   activityType,
-		PortableWidth:  1080,
+		record:           false,
+		recording:        false,
+		startTime:        time.Time{},
+		name:             name,
+		saveDirectory:    saveDirectory,
+		codec:            codec,
+		fileType:         fileType,
+		maxSec:           maxSec,
+		outFps:           outFps,
+		streamChan:       *NewProcessedImageFpsChan(outFps),
+		preRingBuffer:    *NewRingBufferImage(maxPreSec * outFps),
+		writerFull:       nil,
+		writerPortable:   nil,
+		activitySec:      timeoutSec,
+		prevActivityTime: time.Time{},
+		curActivityTime:  time.Time{},
+		secTick:          time.NewTicker(time.Second),
+		recordChan:       make(chan bool),
+		done:             make(chan bool),
+		VideoStats:       NewVideoStats(),
+		savePreview:      savePreview,
+		savePortable:     savePortable,
+		activityType:     activityType,
+		PortableWidth:    1080,
 	}
 	return v
 }
@@ -127,9 +131,12 @@ func (v *VideoWriter) Start() {
 					img.Cleanup()
 					break Loop
 				}
-				if (v.activityType == ActivityObject && len(img.Objects) > 0) ||
+				if (v.activityType == ActivityImage && img.Original.IsFilled()) ||
+					(v.activityType == ActivityMotion && len(img.Motions) > 0) ||
+					(v.activityType == ActivityObject && len(img.Objects) > 0) ||
 					(v.activityType == ActivityFace && len(img.Faces) > 0) {
-					v.activity = true
+					v.prevActivityTime = v.curActivityTime
+					v.curActivityTime = time.Now()
 				}
 				if v.record && !v.recording {
 					// open
@@ -165,20 +172,18 @@ func (v *VideoWriter) Start() {
 				}
 				origImg.Cleanup()
 				img.Cleanup()
-			case <-v.timeoutTick.C:
-				if !v.activity {
-					v.record = false
+			case <-v.secTick.C:
+				if v.isRecordExpired() {
 					v.closeRecord()
 				}
-				v.activity = false
-			case <-v.secTick.C:
-				if !v.startTime.IsZero() && v.isRecordExpired(v.startTime) {
+				if v.isActivityExpired() {
 					v.record = false
+					v.prevActivityTime = time.Time{}
+					v.curActivityTime = time.Time{}
 					v.closeRecord()
 				}
 			}
 		}
-		v.timeoutTick.Stop()
 		v.secTick.Stop()
 		cleanupRingBuffer(&v.preRingBuffer)
 		close(v.done)
@@ -256,8 +261,12 @@ func cleanupRingBuffer(ringBuffer *RingBufferImage) {
 	}
 }
 
-func (v *VideoWriter) isRecordExpired(start time.Time) bool {
-	return time.Since(start) > (time.Duration(v.maxSec) * time.Second)
+func (v *VideoWriter) isRecordExpired() bool {
+	return !v.startTime.IsZero() && time.Since(v.startTime) > (time.Duration(v.maxSec)*time.Second)
+}
+
+func (v *VideoWriter) isActivityExpired() bool {
+	return !v.prevActivityTime.IsZero() && !v.curActivityTime.IsZero() && v.curActivityTime.Sub(v.prevActivityTime) > (time.Duration(v.activitySec)*time.Second)
 }
 
 func (v *VideoWriter) writeRecord(img Image) {
