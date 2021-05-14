@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -100,11 +101,11 @@ func (r *Record) deleteOldRecordings() {
 
 func (r *Record) deleteWhenFull() {
 	dirSize, _ := dir.Size(r.saveDirectory, dir.RegexBeginsWith(r.name))
-	if int(dir.BytesToGigaBytes(dirSize)) > r.RecordConf.DeleteAfterGB {
+	if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) > r.RecordConf.DeleteAfterGB {
 		files, _ := dir.List(r.saveDirectory, dir.RegexBeginsWith(r.name))
-		sort.Sort(dir.DescendingTime(files))
+		sort.Sort(dir.AscendingTime(files))
 		for _, fileInfo := range files {
-			if int(dir.BytesToGigaBytes(dirSize)) <= r.RecordConf.DeleteAfterGB {
+			if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) <= r.RecordConf.DeleteAfterGB {
 				break
 			}
 			dirSize -= uint64(fileInfo.Size())

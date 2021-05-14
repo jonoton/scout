@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -149,11 +150,11 @@ func (a *Alert) deleteOldAlerts() {
 
 func (a *Alert) deleteWhenFull() {
 	dirSize, _ := dir.Size(a.saveDirectory, dir.RegexBeginsWith(a.name))
-	if int(dir.BytesToGigaBytes(dirSize)) > a.alertConf.DeleteAfterGB {
+	if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) > a.alertConf.DeleteAfterGB {
 		files, _ := dir.List(a.saveDirectory, dir.RegexBeginsWith(a.name))
-		sort.Sort(dir.DescendingTime(files))
+		sort.Sort(dir.AscendingTime(files))
 		for _, fileInfo := range files {
-			if int(dir.BytesToGigaBytes(dirSize)) <= a.alertConf.DeleteAfterGB {
+			if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) <= a.alertConf.DeleteAfterGB {
 				break
 			}
 			dirSize -= uint64(fileInfo.Size())
