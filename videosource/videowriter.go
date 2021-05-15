@@ -66,8 +66,7 @@ type VideoWriter struct {
 	writerFull       *gocv.VideoWriter
 	writerPortable   *gocv.VideoWriter
 	activitySec      int
-	prevActivityTime time.Time
-	curActivityTime  time.Time
+	lastActivityTime time.Time
 	secTick          *time.Ticker
 	recordChan       chan bool
 	done             chan bool
@@ -99,8 +98,7 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		writerFull:       nil,
 		writerPortable:   nil,
 		activitySec:      timeoutSec,
-		prevActivityTime: time.Time{},
-		curActivityTime:  time.Time{},
+		lastActivityTime: time.Time{},
 		secTick:          time.NewTicker(time.Second),
 		recordChan:       make(chan bool),
 		done:             make(chan bool),
@@ -131,30 +129,12 @@ func (v *VideoWriter) Start() {
 					img.Cleanup()
 					break Loop
 				}
-				if (v.activityType == ActivityImage && img.Original.IsFilled()) ||
-					(v.activityType == ActivityMotion && len(img.Motions) > 0) ||
-					(v.activityType == ActivityObject && len(img.Objects) > 0) ||
-					(v.activityType == ActivityFace && len(img.Faces) > 0) {
-					v.prevActivityTime = v.curActivityTime
-					v.curActivityTime = time.Now()
-				}
-				if v.record && !v.recording {
-					// open
-					firstFrame := v.preRingBuffer.Pop()
-					popped := v.preRingBuffer.PopAll()
-					preFrames := *NewImageList()
-					preFrames.Set(popped)
-					v.openRecord(firstFrame)
-					v.writeRecord(firstFrame)
-					firstFrame.Cleanup()
-					for preFrames.Len() > 0 {
-						cur := preFrames.Pop()
-						v.writeRecord(cur)
-						cur.Cleanup()
-					}
-				} else if !v.record && v.recording {
-					// close
-					v.closeRecord()
+				if v.record &&
+					((v.activityType == ActivityImage && img.Original.IsFilled()) ||
+						(v.activityType == ActivityMotion && len(img.Motions) > 0) ||
+						(v.activityType == ActivityObject && len(img.Objects) > 0) ||
+						(v.activityType == ActivityFace && len(img.Faces) > 0)) {
+					v.lastActivityTime = time.Now()
 				}
 				origImg := *img.Original.Ref()
 				if origImg.IsFilled() {
@@ -171,6 +151,26 @@ func (v *VideoWriter) Start() {
 					}
 				}
 				origImg.Cleanup()
+				if v.record && !v.recording {
+					// open
+					firstFrame := v.preRingBuffer.Pop()
+					if firstFrame.IsFilled() {
+						popped := v.preRingBuffer.PopAll()
+						preFrames := *NewImageList()
+						preFrames.Set(popped)
+						v.openRecord(firstFrame)
+						v.writeRecord(firstFrame)
+						firstFrame.Cleanup()
+						for preFrames.Len() > 0 {
+							cur := preFrames.Pop()
+							v.writeRecord(cur)
+							cur.Cleanup()
+						}
+					}
+				} else if !v.record && v.recording {
+					// close
+					v.closeRecord()
+				}
 				img.Cleanup()
 			case <-v.secTick.C:
 				if v.isRecordExpired() {
@@ -178,8 +178,7 @@ func (v *VideoWriter) Start() {
 				}
 				if v.isActivityExpired() {
 					v.record = false
-					v.prevActivityTime = time.Time{}
-					v.curActivityTime = time.Time{}
+					v.lastActivityTime = time.Time{}
 					v.closeRecord()
 				}
 			}
@@ -266,7 +265,7 @@ func (v *VideoWriter) isRecordExpired() bool {
 }
 
 func (v *VideoWriter) isActivityExpired() bool {
-	return !v.prevActivityTime.IsZero() && !v.curActivityTime.IsZero() && v.curActivityTime.Sub(v.prevActivityTime) > (time.Duration(v.activitySec)*time.Second)
+	return !v.lastActivityTime.IsZero() && time.Since(v.lastActivityTime) > (time.Duration(v.activitySec)*time.Second)
 }
 
 func (v *VideoWriter) writeRecord(img Image) {
