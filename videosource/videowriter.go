@@ -120,6 +120,7 @@ func (v *VideoWriter) Start() {
 			select {
 			case <-v.recordChan:
 				v.record = true
+				v.lastActivityTime = time.Now()
 			case img, ok := <-streamChan:
 				if !ok {
 					if v.recording {
