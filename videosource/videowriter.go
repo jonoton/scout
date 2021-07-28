@@ -159,7 +159,11 @@ func (v *VideoWriter) Start() {
 						popped := v.preRingBuffer.PopAll()
 						preFrames := *NewImageList()
 						preFrames.Set(popped)
-						v.openRecord(firstFrame)
+						preview := firstFrame
+						if len(popped) > 0 {
+							preview = popped[len(popped)-1]
+						}
+						v.openRecord(firstFrame, preview)
 						v.writeRecord(firstFrame)
 						firstFrame.Cleanup()
 						for preFrames.Len() > 0 {
@@ -212,7 +216,7 @@ func (v *VideoWriter) Wait() {
 	v.VideoStats.Cleanup()
 }
 
-func (v *VideoWriter) openRecord(img Image) {
+func (v *VideoWriter) openRecord(img Image, preview Image) {
 	v.recording = true
 	timeNow := time.Now()
 	saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
@@ -223,7 +227,7 @@ func (v *VideoWriter) openRecord(img Image) {
 		v.startTime = timeNow
 		v.writerFull = wFull
 		if v.savePreview {
-			SavePreview(img, timeNow, v.saveDirectory, v.name, "", "")
+			SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
 		}
 	} else {
 		log.Error("Could not open gocv writer full")
