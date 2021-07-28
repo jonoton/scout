@@ -20,8 +20,8 @@ import (
 	"github.com/jonoton/scout/runtime"
 	"github.com/valyala/bytebufferpool"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	jwtware "github.com/gofiber/jwt/v2"
+	"github.com/golang-jwt/jwt"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )

@@ -4,11 +4,11 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fasthttp/websocket v1.4.3 // indirect
 	github.com/gofiber/fiber/v2 v2.7.1
 	github.com/gofiber/jwt/v2 v2.2.1
 	github.com/gofiber/websocket/v2 v2.0.3
+	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/klauspost/compress v1.12.1 // indirect
 	github.com/radovskyb/watcher v1.0.7
