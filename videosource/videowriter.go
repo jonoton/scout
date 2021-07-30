@@ -161,7 +161,7 @@ func (v *VideoWriter) Start() {
 						preFrames.Set(popped)
 						preview := firstFrame
 						if len(popped) > 0 {
-							preview = popped[len(popped)-1]
+							preview = popped[0]
 						}
 						v.openRecord(firstFrame, preview)
 						v.writeRecord(firstFrame)
