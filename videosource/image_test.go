@@ -18,10 +18,15 @@ func TestCleanup(t *testing.T) {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", image.SharedMat.NumRefs())
 	}
 	image.Cleanup()
-	if image.SharedMat.NumRefs() != 0 {
-		t.Fatalf("sharedMat refs = %d, expected 0\n", image.SharedMat.NumRefs())
+	if image.SharedMat != nil {
+		t.Logf("sharedMat should be nil\n")
+		if image.SharedMat.NumRefs() != 0 {
+			t.Fatalf("sharedMat refs = %d, expected 0\n", image.SharedMat.NumRefs())
+		} else {
+			t.Logf("sharedMat refs = %d\n", image.SharedMat.NumRefs())
+		}
 	} else {
-		t.Logf("sharedMat refs = %d\n", image.SharedMat.NumRefs())
+		t.Logf("sharedMat is nil\n")
 	}
 }
 
@@ -41,9 +46,14 @@ func TestScale(t *testing.T) {
 		t.Fatalf("sharedMat refs = %d, expected 1\n", image.SharedMat.NumRefs())
 	}
 	image.Cleanup()
-	if image.SharedMat.NumRefs() != 0 {
-		t.Fatalf("sharedMat refs = %d, expected 0\n", image.SharedMat.NumRefs())
+	if image.SharedMat != nil {
+		t.Logf("sharedMat should be nil\n")
+		if image.SharedMat.NumRefs() != 0 {
+			t.Fatalf("sharedMat refs = %d, expected 0\n", image.SharedMat.NumRefs())
+		} else {
+			t.Logf("sharedMat refs = %d\n", image.SharedMat.NumRefs())
+		}
 	} else {
-		t.Logf("sharedMat refs = %d\n", image.SharedMat.NumRefs())
+		t.Logf("sharedMat is nil\n")
 	}
 }
