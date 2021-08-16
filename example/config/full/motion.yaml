@@ -3,6 +3,7 @@ padding: 0
 minPercentage: 2
 maxPercentage: 75
 maxMotions: 20
+overloadPercent: 90
 thresholdPercent: 40
 noiseReduction: 10
 highlightColor: purple

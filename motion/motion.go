@@ -14,6 +14,7 @@ type Motion struct {
 	minimumPercentage  int
 	maximumPercentage  int
 	maxMotions         int
+	overloadPercent    int
 	thresholdPercent   int
 	noiseReduction     int
 	highlightColor     string
@@ -27,6 +28,7 @@ func NewMotion() *Motion {
 		minimumPercentage:  2,
 		maximumPercentage:  75,
 		maxMotions:         20,
+		overloadPercent:    90,
 		thresholdPercent:   40,
 		noiseReduction:     10,
 		highlightColor:     "purple",
@@ -50,6 +52,9 @@ func (m *Motion) SetConfig(config *Config) {
 		}
 		if config.MaxMotions > 0 {
 			m.maxMotions = config.MaxMotions
+		}
+		if config.OverloadPercent > 0 {
+			m.overloadPercent = config.OverloadPercent
 		}
 		if config.ThresholdPercent > 0 {
 			m.thresholdPercent = config.ThresholdPercent
@@ -104,8 +109,10 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			// find contours
 			contours := gocv.FindContours(matThresh, gocv.RetrievalExternal, gocv.ChainApproxSimple)
 			matThresh.Close()
-			minimumArea := float64(cur.Height() * cur.Width() * m.minimumPercentage / 100)
-			maximumArea := float64(cur.Height() * cur.Width() * m.maximumPercentage / 100)
+			imageArea := cur.Height() * cur.Width()
+			overloadArea := float64(imageArea * m.overloadPercent / 100)
+			minimumArea := float64(imageArea * m.minimumPercentage / 100)
+			maximumArea := float64(imageArea * m.maximumPercentage / 100)
 			minimumWidth := cur.Width() * m.minimumPercentage / 100
 			maximumWidth := cur.Width() * m.maximumPercentage / 100
 			minimumHeight := cur.Height() * m.minimumPercentage / 100
@@ -114,7 +121,8 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			numMotions := 0
 			for index := 0; index < contours.Size(); index++ {
 				c := contours.At(index)
-				if numMotions > m.maxMotions {
+				area := gocv.ContourArea(c)
+				if numMotions > m.maxMotions || area >= overloadArea {
 					numMotions = 0
 					for _, motion := range result.Motions {
 						motion.Cleanup()
@@ -123,7 +131,6 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 					result.MotionRects = make([]image.Rectangle, 0)
 					break
 				}
-				area := gocv.ContourArea(c)
 				if area < minimumArea || area > maximumArea {
 					continue
 				}
@@ -150,6 +157,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			}
 			highlightedImage.Cleanup()
 			blurMat.Close()
+
 			r <- result
 		}
 		mog2.Close()
