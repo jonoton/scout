@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+// FilenameTimestampRegex regular expression for timestamps in filenames
+var FilenameTimestampRegex *regexp.Regexp
+
+func init() {
+	FilenameTimestampRegex = regexp.MustCompile("[0-9]{4}_[0-9]{2}_[0-9]{2}_[0-9]{2}_[0-9]{2}_[0-9]{2}_[0-9]+")
+}
+
 // RegexEndsWith returns the string regex
 func RegexEndsWith(val string) string {
 	return fmt.Sprintf("^.*(%s)$", val)
@@ -102,3 +109,27 @@ func (a DescendingTime) Less(i, j int) bool {
 	return a[i].ModTime().After(a[j].ModTime())
 }
 func (a DescendingTime) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// DescendingTimeName sorting string by timestamp in name
+type DescendingTimeName []string
+
+func (a DescendingTimeName) Len() int { return len(a) }
+func (a DescendingTimeName) Less(i, j int) bool {
+	first := FilenameTimestampRegex.FindString(a[i])
+	second := FilenameTimestampRegex.FindString(a[j])
+	lessThan := first > second
+	return lessThan
+}
+func (a DescendingTimeName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// AscendingTimeName sorting string by timestamp in name
+type AscendingTimeName []string
+
+func (a AscendingTimeName) Len() int { return len(a) }
+func (a AscendingTimeName) Less(i, j int) bool {
+	first := FilenameTimestampRegex.FindString(a[i])
+	second := FilenameTimestampRegex.FindString(a[j])
+	lessThan := first < second
+	return lessThan
+}
+func (a AscendingTimeName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

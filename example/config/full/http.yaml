@@ -6,3 +6,9 @@ users:
     - user: "USER2"
       password: "PASSWORD2"
 signInExpireDays: 7
+links:
+  - name: "link1"
+    url: "LINK_URL1"
+    user: "LINK_USER1"
+    password: "LINK_PASSWORD1"
+linkRetry: 2

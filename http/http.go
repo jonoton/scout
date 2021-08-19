@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"time"
 
 	fiber "github.com/gofiber/fiber/v2"
@@ -33,6 +35,8 @@ type Http struct {
 	manage       *manage.Manage
 	loginLogger  *log.Logger
 	accessLogger *log.Logger
+	linkClients  []*linkClient
+	linkRetry    int
 }
 
 // NewHttp returns a new Http
@@ -43,6 +47,8 @@ func NewHttp(manage *manage.Manage) *Http {
 		manage:       manage,
 		loginLogger:  &log.Logger{},
 		accessLogger: &log.Logger{},
+		linkClients:  make([]*linkClient, 0),
+		linkRetry:    2,
 	}
 	h.setup()
 	return h
@@ -81,6 +87,15 @@ func (h *Http) setup() {
 		MaxAge:     28,
 		Compress:   false,
 	})
+	if h.httpConfig != nil {
+		for _, curLink := range h.httpConfig.Links {
+			lc := newLinkClient(curLink.Name, curLink.Url, curLink.User, curLink.Password)
+			h.linkClients = append(h.linkClients, lc)
+		}
+		if h.httpConfig.LinkRetry > 0 {
+			h.linkRetry = h.httpConfig.LinkRetry
+		}
+	}
 	loginNeeded := h.httpConfig != nil && len(h.httpConfig.Users) > 0
 	loginKey := uuid.New().String()
 	limitPerSecond := 100
@@ -164,6 +179,38 @@ func (h *Http) setup() {
 		}))
 	}
 
+	h.fiber.Use("/live/:name", func(c *fiber.Ctx) error {
+		localsMonName := c.Locals("monitorName")
+		localsWidth := c.Locals("width")
+		localsJpegQuality := c.Locals("jpegQuality")
+		if localsMonName == nil || localsWidth == nil || localsJpegQuality == nil {
+			return c.Next()
+		}
+		monitorName := localsMonName.(string)
+		monitorList := h.manage.GetMonitorNames()
+		for _, cur := range monitorList {
+			if cur == monitorName {
+				return c.Next()
+			}
+		}
+		for _, cur := range h.linkClients {
+			for _, lmonName := range cur.monitorNames {
+				if lmonName == monitorName {
+					width, err := strconv.Atoi(localsWidth.(string))
+					if err != nil {
+						width = 0
+					}
+					jpegQuality, err := strconv.Atoi(localsJpegQuality.(string))
+					if err != nil {
+						jpegQuality = 0
+					}
+					return cur.forwardWebsocket(monitorName, width, jpegQuality)(c)
+				}
+			}
+		}
+		return c.Next()
+	})
+
 	h.fiber.Get("/live/:name", h.liveMonitor())
 
 	h.fiber.Get("/heartbeat", func(c *fiber.Ctx) error {
@@ -172,10 +219,11 @@ func (h *Http) setup() {
 
 	h.fiber.Get("/info/list", func(c *fiber.Ctx) error {
 		monitorList := h.manage.GetMonitorNames()
-		type info struct {
-			NameList []string
+		for _, cur := range h.linkClients {
+			curList := cur.getMonList(h.linkRetry)
+			monitorList = append(monitorList, curList...)
 		}
-		data := info{
+		data := nameListResp{
 			NameList: monitorList,
 		}
 		return c.JSON(data)
@@ -183,12 +231,13 @@ func (h *Http) setup() {
 
 	h.fiber.Get("/info/:name", func(c *fiber.Ctx) error {
 		monitorName := c.Params("name")
-		type info struct {
-			Name         string
-			ReaderInFps  int
-			ReaderOutFps int
+		for _, cur := range h.linkClients {
+			found, info := cur.getMonInfo(monitorName, h.linkRetry)
+			if found {
+				return c.JSON(info)
+			}
 		}
-		data := info{
+		data := monInfoResp{
 			Name:         monitorName,
 			ReaderInFps:  0,
 			ReaderOutFps: 0,
@@ -222,6 +271,12 @@ func (h *Http) setup() {
 				data[monName] = curAlerts
 			}
 		}
+		for _, cur := range h.linkClients {
+			linkResult := cur.getAlertsLatest(h.linkRetry)
+			for k, v := range linkResult {
+				data[k] = v
+			}
+		}
 		return c.JSON(data)
 	})
 
@@ -232,7 +287,33 @@ func (h *Http) setup() {
 		for _, fileInfo := range files {
 			data = append(data, fileInfo.Name())
 		}
+		needSort := false
+		for _, cur := range h.linkClients {
+			linkResult := cur.getAlertsList(h.linkRetry)
+			if len(linkResult) > 0 {
+				data = append(data, linkResult...)
+				needSort = true
+			}
+		}
+		if needSort {
+			sort.Sort(dir.DescendingTimeName(data))
+		}
 		return c.JSON(data)
+	})
+
+	h.fiber.Use("/alerts/files/:name", func(c *fiber.Ctx) error {
+		paramFilename := c.Params("name")
+		filename := filepath.Clean(h.manage.GetDataDirectory() + "/alerts/" + paramFilename)
+		if fileExists(filename) {
+			return c.Next()
+		}
+		for _, cur := range h.linkClients {
+			found, linkResult := cur.getAlertsFile(paramFilename, h.linkRetry)
+			if found {
+				return c.Send(linkResult)
+			}
+		}
+		return c.Next()
 	})
 
 	h.fiber.Static("/alerts/files",
@@ -251,7 +332,33 @@ func (h *Http) setup() {
 		for _, fileInfo := range files {
 			data = append(data, fileInfo.Name())
 		}
+		needSort := false
+		for _, cur := range h.linkClients {
+			linkResult := cur.getRecordingsList(h.linkRetry)
+			if len(linkResult) > 0 {
+				data = append(data, linkResult...)
+				needSort = true
+			}
+		}
+		if needSort {
+			sort.Sort(dir.DescendingTimeName(data))
+		}
 		return c.JSON(data)
+	})
+
+	h.fiber.Use("/recordings/files/:name", func(c *fiber.Ctx) error {
+		paramFilename := c.Params("name")
+		filename := filepath.Clean(h.manage.GetDataDirectory() + "/recordings/" + paramFilename)
+		if fileExists(filename) {
+			return c.Next()
+		}
+		for _, cur := range h.linkClients {
+			found, linkResult := cur.getRecordingsFile(paramFilename, h.linkRetry)
+			if found {
+				return c.Send(linkResult)
+			}
+		}
+		return c.Next()
 	})
 
 	h.fiber.Static("/recordings/files",
@@ -295,6 +402,11 @@ func (h *Http) Listen() {
 
 func getFormattedKitchenTimestamp(t time.Time) string {
 	return t.Format("03:04:05 PM 01-02-2006")
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return !os.IsNotExist(err)
 }
 
 // Stop the http

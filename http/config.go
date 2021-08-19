@@ -19,12 +19,21 @@ type UserPassword struct {
 	Password string `yaml:"password"`
 }
 
+type link struct {
+	Name     string `yaml:"name,omitempty"`
+	Url      string `yaml:"url"`
+	User     string `yaml:"user,omitempty"`
+	Password string `yaml:"password,omitempty"`
+}
+
 // Config contains the parameters for Http
 type Config struct {
 	Port             int            `yaml:"port,omitempty"`
 	LimitPerSecond   int            `yaml:"limitPerSecond,omitempty"`
 	Users            []UserPassword `yaml:"users,omitempty"`
 	SignInExpireDays int            `yaml:"signInExpireDays,omitempty"`
+	Links            []link         `yaml:"links,omitempty"`
+	LinkRetry        int            `yaml:"linkRetry,omitempty"`
 }
 
 // NewConfig creates a new Config
