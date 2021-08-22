@@ -4,6 +4,7 @@ padding: 0
 modelFile: "frozen_inference_graph.pb"
 configFile: "ssd_mobilenet_v1_coco_2017_11_17.pbtxt"
 descFile: "coco.names"
+scaleWidth: 320
 minConfidencePercentage: 50
 minMotionFrames: 1
 minPercentage: 2

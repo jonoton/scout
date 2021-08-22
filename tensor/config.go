@@ -16,6 +16,7 @@ type Config struct {
 	ModelFile               string   `yaml:"modelFile,omitempty"`
 	ConfigFile              string   `yaml:"configFile,omitempty"`
 	DescFile                string   `yaml:"descFile,omitempty"`
+	ScaleWidth              int      `yaml:"scaleWidth,omitempty"`
 	MinConfidencePercentage int      `yaml:"minConfidencePercentage,omitempty"`
 	MinMotionFrames         int      `yaml:"minMotionFrames,omitempty"`
 	MinPercentage           int      `yaml:"minPercentage,omitempty"`

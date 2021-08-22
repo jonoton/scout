@@ -1,6 +1,9 @@
 package videosource
 
-import "image"
+import (
+	"image"
+	"math"
+)
 
 // CorrectRectangle will fix a rectangle to fit within the Image i
 func CorrectRectangle(i Image, rect image.Rectangle) (result image.Rectangle) {
@@ -73,6 +76,24 @@ func RectAddHeight(i Image, rect image.Rectangle, height int) (result image.Rect
 	return
 }
 
+// RectScale will scale the rect as evenly as possible
+func RectScale(i Image, rect image.Rectangle, scale float64) (result image.Rectangle) {
+	if !i.IsFilled() {
+		return
+	}
+	if scale <= 0.0 {
+		return
+	}
+	scaleInt := int(math.Ceil(scale))
+	result = rect
+	scaledMin := result.Min.Mul(scaleInt)
+	scaledMax := result.Max.Mul(scaleInt)
+	result.Min = scaledMin
+	result.Max = scaledMax
+	result = CorrectRectangle(i, result)
+	return
+}
+
 // RectPadded returns a padded rectangle
 func RectPadded(i Image, rect image.Rectangle, paddingPercent int) (result image.Rectangle) {
 	if !i.IsFilled() {
@@ -139,7 +160,11 @@ func RectOverlap(rect1 image.Rectangle, rect2 image.Rectangle) (percentage1 int,
 	rect2Area := rect2.Dx() * rect2.Dy()
 	overlapRect := rect1.Intersect(rect2)
 	overlapArea := overlapRect.Dx() * overlapRect.Dy()
-	percentage1 = 100 * overlapArea / rect1Area
-	percentage2 = 100 * overlapArea / rect2Area
+	if rect1Area > 0 {
+		percentage1 = 100 * overlapArea / rect1Area
+	}
+	if rect2Area > 0 {
+		percentage2 = 100 * overlapArea / rect2Area
+	}
 	return
 }

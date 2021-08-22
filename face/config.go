@@ -15,6 +15,7 @@ type Config struct {
 	Padding                 int    `yaml:"padding,omitempty"`
 	ModelFile               string `yaml:"modelFile,omitempty"`
 	ConfigFile              string `yaml:"configFile,omitempty"`
+	ScaleWidth              int    `yaml:"scaleWidth,omitempty"`
 	MinConfidencePercentage int    `yaml:"minConfidencePercentage,omitempty"`
 	MaxPercentage           int    `yaml:"maxPercentage,omitempty"`
 	MinOverlapPercentage    int    `yaml:"minOverlapPercentage,omitempty"`

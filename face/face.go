@@ -22,6 +22,7 @@ type Face struct {
 	configFile              string
 	backend                 gocv.NetBackendType
 	target                  gocv.NetTargetType
+	scaleWidth              int
 	minConfidencePercentage int
 	maxPercentage           int
 	minOverlapPercentage    int
@@ -45,6 +46,7 @@ func NewFace() *Face {
 		configFile:              "deploy.prototxt",
 		backend:                 backend,
 		target:                  target,
+		scaleWidth:              320,
 		minConfidencePercentage: 50,
 		maxPercentage:           50,
 		minOverlapPercentage:    75,
@@ -71,6 +73,9 @@ func (f *Face) SetConfig(config *Config) {
 		}
 		if config.ConfigFile != "" {
 			f.configFile = config.ConfigFile
+		}
+		if config.ScaleWidth < 0 || 0 < config.ScaleWidth {
+			f.scaleWidth = config.ScaleWidth
 		}
 		if config.MinConfidencePercentage != 0 {
 			f.minConfidencePercentage = config.MinConfidencePercentage
@@ -136,7 +141,14 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 				r <- result
 				continue
 			}
-			tmpMat := cur.Original.SharedMat.Mat.Clone()
+			origWidth := cur.Original.Width()
+			scaleWidth := f.scaleWidth
+			if f.scaleWidth <= 0 {
+				scaleWidth = origWidth
+			}
+			scaleRatio := float64(origWidth) / float64(scaleWidth)
+			scaledImg := cur.Original.ScaleToWidth(scaleWidth)
+			tmpMat := scaledImg.SharedMat.Mat
 			matType := tmpMat.Type()
 			// need to convert for blob usage
 			tmpMat.ConvertTo(&tmpMat, gocv.MatTypeCV32F)
@@ -163,11 +175,12 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					right := int(prob.GetFloatAt(0, i+5) * float32(tmpMat.Cols()))
 					bottom := int(prob.GetFloatAt(0, i+6) * float32(tmpMat.Rows()))
 					rect := image.Rect(left, top, right, bottom)
-					rectArea := rect.Dx() * rect.Dy()
+					scaledRect := videosource.RectScale(cur.Original, rect, scaleRatio)
+					rectArea := scaledRect.Dx() * scaledRect.Dy()
 					if rectArea > maximumArea {
 						continue
 					}
-					paddedRect := videosource.RectPadded(cur.Original, rect, f.padding)
+					paddedRect := videosource.RectPadded(cur.Original, scaledRect, f.padding)
 					finalRect := videosource.RectSquare(cur.Original, paddedRect)
 					withinObj := false
 					for _, objRect := range cur.ObjectRects {
@@ -204,7 +217,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					result.FaceRects = append(result.FaceRects, finalRect)
 				}
 			}
-			tmpMat.Close()
+			scaledImg.Cleanup()
 			prob.Close()
 			blob.Close()
 			if len(result.FaceRects) > 0 {

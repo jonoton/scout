@@ -11,6 +11,7 @@ import (
 type Motion struct {
 	Skip               bool
 	padding            int
+	scaleWidth         int
 	minimumPercentage  int
 	maximumPercentage  int
 	maxMotions         int
@@ -25,6 +26,7 @@ type Motion struct {
 func NewMotion() *Motion {
 	m := &Motion{
 		padding:            0,
+		scaleWidth:         320,
 		minimumPercentage:  2,
 		maximumPercentage:  75,
 		maxMotions:         20,
@@ -43,6 +45,9 @@ func (m *Motion) SetConfig(config *Config) {
 		m.Skip = config.Skip
 		if config.Padding > 0 {
 			m.padding = config.Padding
+		}
+		if config.ScaleWidth < 0 || 0 < config.ScaleWidth {
+			m.scaleWidth = config.ScaleWidth
 		}
 		if config.MinimumPercentage >= 0 {
 			m.minimumPercentage = config.MinimumPercentage
@@ -85,15 +90,22 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				r <- result
 				continue
 			}
-			highlightedImage := *result.Original.Clone()
+			highlightedImage := *cur.Clone()
 			highlightedMat := highlightedImage.SharedMat.Mat
 
+			origWidth := cur.Width()
+			scaleWidth := m.scaleWidth
+			if m.scaleWidth <= 0 {
+				scaleWidth = origWidth
+			}
+			scaleRatio := float64(origWidth) / float64(scaleWidth)
+			scaledImg := cur.ScaleToWidth(scaleWidth)
 			blurMat := gocv.NewMat()
 			// reduce noise - must be odd number
 			if m.noiseReduction%2 == 0 {
 				m.noiseReduction++
 			}
-			gocv.GaussianBlur(result.Original.SharedMat.Mat, &blurMat, image.Pt(m.noiseReduction, m.noiseReduction), 0, 0, gocv.BorderDefault)
+			gocv.GaussianBlur(scaledImg.SharedMat.Mat, &blurMat, image.Pt(m.noiseReduction, m.noiseReduction), 0, 0, gocv.BorderDefault)
 			matDelta := gocv.NewMat()
 			matThresh := gocv.NewMat()
 			// obtain foreground only
@@ -109,14 +121,16 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			// find contours
 			contours := gocv.FindContours(matThresh, gocv.RetrievalExternal, gocv.ChainApproxSimple)
 			matThresh.Close()
-			imageArea := cur.Height() * cur.Width()
+			imgWidth := scaledImg.Width()
+			imgHeight := scaledImg.Height()
+			imageArea := imgHeight * imgWidth
 			overloadArea := float64(imageArea * m.overloadPercent / 100)
 			minimumArea := float64(imageArea * m.minimumPercentage / 100)
 			maximumArea := float64(imageArea * m.maximumPercentage / 100)
-			minimumWidth := cur.Width() * m.minimumPercentage / 100
-			maximumWidth := cur.Width() * m.maximumPercentage / 100
-			minimumHeight := cur.Height() * m.minimumPercentage / 100
-			maximumHeight := cur.Height() * m.maximumPercentage / 100
+			minimumWidth := imgWidth * m.minimumPercentage / 100
+			maximumWidth := imgWidth * m.maximumPercentage / 100
+			minimumHeight := imgHeight * m.minimumPercentage / 100
+			maximumHeight := imgHeight * m.maximumPercentage / 100
 
 			numMotions := 0
 			for index := 0; index < contours.Size(); index++ {
@@ -143,7 +157,8 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				if rectHeight < minimumHeight || rectHeight > maximumHeight {
 					continue
 				}
-				finalRect := videosource.RectPadded(cur, rect, m.padding)
+				scaledRect := videosource.RectScale(cur, rect, scaleRatio)
+				finalRect := videosource.RectPadded(cur, scaledRect, m.padding)
 				region := cur.GetRegion(finalRect)
 				rectColor := videosource.StringToColor(m.highlightColor)
 				gocv.Rectangle(&highlightedMat, finalRect, rectColor.GetRGBA(), m.highlightThickness)
@@ -155,6 +170,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			if numMotions > 0 {
 				result.HighlightedMotion = *highlightedImage.Ref()
 			}
+			scaledImg.Cleanup()
 			highlightedImage.Cleanup()
 			blurMat.Close()
 

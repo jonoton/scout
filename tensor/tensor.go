@@ -27,6 +27,7 @@ type Tensor struct {
 	descFile                string
 	backend                 gocv.NetBackendType
 	target                  gocv.NetTargetType
+	scaleWidth              int
 	minConfidencePercentage int
 	minMotionFrames         int
 	minPercentage           int
@@ -56,6 +57,7 @@ func NewTensor() *Tensor {
 		descFile:                "coco.names",
 		backend:                 backend,
 		target:                  target,
+		scaleWidth:              320,
 		minConfidencePercentage: 50,
 		minMotionFrames:         1,
 		minPercentage:           2,
@@ -89,6 +91,9 @@ func (t *Tensor) SetConfig(config *Config) {
 		}
 		if config.DescFile != "" {
 			t.descFile = config.DescFile
+		}
+		if config.ScaleWidth < 0 || 0 < config.ScaleWidth {
+			t.scaleWidth = config.ScaleWidth
 		}
 		if config.MinConfidencePercentage > 0 {
 			t.minConfidencePercentage = config.MinConfidencePercentage
@@ -185,7 +190,14 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 				continue
 			}
 
-			tmpMat := cur.Original.SharedMat.Mat.Clone()
+			origWidth := cur.Original.Width()
+			scaleWidth := t.scaleWidth
+			if t.scaleWidth <= 0 {
+				scaleWidth = origWidth
+			}
+			scaleRatio := float64(origWidth) / float64(scaleWidth)
+			scaledImg := cur.Original.ScaleToWidth(scaleWidth)
+			tmpMat := scaledImg.SharedMat.Mat
 			matType := tmpMat.Type()
 			// need to convert for blob usage
 			tmpMat.ConvertTo(&tmpMat, gocv.MatTypeCV32F)
@@ -231,11 +243,12 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 						continue
 					}
 					rect := image.Rect(left, top, right, bottom)
-					rectArea := rect.Dx() * rect.Dy()
+					scaledRect := videosource.RectScale(cur.Original, rect, scaleRatio)
+					rectArea := scaledRect.Dx() * scaledRect.Dy()
 					if rectArea < minimumArea || rectArea > maximumArea {
 						continue
 					}
-					finalRect := videosource.RectPadded(cur.Original, rect, t.padding)
+					finalRect := videosource.RectPadded(cur.Original, scaledRect, t.padding)
 					withinMotion := false
 					for _, motionRect := range cur.MotionRects {
 						if fPercent, _ := videosource.RectOverlap(finalRect, motionRect); fPercent >= t.minOverlapPercentage {
@@ -274,7 +287,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					result.ObjectRects = append(result.ObjectRects, finalRect)
 				}
 			}
-			tmpMat.Close()
+			scaledImg.Cleanup()
 			prob.Close()
 			blob.Close()
 			if len(result.ObjectRects) > 0 {

@@ -1,5 +1,6 @@
 skip: false
 padding: 0
+scaleWidth: 320
 minPercentage: 2
 maxPercentage: 75
 maxMotions: 20

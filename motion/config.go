@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Skip               bool   `yaml:"skip,omitempty"`
 	Padding            int    `yaml:"padding,omitempty"`
+	ScaleWidth         int    `yaml:"scaleWidth,omitempty"`
 	MinimumPercentage  int    `yaml:"minPercentage,omitempty"`
 	MaximumPercentage  int    `yaml:"maxPercentage,omitempty"`
 	MaxMotions         int    `yaml:"maxMotions,omitempty"`
