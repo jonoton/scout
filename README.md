@@ -19,6 +19,7 @@ https://www.jonoton-innovation.com
   * Lives on your device, on your network
   * Build from source or use Docker pre-built image
   * Customize configuration with YAML
+  * Link multiple servers together
 * Hassle-free management
   * Need to adjust the camera? No problem! No reconfigure required!
   * No database!

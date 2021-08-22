@@ -1,26 +1,42 @@
 # Build
 
-## Dependencies
-### GoCV
+## Get Dependencies without Building
+### Go Module
 ```
-go get -u -d gocv.io/x/gocv
-cd $GOPATH/src/gocv.io/x/gocv
+go get -d github.com/jonoton/scout@v1.17.0
 ```
-#### Install
+### Cloned
 ```
-make install
-```
-#### Install w/ CUDA
-```
-make install_cuda
-```
-```
-go install gocv.io/x/gocv
+go get -d ./...
 ```
 
-## Scout
+## Dependencies
+### GoCV
+#### Navigate to folder
 ```
-go get -u -d github.com/jonoton/scout
-cd $GOPATH/src/github.com/jonoton/scout
-go install github.com/jonoton/scout
+cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.27.0
+```
+#### Choose One
+##### Build
+```
+sudo make -j install
+```
+##### Build w/ CUDA Support
+```
+sudo make -j install_cuda
+```
+
+## Install Scout
+### Go Module
+```
+go get github.com/jonoton/scout@v1.17.0
+```
+### Cloned
+```
+go install ./...
+```
+
+## Verify
+```
+ls -alh $GOPATH/bin
 ```

@@ -70,9 +70,12 @@ ENV GOROOT="/Downloads/go"
 ENV PATH=$PATH:$GOROOT/bin
 RUN which go && go version
 ENV GOPATH=/go
+ENV GO111MODULE=on
 RUN mkdir -p "$GOPATH/src"
 WORKDIR /go/src
-RUN go get -u -d gocv.io/x/gocv && cd gocv.io/x/gocv && make install_cuda && go run ./cmd/version/main.go && go install gocv.io/x/gocv
+RUN go get -d gocv.io/x/gocv@v0.27.0
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.27.0 && make -j install_cuda; exit 0
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.27.0 && go install -v .
 
 
 # Scout
