@@ -83,6 +83,10 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 	if saveDirectory == "" || codec == "" || fileType == "" || timeoutSec <= 0 || maxSec <= 0 || outFps <= 0 {
 		return nil
 	}
+	preRingBufferSize := maxPreSec * outFps
+	if preRingBufferSize <= 0 {
+		preRingBufferSize = 1
+	}
 	v := &VideoWriter{
 		record:           false,
 		recording:        false,
@@ -94,7 +98,7 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		maxSec:           maxSec,
 		outFps:           outFps,
 		streamChan:       *NewProcessedImageFpsChan(outFps),
-		preRingBuffer:    *NewRingBufferImage(maxPreSec * outFps),
+		preRingBuffer:    *NewRingBufferImage(preRingBufferSize),
 		writerFull:       nil,
 		writerPortable:   nil,
 		activitySec:      timeoutSec,

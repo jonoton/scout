@@ -251,6 +251,43 @@ func (l *linkClient) getRecordingsFile(filename string, numRetries int) (found b
 	return
 }
 
+func (l *linkClient) getContinuousList(numRetries int) []string {
+	l.checkNeedLogin()
+	result := make([]string, 0)
+	agent := fiber.Get(l.url + "/continuous/list").InsecureSkipVerify()
+	l.checkAddAuth(agent)
+	if err := agent.Parse(); err == nil {
+		code, body, _ := agent.Bytes()
+		l.checkClearLogin(code)
+		if code == fiber.StatusOK {
+			json.Unmarshal(body, &result)
+		} else if numRetries > 0 {
+			numRetries--
+			return l.getContinuousList(numRetries)
+		}
+	}
+	return result
+}
+
+func (l *linkClient) getContinuousFile(filename string, numRetries int) (found bool, result []byte) {
+	l.checkNeedLogin()
+	result = make([]byte, 0)
+	agent := fiber.Get(l.url + "/continuous/files/" + filename).InsecureSkipVerify()
+	l.checkAddAuth(agent)
+	if err := agent.Parse(); err == nil {
+		code, body, _ := agent.Bytes()
+		if code == fiber.StatusOK {
+			result = body
+			found = true
+		} else if numRetries > 0 {
+			numRetries--
+			l.checkClearLogin(code)
+			return l.getContinuousFile(filename, numRetries)
+		}
+	}
+	return
+}
+
 func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int) func(*fiber.Ctx) error {
 	l.checkNeedLogin()
 	sockMonName := l.trimName(monName)

@@ -155,6 +155,11 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.SetRecord(m.manageConf.Data, monitor.NewRecordConfig(recordConfigPath))
 		mon.ConfigPaths = append(mon.ConfigPaths, recordConfigPath)
 	}
+	if monConf.ContinuousFilename != "" {
+		continuousConfigPath := runtimeConfigDir + monConf.ContinuousFilename
+		mon.SetContinuous(m.manageConf.Data, monitor.NewContinuousConfig(continuousConfigPath))
+		mon.ConfigPaths = append(mon.ConfigPaths, continuousConfigPath)
+	}
 	if monConf.AlertFilename != "" {
 		alertPath := runtimeConfigDir + monConf.AlertFilename
 		alertSettings := monitor.NewAlertConfig(alertPath)

@@ -370,6 +370,51 @@ func (h *Http) setup() {
 		},
 	)
 
+	h.fiber.Get("/continuous/list", func(c *fiber.Ctx) error {
+		data := make([]string, 0)
+		files, _ := dir.List(filepath.Clean(h.manage.GetDataDirectory()+"/continuous"), dir.RegexEndsWith("Full.mp4"))
+		sort.Sort(dir.DescendingTime(files))
+		for _, fileInfo := range files {
+			data = append(data, fileInfo.Name())
+		}
+		needSort := false
+		for _, cur := range h.linkClients {
+			linkResult := cur.getContinuousList(h.linkRetry)
+			if len(linkResult) > 0 {
+				data = append(data, linkResult...)
+				needSort = true
+			}
+		}
+		if needSort {
+			sort.Sort(dir.DescendingTimeName(data))
+		}
+		return c.JSON(data)
+	})
+
+	h.fiber.Use("/continuous/files/:name", func(c *fiber.Ctx) error {
+		paramFilename := c.Params("name")
+		filename := filepath.Clean(h.manage.GetDataDirectory() + "/continuous/" + paramFilename)
+		if fileExists(filename) {
+			return c.Next()
+		}
+		for _, cur := range h.linkClients {
+			found, linkResult := cur.getContinuousFile(paramFilename, h.linkRetry)
+			if found {
+				return c.Send(linkResult)
+			}
+		}
+		return c.Next()
+	})
+
+	h.fiber.Static("/continuous/files",
+		filepath.Clean(h.manage.GetDataDirectory()+"/continuous"),
+		fiber.Static{
+			Compress:  true,
+			ByteRange: true,
+			Browse:    false,
+		},
+	)
+
 	h.fiber.Get("/memory", func(c *fiber.Ctx) error {
 		mem := memory.NewMemory()
 		type info struct {

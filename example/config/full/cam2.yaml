@@ -11,4 +11,5 @@ tensor: tensor.yaml
 face: face.yaml
 notifyRx: notify-rx.yaml
 record: record.yaml
+continuous: continuous.yaml
 alert: alert.yaml

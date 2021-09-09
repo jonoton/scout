@@ -1,0 +1,4 @@
+timeoutSec: 10
+maxSec: 300
+deleteAfterHours: 36
+deleteAfterGB: 2

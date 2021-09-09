@@ -19,6 +19,7 @@ type Monitor struct {
 	ConfigPaths         []string
 	reader              *videosource.VideoReader
 	record              *Record
+	continuous          *Continuous
 	notifier            *notify.Notify
 	notifyRxConf        *notify.RxConfig
 	notifySaveDirectory string
@@ -47,6 +48,7 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 		Name:                name,
 		reader:              reader,
 		record:              nil,
+		continuous:          nil,
 		notifier:            nil,
 		notifyRxConf:        nil,
 		notifySaveDirectory: "",
@@ -83,6 +85,11 @@ func (m *Monitor) SetStaleConfig(timeout int, maxRetry int) {
 // SetRecord sets the recorder
 func (m *Monitor) SetRecord(saveDirectory string, recordConf *RecordConfig) {
 	m.record = NewRecord(m.Name, saveDirectory, recordConf, m.reader.MaxOutputFps)
+}
+
+// SetContinuous sets the continuous recording
+func (m *Monitor) SetContinuous(saveDirectory string, continuousConf *ContinuousConfig) {
+	m.continuous = NewContinuous(m.Name, saveDirectory, continuousConf, m.reader.MaxOutputFps)
 }
 
 // SetAlert sets the alert notification
@@ -201,11 +208,23 @@ func (m *Monitor) Start() {
 			wg.Done()
 		}()
 
+		if m.continuous != nil {
+			m.continuous.Start()
+		}
+
 		// reader -> motion
 		for img := range readerOutput {
+			if m.continuous != nil {
+				m.continuous.Send(*videosource.NewProcessedImage(*img.Ref()))
+			}
 			motionInput <- img
 		}
 		close(motionInput)
+
+		if m.continuous != nil {
+			m.continuous.Close()
+			m.continuous.Wait()
+		}
 
 		m.reader.Wait()
 		wg.Wait()
