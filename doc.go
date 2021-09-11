@@ -25,6 +25,8 @@ Features
   * Get notified via email or text when an alert occurs
  * Recordings
   * Automatically record when objects are detected
+ * Continuous
+  * Continuous recording with auto-prune
 
 Mobile Client Features
  * Access your Scout server remotely
@@ -39,8 +41,12 @@ Mobile Client Features
   * Platform Notifications for Object, Person, and Face detection
  * Recordings
   * Scroll through recordings
-  * Recordings Fullscreen with Progressive loading
-  * Share or Download recordings
+  * Fullscreen with Progressive loading
+  * Share or Download
+ * Continuous
+  * Scroll through continuous recordings
+  * Fullscreen with Progressive loading
+  * Share or Download
 
  Android
  View App in Google Play Store https://play.google.com/store/apps/details?id=com.jonoton.scout

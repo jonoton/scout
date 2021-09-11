@@ -175,6 +175,9 @@ func (m *Monitor) Start() {
 		}()
 		// face -> process results
 		go func() {
+			if m.continuous != nil {
+				m.continuous.Start()
+			}
 			if m.record != nil {
 				m.record.Start()
 			}
@@ -194,6 +197,9 @@ func (m *Monitor) Start() {
 				if m.record != nil {
 					m.record.Send(*cur.Ref())
 				}
+				if m.continuous != nil {
+					m.continuous.Send(*cur.Ref())
+				}
 				cur.Cleanup()
 			}
 			if m.alert != nil {
@@ -204,27 +210,19 @@ func (m *Monitor) Start() {
 				m.record.Close()
 				m.record.Wait()
 			}
+			if m.continuous != nil {
+				m.continuous.Close()
+				m.continuous.Wait()
+			}
 			m.clearSubscriptions()
 			wg.Done()
 		}()
 
-		if m.continuous != nil {
-			m.continuous.Start()
-		}
-
 		// reader -> motion
 		for img := range readerOutput {
-			if m.continuous != nil {
-				m.continuous.Send(*videosource.NewProcessedImage(*img.Ref()))
-			}
 			motionInput <- img
 		}
 		close(motionInput)
-
-		if m.continuous != nil {
-			m.continuous.Close()
-			m.continuous.Wait()
-		}
 
 		m.reader.Wait()
 		wg.Wait()
