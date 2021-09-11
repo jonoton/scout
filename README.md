@@ -49,12 +49,12 @@ https://www.jonoton-innovation.com
   * Platform Notifications for Object, Person, and Face detection
 * Recordings
   * Scroll through recordings
-  * Fullscreen with Progressive loading
-  * Share or Download
+  * Recordings Fullscreen with Progressive loading
+  * Share or Download recordings
 * Continuous
   * Scroll through continuous recordings
-  * Fullscreen with Progressive loading
-  * Share or Download
+  * Continuous recordings Fullscreen with Progressive loading
+  * Share or Download continuous recordings
 
 ### Android
 [View App in Google Play Store](https://play.google.com/store/apps/details?id=com.jonoton.scout)
