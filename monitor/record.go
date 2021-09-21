@@ -36,7 +36,7 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 		name:          name,
 		saveDirectory: recordDir,
 		RecordConf:    recordConf,
-		writer: videosource.NewVideoWriter(name, recordDir, "XVID", "mp4", recordConf.MaxPreSec,
+		writer: videosource.NewVideoWriter(name, recordDir, "avc1", "mp4", recordConf.MaxPreSec,
 			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, videosource.ActivityObject),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),

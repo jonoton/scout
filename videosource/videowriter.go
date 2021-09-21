@@ -93,7 +93,7 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		startTime:        time.Time{},
 		name:             name,
 		saveDirectory:    saveDirectory,
-		codec:            codec,
+		codec:            codec, // xvid, mp4v, hev1, hvc1, avc1, avc3
 		fileType:         fileType,
 		maxSec:           maxSec,
 		outFps:           outFps,
@@ -225,7 +225,7 @@ func (v *VideoWriter) openRecord(img Image, preview Image) {
 	timeNow := time.Now()
 	saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
 	wFull, err := gocv.VideoWriterFile(saveFilenameFull,
-		strings.ToUpper(v.codec), float64(v.outFps),
+		v.codec, float64(v.outFps),
 		img.Width(), img.Height(), true)
 	if err == nil {
 		v.startTime = timeNow
@@ -240,7 +240,7 @@ func (v *VideoWriter) openRecord(img Image, preview Image) {
 		scaledImage := img.ScaleToWidth(v.PortableWidth)
 		saveFilenamePortable := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, true)
 		wPortable, err := gocv.VideoWriterFile(saveFilenamePortable,
-			strings.ToUpper(v.codec), float64(v.outFps),
+			v.codec, float64(v.outFps),
 			scaledImage.Width(), scaledImage.Height(), true)
 		if err == nil {
 			v.writerPortable = wPortable
