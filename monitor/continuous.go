@@ -31,12 +31,15 @@ func NewContinuous(name string, saveDirectory string, continuousConf *Continuous
 	}
 	continuousDir := filepath.Clean(saveDirectory+"/continuous") + string(filepath.Separator)
 	os.MkdirAll(continuousDir, os.ModePerm)
-
+	codec := "mp4v"
+	if len(continuousConf.Codec) == 4 {
+		codec = continuousConf.Codec
+	}
 	c := &Continuous{
 		name:           name,
 		saveDirectory:  continuousDir,
 		ContinuousConf: continuousConf,
-		writer: videosource.NewVideoWriter(name, continuousDir, "avc1", "mp4", 0,
+		writer: videosource.NewVideoWriter(name, continuousDir, codec, "mp4", 0,
 			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, videosource.ActivityImage),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),

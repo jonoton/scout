@@ -31,12 +31,15 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 	}
 	recordDir := filepath.Clean(saveDirectory+"/recordings") + string(filepath.Separator)
 	os.MkdirAll(recordDir, os.ModePerm)
-
+	codec := "mp4v"
+	if len(recordConf.Codec) == 4 {
+		codec = recordConf.Codec
+	}
 	a := &Record{
 		name:          name,
 		saveDirectory: recordDir,
 		RecordConf:    recordConf,
-		writer: videosource.NewVideoWriter(name, recordDir, "avc1", "mp4", recordConf.MaxPreSec,
+		writer: videosource.NewVideoWriter(name, recordDir, codec, "mp4", recordConf.MaxPreSec,
 			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, videosource.ActivityObject),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),

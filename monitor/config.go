@@ -45,12 +45,13 @@ func NewConfig(configPath string) *Config {
 
 // RecordConfig contains the parameters for record settings
 type RecordConfig struct {
-	RecordObjects    bool `yaml:"recordObjects,omitempty"`
-	MaxPreSec        int  `yaml:"maxPreSec,omitempty"`
-	TimeoutSec       int  `yaml:"timeoutSec,omitempty"`
-	MaxSec           int  `yaml:"maxSec,omitempty"`
-	DeleteAfterHours int  `yaml:"deleteAfterHours,omitempty"`
-	DeleteAfterGB    int  `yaml:"deleteAfterGB,omitempty"`
+	RecordObjects    bool   `yaml:"recordObjects,omitempty"`
+	MaxPreSec        int    `yaml:"maxPreSec,omitempty"`
+	TimeoutSec       int    `yaml:"timeoutSec,omitempty"`
+	MaxSec           int    `yaml:"maxSec,omitempty"`
+	DeleteAfterHours int    `yaml:"deleteAfterHours,omitempty"`
+	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
+	Codec            string `yaml:"codec,omitempty"`
 }
 
 // NewRecordConfig creates a new RecordConfig
@@ -71,10 +72,11 @@ func NewRecordConfig(configPath string) *RecordConfig {
 
 // ContinuousConfig contains the parameters for record settings
 type ContinuousConfig struct {
-	TimeoutSec       int `yaml:"timeoutSec,omitempty"`
-	MaxSec           int `yaml:"maxSec,omitempty"`
-	DeleteAfterHours int `yaml:"deleteAfterHours,omitempty"`
-	DeleteAfterGB    int `yaml:"deleteAfterGB,omitempty"`
+	TimeoutSec       int    `yaml:"timeoutSec,omitempty"`
+	MaxSec           int    `yaml:"maxSec,omitempty"`
+	DeleteAfterHours int    `yaml:"deleteAfterHours,omitempty"`
+	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
+	Codec            string `yaml:"codec,omitempty"`
 }
 
 // NewContinuousConfig creates a new ContinuousConfig
