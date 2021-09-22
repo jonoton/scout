@@ -35,11 +35,15 @@ func NewContinuous(name string, saveDirectory string, continuousConf *Continuous
 	if len(continuousConf.Codec) == 4 {
 		codec = continuousConf.Codec
 	}
+	fileType := "mp4"
+	if len(continuousConf.FileType) >= 3 {
+		fileType = continuousConf.FileType
+	}
 	c := &Continuous{
 		name:           name,
 		saveDirectory:  continuousDir,
 		ContinuousConf: continuousConf,
-		writer: videosource.NewVideoWriter(name, continuousDir, codec, "mp4", 0,
+		writer: videosource.NewVideoWriter(name, continuousDir, codec, fileType, 0,
 			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, videosource.ActivityImage),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),

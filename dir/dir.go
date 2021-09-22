@@ -20,6 +20,11 @@ func RegexEndsWith(val string) string {
 	return fmt.Sprintf("^.*(%s)$", val)
 }
 
+// RegexEndsWithBeforeExt returns the string regex
+func RegexEndsWithBeforeExt(val string) string {
+	return fmt.Sprintf("^.*(%s)\\..*$", val)
+}
+
 // RegexBeginsWith returns the string regex
 func RegexBeginsWith(val string) string {
 	return fmt.Sprintf("^(%s).*$", val)

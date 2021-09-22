@@ -52,6 +52,7 @@ type RecordConfig struct {
 	DeleteAfterHours int    `yaml:"deleteAfterHours,omitempty"`
 	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
 	Codec            string `yaml:"codec,omitempty"`
+	FileType         string `yaml:"fileType,omitempty"`
 }
 
 // NewRecordConfig creates a new RecordConfig
@@ -77,6 +78,7 @@ type ContinuousConfig struct {
 	DeleteAfterHours int    `yaml:"deleteAfterHours,omitempty"`
 	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
 	Codec            string `yaml:"codec,omitempty"`
+	FileType         string `yaml:"fileType,omitempty"`
 }
 
 // NewContinuousConfig creates a new ContinuousConfig

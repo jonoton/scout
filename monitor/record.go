@@ -35,11 +35,15 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 	if len(recordConf.Codec) == 4 {
 		codec = recordConf.Codec
 	}
+	fileType := "mp4"
+	if len(recordConf.FileType) >= 3 {
+		fileType = recordConf.FileType
+	}
 	a := &Record{
 		name:          name,
 		saveDirectory: recordDir,
 		RecordConf:    recordConf,
-		writer: videosource.NewVideoWriter(name, recordDir, codec, "mp4", recordConf.MaxPreSec,
+		writer: videosource.NewVideoWriter(name, recordDir, codec, fileType, recordConf.MaxPreSec,
 			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, videosource.ActivityObject),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),

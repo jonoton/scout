@@ -5,3 +5,4 @@ maxSec: 120
 deleteAfterHours: 24
 deleteAfterGB: 2
 codec: "mp4v"
+fileType: "mp4"
