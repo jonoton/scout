@@ -9,8 +9,8 @@ import (
 // VideoReader reads a VideoSource
 type VideoReader struct {
 	videoSource  VideoSource
-	SourceStats  *VideoStats
-	OutputStats  *VideoStats
+	SourceStats  VideoStats
+	OutputStats  VideoStats
 	done         chan bool
 	cancel       chan bool
 	MaxSourceFps int
@@ -25,8 +25,8 @@ func NewVideoReader(videoSource VideoSource, maxSourceFps int, maxOutputFps int)
 	}
 	v := &VideoReader{
 		videoSource:  videoSource,
-		SourceStats:  NewVideoStats(),
-		OutputStats:  NewVideoStats(),
+		SourceStats:  *NewVideoStats(),
+		OutputStats:  *NewVideoStats(),
 		done:         make(chan bool),
 		cancel:       make(chan bool),
 		MaxSourceFps: maxSourceFps,
@@ -50,6 +50,7 @@ func (v *VideoReader) Start() <-chan Image {
 		if !v.videoSource.Initialize() {
 			log.Warnln("VideoReader could not initialize", v.videoSource.GetName())
 		}
+		v.OutputStats.Start()
 		videoImgs := v.sourceImages()
 		var bufImage *Image
 		fps := v.MaxOutputFps
@@ -85,8 +86,8 @@ func (v *VideoReader) Start() <-chan Image {
 		if bufImage != nil {
 			bufImage.Cleanup()
 		}
-		outTick.Stop()
 		v.OutputStats.Cleanup()
+		outTick.Stop()		
 		v.videoSource.Cleanup()
 		close(images)
 		close(v.done)
@@ -116,6 +117,7 @@ func (v *VideoReader) getTickMs(fps int) time.Duration {
 func (v *VideoReader) sourceImages() <-chan Image {
 	videoImgs := make(chan Image)
 	go func() {
+		v.SourceStats.Start()
 		fps := v.MaxSourceFps
 		tick := time.NewTicker(v.getTickMs(fps) * time.Millisecond)
 	Loop:
@@ -144,8 +146,8 @@ func (v *VideoReader) sourceImages() <-chan Image {
 				break Loop
 			}
 		}
-		tick.Stop()
 		v.SourceStats.Cleanup()
+		tick.Stop()
 		close(videoImgs)
 	}()
 	return videoImgs

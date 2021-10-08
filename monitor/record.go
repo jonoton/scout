@@ -39,12 +39,13 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 	if len(recordConf.FileType) >= 3 {
 		fileType = recordConf.FileType
 	}
+	saveFull := !recordConf.PortableOnly
 	a := &Record{
 		name:          name,
 		saveDirectory: recordDir,
 		RecordConf:    recordConf,
-		writer: videosource.NewVideoWriter(name, recordDir, codec, fileType, recordConf.MaxPreSec,
-			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, videosource.ActivityObject),
+		writer: videosource.NewVideoWriter(name, recordDir, codec, fileType, recordConf.BufferSeconds, recordConf.MaxPreSec,
+			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityObject),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),
 		hourTick:   time.NewTicker(time.Hour),

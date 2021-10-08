@@ -54,8 +54,8 @@ func NewManage() *Manage {
 // AddMonitor adds a new monitor to manage
 func (m *Manage) AddMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
-	defer m.monGuard.Unlock()
 	m.addMonitor(mon)
+	m.monGuard.Unlock()
 }
 func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	m.mons[mon.Name] = mon
@@ -70,33 +70,33 @@ func (m *Manage) addMonitor(mon *monitor.Monitor) {
 // GetMonitorNames returns a list of monitor names
 func (m *Manage) GetMonitorNames() (result []string) {
 	m.monGuard.RLock()
-	defer m.monGuard.RUnlock()
 	for key := range m.mons {
 		result = append(result, key)
 	}
+	m.monGuard.RUnlock()
 	sort.Strings(result)
 	return
 }
 
 // GetMonitorVideoStats returns the monitor's video stats
-func (m *Manage) GetMonitorVideoStats(monitorName string) (readerIn *videosource.VideoStats, readerOut *videosource.VideoStats) {
+func (m *Manage) GetMonitorVideoStats(monitorName string) (readerIn videosource.FrameStats, readerOut videosource.FrameStats) {
 	m.monGuard.RLock()
-	defer m.monGuard.RUnlock()
 	if mon, found := m.mons[monitorName]; found {
 		readerIn = mon.GetReaderInStats()
 		readerOut = mon.GetReaderOutStats()
 	}
+	m.monGuard.RUnlock()
 	return
 }
 
 // GetMonitorAlertTimes returns all monitor alert times
 func (m *Manage) GetMonitorAlertTimes() (result map[string]monitor.AlertTimes) {
 	m.monGuard.RLock()
-	defer m.monGuard.RUnlock()
 	result = make(map[string]monitor.AlertTimes)
 	for _, mon := range m.mons {
 		result[mon.Name] = mon.GetAlertTimes()
 	}
+	m.monGuard.RUnlock()
 	return
 }
 
@@ -189,13 +189,13 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, facePath)
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)
+	mon.SetBufferSeconds(monConf.BufferSeconds)
 	return mon
 }
 
 // Stop the manage
 func (m *Manage) Stop() {
 	m.monGuard.Lock()
-	defer m.monGuard.Unlock()
 	tmpMap := make(monitor.Map)
 	for k, v := range m.mons {
 		tmpMap[k] = v
@@ -203,6 +203,7 @@ func (m *Manage) Stop() {
 	for _, v := range tmpMap {
 		m.removeMonitor(v)
 	}
+	m.monGuard.Unlock()
 	close(m.done)
 }
 
@@ -212,27 +213,26 @@ func (m *Manage) Wait() {
 }
 
 // Subscribe to a monitor's video images
-func (m *Manage) Subscribe(monitorName string, key string) <-chan videosource.ProcessedImage {
+func (m *Manage) Subscribe(monitorName string, key string) (result <-chan videosource.ProcessedImage) {
 	m.monGuard.RLock()
-	defer m.monGuard.RUnlock()
 	if mon, ok := m.mons[monitorName]; ok {
-		return mon.Subscribe(key)
+		result = mon.Subscribe(key)
 	}
-	return nil
+	m.monGuard.RUnlock()
+	return
 }
 
 // Unsubscribe to a monitor's video images
 func (m *Manage) Unsubscribe(monitorName string, key string) {
 	m.monGuard.RLock()
-	defer m.monGuard.RUnlock()
 	if mon, ok := m.mons[monitorName]; ok {
 		mon.Unsubscribe(key)
 	}
+	m.monGuard.RUnlock()
 }
 
 func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleList []*monitor.Monitor) {
 	m.monGuard.Lock()
-	defer m.monGuard.Unlock()
 	staleList = make([]*monitor.Monitor, 0)
 	for _, cur := range m.mons {
 		if cur.IsStale {
@@ -263,6 +263,7 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 			log.Infoln("Stale restarted monitor", newMon.Name)
 		}
 	}
+	m.monGuard.Unlock()
 	return
 }
 
@@ -286,8 +287,8 @@ func (m *Manage) checkStaleMonitors() {
 // RemoveMonitor will stop, wait, and remove from manage
 func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 	m.monGuard.Lock()
-	defer m.monGuard.Unlock()
 	m.removeMonitor(mon)
+	m.monGuard.Unlock()
 }
 
 func (m *Manage) removeMonitor(mon *monitor.Monitor) {
@@ -319,7 +320,6 @@ func (m *Manage) removeMonitor(mon *monitor.Monitor) {
 
 func (m *Manage) doMonitorConfigChanges(modPath string) {
 	m.monGuard.Lock()
-	defer m.monGuard.Unlock()
 	log.Infoln("Config changed", modPath)
 	aMons := m.associatedMonitors(modPath)
 	for _, cur := range aMons {
@@ -333,6 +333,7 @@ func (m *Manage) doMonitorConfigChanges(modPath string) {
 			log.Infoln("Config restarted monitor", newMon.Name)
 		}
 	}
+	m.monGuard.Unlock()
 }
 
 func (m *Manage) monitorConfigChanges() {

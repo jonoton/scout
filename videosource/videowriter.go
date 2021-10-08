@@ -61,7 +61,7 @@ type VideoWriter struct {
 	fileType         string
 	maxSec           int
 	outFps           int
-	streamChan       ProcessedImageFpsChan
+	streamChan       chan ProcessedImage
 	preRingBuffer    RingBufferImage
 	writerFull       *gocv.VideoWriter
 	writerPortable   *gocv.VideoWriter
@@ -73,15 +73,20 @@ type VideoWriter struct {
 	VideoStats       *VideoStats
 	savePreview      bool
 	savePortable     bool
+	saveFull         bool
 	activityType     int
 	PortableWidth    int
 }
 
 // NewVideoWriter creates a new VideoWriter
-func NewVideoWriter(name string, saveDirectory string, codec string, fileType string,
-	maxPreSec int, timeoutSec int, maxSec int, outFps int, savePreview bool, savePortable bool, activityType int) *VideoWriter {
+func NewVideoWriter(name string, saveDirectory string, codec string, fileType string, bufferSeconds int,
+	maxPreSec int, timeoutSec int, maxSec int, outFps int, savePreview bool, savePortable bool, saveFull bool, activityType int) *VideoWriter {
 	if saveDirectory == "" || codec == "" || fileType == "" || timeoutSec <= 0 || maxSec <= 0 || outFps <= 0 {
 		return nil
+	}
+	bufferSize := bufferSeconds * outFps
+	if bufferSize < 0 {
+		bufferSize = 0
 	}
 	preRingBufferSize := maxPreSec * outFps
 	if preRingBufferSize <= 0 {
@@ -97,7 +102,7 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		fileType:         fileType,
 		maxSec:           maxSec,
 		outFps:           outFps,
-		streamChan:       *NewProcessedImageFpsChan(outFps),
+		streamChan:       make(chan ProcessedImage, bufferSize),
 		preRingBuffer:    *NewRingBufferImage(preRingBufferSize),
 		writerFull:       nil,
 		writerPortable:   nil,
@@ -109,6 +114,7 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		VideoStats:       NewVideoStats(),
 		savePreview:      savePreview,
 		savePortable:     savePortable,
+		saveFull:         saveFull,
 		activityType:     activityType,
 		PortableWidth:    1080,
 	}
@@ -118,14 +124,14 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 // Start runs the processes
 func (v *VideoWriter) Start() {
 	go func() {
-		streamChan := v.streamChan.Start()
+		v.VideoStats.Start()
 	Loop:
 		for {
 			select {
 			case <-v.recordChan:
 				v.record = true
 				v.lastActivityTime = time.Now()
-			case img, ok := <-streamChan:
+			case img, ok := <-v.streamChan:
 				if !ok {
 					if v.recording {
 						// close
@@ -192,6 +198,7 @@ func (v *VideoWriter) Start() {
 				}
 			}
 		}
+		v.VideoStats.Cleanup()
 		v.secTick.Stop()
 		cleanupRingBuffer(&v.preRingBuffer)
 		close(v.done)
@@ -205,36 +212,38 @@ func (v *VideoWriter) Trigger() {
 
 // Send Image to write
 func (v *VideoWriter) Send(img ProcessedImage) {
-	v.streamChan.Send(img)
+	v.streamChan <- img
 }
 
 // Close notified by caller that input stream is done/closed
 func (v *VideoWriter) Close() {
-	v.streamChan.Close()
+	close(v.streamChan)
 }
 
 // Wait until done
 func (v *VideoWriter) Wait() {
-	v.streamChan.Wait()
 	<-v.done
-	v.VideoStats.Cleanup()
 }
 
 func (v *VideoWriter) openRecord(img Image, preview Image) {
 	v.recording = true
 	timeNow := time.Now()
-	saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
-	wFull, err := gocv.VideoWriterFile(saveFilenameFull,
-		v.codec, float64(v.outFps),
-		img.Width(), img.Height(), true)
-	if err == nil {
-		v.startTime = timeNow
-		v.writerFull = wFull
-		if v.savePreview {
-			SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
+	savedPreview := false
+	if v.saveFull {
+		saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
+		wFull, err := gocv.VideoWriterFile(saveFilenameFull,
+			v.codec, float64(v.outFps),
+			img.Width(), img.Height(), true)
+		if err == nil {
+			v.startTime = timeNow
+			v.writerFull = wFull
+			if v.savePreview {
+				SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
+				savedPreview = true
+			}
+		} else {
+			log.Error("Could not open gocv writer full")
 		}
-	} else {
-		log.Error("Could not open gocv writer full")
 	}
 	if v.savePortable {
 		scaledImage := img.ScaleToWidth(v.PortableWidth)
@@ -244,6 +253,10 @@ func (v *VideoWriter) openRecord(img Image, preview Image) {
 			scaledImage.Width(), scaledImage.Height(), true)
 		if err == nil {
 			v.writerPortable = wPortable
+			if v.savePreview && !savedPreview {
+				SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
+				savedPreview = true
+			}
 		} else {
 			log.Error("Could not open gocv writer portable")
 		}

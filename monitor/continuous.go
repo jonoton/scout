@@ -39,12 +39,13 @@ func NewContinuous(name string, saveDirectory string, continuousConf *Continuous
 	if len(continuousConf.FileType) >= 3 {
 		fileType = continuousConf.FileType
 	}
+	saveFull := !continuousConf.PortableOnly
 	c := &Continuous{
 		name:           name,
 		saveDirectory:  continuousDir,
 		ContinuousConf: continuousConf,
-		writer: videosource.NewVideoWriter(name, continuousDir, codec, fileType, 0,
-			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, videosource.ActivityImage),
+		writer: videosource.NewVideoWriter(name, continuousDir, codec, fileType, continuousConf.BufferSeconds, 0,
+			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityImage),
 		streamChan: make(chan videosource.ProcessedImage),
 		done:       make(chan bool),
 		hourTick:   time.NewTicker(time.Hour),

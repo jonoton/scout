@@ -4,6 +4,13 @@ import (
 	"time"
 )
 
+type FrameStats struct {
+	AcceptedTotal     int
+	AcceptedPerSecond int
+	DroppedTotal      int
+	DroppedPerSecond  int
+}
+
 // VideoStats contains video statistics
 type VideoStats struct {
 	AcceptedTotal     int
@@ -12,21 +19,24 @@ type VideoStats struct {
 	DroppedPerSecond  int
 	acceptedTmp       int
 	droppedTmp        int
-	fpsTick           *time.Ticker
 	stop              chan bool
 }
 
 // NewVideoStats creates a new VideoStats
 func NewVideoStats() *VideoStats {
 	v := &VideoStats{
-		fpsTick: time.NewTicker(time.Second),
-		stop:    make(chan bool),
+		stop: make(chan bool),
 	}
+	return v
+}
+
+func (v *VideoStats) Start() {
 	go func() {
+		fpsTick := time.NewTicker(time.Second)
 	Loop:
 		for {
 			select {
-			case _, ok := <-v.fpsTick.C:
+			case _, ok := <-fpsTick.C:
 				if !ok {
 					break Loop
 				}
@@ -38,9 +48,8 @@ func NewVideoStats() *VideoStats {
 				break Loop
 			}
 		}
-		v.fpsTick.Stop()
+		fpsTick.Stop()
 	}()
-	return v
 }
 
 // AddAccepted adds an accepted image
@@ -55,12 +64,19 @@ func (v *VideoStats) AddDropped() {
 	v.droppedTmp++
 }
 
+// GetStats returns the FrameStats
+func (v *VideoStats) GetStats() FrameStats {
+	return FrameStats{
+		AcceptedTotal:     v.AcceptedTotal,
+		AcceptedPerSecond: v.AcceptedPerSecond,
+		DroppedTotal:      v.DroppedTotal,
+		DroppedPerSecond:  v.DroppedPerSecond,
+	}
+}
+
 // Cleanup the VideoStats
 func (v *VideoStats) Cleanup() {
 	v.AcceptedPerSecond = 0
 	v.DroppedPerSecond = 0
-	if v.fpsTick != nil {
-		v.fpsTick.Stop()
-		close(v.stop)
-	}
+	close(v.stop)
 }

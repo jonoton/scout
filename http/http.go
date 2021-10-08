@@ -243,12 +243,8 @@ func (h *Http) setup() {
 			ReaderOutFps: 0,
 		}
 		readerIn, readerOut := h.manage.GetMonitorVideoStats(monitorName)
-		if readerIn != nil {
-			data.ReaderInFps = readerIn.AcceptedPerSecond
-		}
-		if readerOut != nil {
-			data.ReaderOutFps = readerOut.AcceptedPerSecond
-		}
+		data.ReaderInFps = readerIn.AcceptedPerSecond
+		data.ReaderOutFps = readerOut.AcceptedPerSecond
 		return c.JSON(data)
 	})
 
@@ -329,7 +325,7 @@ func (h *Http) setup() {
 	h.fiber.Get("/recordings/list", func(c *fiber.Ctx) error {
 		data := make([]string, 0)
 		files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/recordings"),
-			dir.RegexEndsWithBeforeExt("Full"), time.Now(), time.Duration(5)*time.Second)
+			dir.RegexEndsWithBeforeExt("Portable"), time.Now(), time.Duration(5)*time.Second)
 		sort.Sort(dir.DescendingTime(files))
 		for _, fileInfo := range files {
 			data = append(data, fileInfo.Name())
@@ -375,7 +371,7 @@ func (h *Http) setup() {
 	h.fiber.Get("/continuous/list", func(c *fiber.Ctx) error {
 		data := make([]string, 0)
 		files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/continuous"),
-			dir.RegexEndsWithBeforeExt("Full"), time.Now(), time.Duration(5)*time.Second)
+			dir.RegexEndsWithBeforeExt("Portable"), time.Now(), time.Duration(5)*time.Second)
 		sort.Sort(dir.DescendingTime(files))
 		for _, fileInfo := range files {
 			data = append(data, fileInfo.Name())

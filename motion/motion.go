@@ -80,10 +80,7 @@ func (m *Motion) SetConfig(config *Config) {
 func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
-		defer close(r)
-
 		mog2 := gocv.NewBackgroundSubtractorMOG2()
-
 		for cur := range input {
 			result := *videosource.NewProcessedImage(cur)
 			if m.Skip {
@@ -177,6 +174,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			r <- result
 		}
 		mog2.Close()
+		close(r)
 	}()
 	return r
 }

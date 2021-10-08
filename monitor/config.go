@@ -17,6 +17,7 @@ type Config struct {
 	Quality            int    `yaml:"quality,omitempty"`
 	StaleTimeout       int    `yaml:"staleTimeout,omitempty"`
 	StaleMaxRetry      int    `yaml:"staleMaxRetry,omitempty"`
+	BufferSeconds      int    `yaml:"bufferSeconds,omitempty"`
 	MotionFilename     string `yaml:"motion,omitempty"`
 	TensorFilename     string `yaml:"tensor,omitempty"`
 	CaffeFilename      string `yaml:"caffe,omitempty"`
@@ -53,6 +54,8 @@ type RecordConfig struct {
 	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
 	Codec            string `yaml:"codec,omitempty"`
 	FileType         string `yaml:"fileType,omitempty"`
+	BufferSeconds    int    `yaml:"bufferSeconds,omitempty"`
+	PortableOnly     bool   `yaml:"portableOnly,omitempty"`
 }
 
 // NewRecordConfig creates a new RecordConfig
@@ -79,6 +82,8 @@ type ContinuousConfig struct {
 	DeleteAfterGB    int    `yaml:"deleteAfterGB,omitempty"`
 	Codec            string `yaml:"codec,omitempty"`
 	FileType         string `yaml:"fileType,omitempty"`
+	BufferSeconds    int    `yaml:"bufferSeconds,omitempty"`
+	PortableOnly     bool   `yaml:"portableOnly,omitempty"`
 }
 
 // NewContinuousConfig creates a new ContinuousConfig

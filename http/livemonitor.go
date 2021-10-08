@@ -92,6 +92,7 @@ Loop:
 					break Loop
 				}
 			}
+			break Loop
 		case _, ok := <-ringBuffer.Ready():
 			if !ok {
 				break Loop

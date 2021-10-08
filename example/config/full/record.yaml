@@ -6,3 +6,5 @@ deleteAfterHours: 24
 deleteAfterGB: 2
 codec: "mp4v"
 fileType: "mp4"
+bufferSeconds: 4
+portableOnly: true

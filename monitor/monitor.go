@@ -15,28 +15,26 @@ import (
 
 // Monitor contains the video source
 type Monitor struct {
-	Name                string
-	ConfigPaths         []string
-	reader              *videosource.VideoReader
-	record              *Record
-	continuous          *Continuous
-	notifier            *notify.Notify
-	notifyRxConf        *notify.RxConfig
-	notifySaveDirectory string
-	staleTimeout        int
-	StaleRetry          int
-	StaleMaxRetry       int
-	IsStale             bool
-	motion              *motion.Motion
-	tensor              *tensor.Tensor
-	face                *face.Face
-	subscriptions       map[string]chan videosource.ProcessedImage
-	subGuard            sync.RWMutex
-	alert               *Alert
-	recordObjects       bool
-	notifyObjects       bool
-	sentEmail           int
-	done                chan bool
+	Name             string
+	bufferSize       int
+	ConfigPaths      []string
+	reader           *videosource.VideoReader
+	record           *Record
+	continuous       *Continuous
+	notifier         *notify.Notify
+	notifyRxConf     *notify.RxConfig
+	staleTimeout     int
+	StaleRetry       int
+	StaleMaxRetry    int
+	IsDoneProcessing bool
+	IsStale          bool
+	motion           *motion.Motion
+	tensor           *tensor.Tensor
+	face             *face.Face
+	subscriptions    map[string]chan videosource.ProcessedImage
+	subGuard         sync.RWMutex
+	alert            *Alert
+	done             chan bool
 }
 
 // Map is a map of names to Monitor
@@ -45,30 +43,36 @@ type Map map[string]*Monitor
 // NewMonitor creates a new Monitor
 func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 	m := &Monitor{
-		Name:                name,
-		reader:              reader,
-		record:              nil,
-		continuous:          nil,
-		notifier:            nil,
-		notifyRxConf:        nil,
-		notifySaveDirectory: "",
-		staleTimeout:        20,
-		StaleRetry:          10,
-		StaleMaxRetry:       10,
-		IsStale:             false,
-		motion:              motion.NewMotion(),
-		tensor:              tensor.NewTensor(),
-		face:                face.NewFace(),
-		subscriptions:       make(map[string]chan videosource.ProcessedImage),
-		subGuard:            sync.RWMutex{},
-		alert:               nil,
-		recordObjects:       false,
-		notifyObjects:       false,
-		sentEmail:           0,
-		done:                make(chan bool),
+		Name:             name,
+		bufferSize:       0,
+		reader:           reader,
+		record:           nil,
+		continuous:       nil,
+		notifier:         nil,
+		notifyRxConf:     nil,
+		staleTimeout:     20,
+		StaleRetry:       10,
+		StaleMaxRetry:    10,
+		IsDoneProcessing: false,
+		IsStale:          false,
+		motion:           motion.NewMotion(),
+		tensor:           tensor.NewTensor(),
+		face:             face.NewFace(),
+		subscriptions:    make(map[string]chan videosource.ProcessedImage),
+		subGuard:         sync.RWMutex{},
+		alert:            nil,
+		done:             make(chan bool),
 	}
 
 	return m
+}
+
+func (m *Monitor) SetBufferSeconds(sec int) {
+	if sec > 0 {
+		m.bufferSize = m.reader.MaxOutputFps * sec
+	} else {
+		m.bufferSize = 0
+	}
 }
 
 // SetStaleConfig sets the stale configuration
@@ -142,17 +146,15 @@ func (m *Monitor) Start() {
 		staleTicker.Stop()
 	}()
 	go func() {
-		defer close(m.done)
-
 		readerOutput := m.reader.Start()
 
-		motionInput := make(chan videosource.Image)
+		motionInput := make(chan videosource.Image, m.bufferSize)
 		motionOutput := m.motion.Run(motionInput)
 
-		tensorInput := make(chan videosource.ProcessedImage)
+		tensorInput := make(chan videosource.ProcessedImage, m.bufferSize)
 		tensorOutput := m.tensor.Run(tensorInput)
 
-		faceInput := make(chan videosource.ProcessedImage)
+		faceInput := make(chan videosource.ProcessedImage, m.bufferSize)
 		faceOutput := m.face.Run(faceInput)
 
 		wg := &sync.WaitGroup{}
@@ -187,7 +189,10 @@ func (m *Monitor) Start() {
 			for cur := range faceOutput {
 				m.subGuard.RLock()
 				for _, val := range m.subscriptions {
-					val <- *cur.Ref()
+					select {
+					case val <- *cur.Ref():
+					default:
+					}
 				}
 				m.subGuard.RUnlock()
 
@@ -214,6 +219,7 @@ func (m *Monitor) Start() {
 				m.continuous.Close()
 				m.continuous.Wait()
 			}
+			m.IsDoneProcessing = true
 			m.clearSubscriptions()
 			wg.Done()
 		}()
@@ -227,6 +233,7 @@ func (m *Monitor) Start() {
 		m.reader.Wait()
 		wg.Wait()
 		m.IsStale = true
+		close(m.done)
 	}()
 }
 
@@ -241,21 +248,26 @@ func (m *Monitor) Wait() {
 }
 
 // Subscribe to video images
-func (m *Monitor) Subscribe(key string) <-chan videosource.ProcessedImage {
+func (m *Monitor) Subscribe(key string) (result <-chan videosource.ProcessedImage) {
+	if m.IsDoneProcessing {
+		return
+	}
+
 	m.subGuard.Lock()
-	defer m.subGuard.Unlock()
 	m.subscriptions[key] = make(chan videosource.ProcessedImage)
-	return m.subscriptions[key]
+	result = m.subscriptions[key]
+	m.subGuard.Unlock()
+	return
 }
 
 // Unsubscribe to video images
 func (m *Monitor) Unsubscribe(key string) {
 	m.subGuard.Lock()
-	defer m.subGuard.Unlock()
 	if _, found := m.subscriptions[key]; found {
 		close(m.subscriptions[key])
 		delete(m.subscriptions, key)
 	}
+	m.subGuard.Unlock()
 }
 
 func (m *Monitor) clearSubscriptions() {
@@ -268,13 +280,13 @@ func (m *Monitor) clearSubscriptions() {
 }
 
 // GetReaderInStats returns the reader source stats
-func (m *Monitor) GetReaderInStats() *videosource.VideoStats {
-	return m.reader.SourceStats
+func (m *Monitor) GetReaderInStats() videosource.FrameStats {
+	return m.reader.SourceStats.GetStats()
 }
 
 // GetReaderOutStats returns the reader output stats
-func (m *Monitor) GetReaderOutStats() *videosource.VideoStats {
-	return m.reader.OutputStats
+func (m *Monitor) GetReaderOutStats() videosource.FrameStats {
+	return m.reader.OutputStats.GetStats()
 }
 
 // GetAlertTimes returns the alert times
