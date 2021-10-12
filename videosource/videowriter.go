@@ -226,21 +226,16 @@ func (v *VideoWriter) Wait() {
 }
 
 func (v *VideoWriter) openRecord(img Image, preview Image) {
-	v.recording = true
 	timeNow := time.Now()
-	savedPreview := false
 	if v.saveFull {
 		saveFilenameFull := GetVideoFilename(timeNow, v.saveDirectory, v.name, v.fileType, false)
 		wFull, err := gocv.VideoWriterFile(saveFilenameFull,
 			v.codec, float64(v.outFps),
 			img.Width(), img.Height(), true)
 		if err == nil {
-			v.startTime = timeNow
+			v.recording = true
 			v.writerFull = wFull
-			if v.savePreview {
-				SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
-				savedPreview = true
-			}
+
 		} else {
 			log.Error("Could not open gocv writer full")
 		}
@@ -252,15 +247,18 @@ func (v *VideoWriter) openRecord(img Image, preview Image) {
 			v.codec, float64(v.outFps),
 			scaledImage.Width(), scaledImage.Height(), true)
 		if err == nil {
+			v.recording = true
 			v.writerPortable = wPortable
-			if v.savePreview && !savedPreview {
-				SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
-				savedPreview = true
-			}
 		} else {
 			log.Error("Could not open gocv writer portable")
 		}
 		scaledImage.Cleanup()
+	}
+	if v.recording {
+		v.startTime = timeNow
+		if v.savePreview {
+			SavePreview(preview, timeNow, v.saveDirectory, v.name, "", "")
+		}
 	}
 }
 
