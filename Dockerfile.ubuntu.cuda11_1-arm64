@@ -1,6 +1,6 @@
-# Scout Docker Image
+# Ubuntu Docker Image
 # Build:
-#   docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -f Dockerfile.cuda11_1-arm64 -t scout:cuda11_1-arm64 .
+#   docker build -f Dockerfile.ubuntu.cuda11_1-arm64 -t ubuntu:cuda11_1-arm64 .
 #
 # Requires Host:
 #   GPU with Compute Capability (CC) >= 5.3  See https://developer.nvidia.com/cuda-gpus
@@ -13,17 +13,9 @@
 #   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 #   sudo apt update && sudo apt install -y nvidia-docker2
 #   sudo systemctl restart docker
-#
-# Run in foreground and remove after:
-#   docker run -it --rm --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:cuda11_1-arm64
-# Run in background and keep:
-#   docker run -d --gpus all -p 8080:8080 -v HOST_DATA_PATH:/scout/data -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs scout:cuda11_1-arm64
-# Keep Host Date Time Localization
-#   Add to the lines above: -v /etc/localtime:/etc/localtime:ro
-
 
 # Ubuntu 18.04 CUDA 11.1 cudnn8
-FROM ubuntu:18.04 AS cuda11_1-cudnn8-arm64
+FROM ubuntu:18.04 AS cuda11_1-arm64
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
@@ -78,43 +70,3 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcudnn8-dev=$CUDNN_VERSION-1+cuda11.1 \
     && apt-mark hold libcudnn8 && \
     rm -rf /var/lib/apt/lists/*
-
-
-# GoCV 
-FROM cuda11_1-cudnn8-arm64 AS gocv-cuda11_1-cudnn8-arm64
-LABEL maintainer="jonotoninnovation"
-ENV DEBIAN_FRONTEND="noninteractive"
-RUN ln -s /usr/share/zoneinfo/America/New_York /etc/localtime
-RUN apt update && apt install -y --no-install-recommends sudo git wget tzdata
-RUN apt purge -y golang
-RUN mkdir /Downloads
-RUN wget -c https://golang.org/dl/go1.15.8.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
-ENV GOROOT="/Downloads/go"
-ENV PATH=$PATH:$GOROOT/bin
-RUN which go && go version
-ENV GOPATH=/go
-ENV GO111MODULE=on
-RUN mkdir -p "$GOPATH/src"
-WORKDIR /go/src
-RUN go get -d gocv.io/x/gocv@v0.28.0
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.28.0 && make install_cuda
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.28.0 && go install -v .
-
-
-# Scout
-FROM gocv-cuda11_1-cudnn8-arm64 AS scout-cuda11_1-arm64
-LABEL maintainer="jonotoninnovation"
-ARG UNAME=user
-ARG UID=1000
-ARG GID=1000
-RUN groupadd -g $GID -o $UNAME
-RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
-RUN mkdir /scout && chown $UID:$GID /scout
-WORKDIR /go/src/github.com/jonoton/scout
-COPY . .
-RUN chown -R $UID:$GID /go
-USER $UNAME
-RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
-RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
-RUN go get -d -v ./... && go install -v ./...
-CMD /go/bin/scout
