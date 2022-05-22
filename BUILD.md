@@ -14,7 +14,7 @@ go get -d ./...
 ### GoCV
 #### Navigate to folder
 ```
-cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.28.0
+cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
 ```
 #### Choose One
 ##### Build

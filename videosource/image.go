@@ -122,7 +122,7 @@ func (i *Image) ChangeQuality(percent int) {
 		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
 		i.SharedMat.Guard.RUnlock()
 		if err == nil {
-			newMat, err := gocv.IMDecode(encoded, gocv.IMReadUnchanged)
+			newMat, err := gocv.IMDecode(encoded.GetBytes(), gocv.IMReadUnchanged)
 			if err == nil {
 				i.SharedMat.Cleanup()
 				i.SharedMat = sharedmat.NewSharedMat(newMat)
@@ -144,7 +144,7 @@ func (i *Image) EncodedQuality(percent int) []byte {
 		jpgParams := []int{gocv.IMWriteJpegQuality, percent}
 		encoded, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, i.SharedMat.Mat, jpgParams)
 		if err == nil {
-			imgArray = encoded
+			imgArray = encoded.GetBytes()
 		}
 	}
 	i.SharedMat.Guard.RUnlock()
