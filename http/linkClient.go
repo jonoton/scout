@@ -31,7 +31,7 @@ func newLinkClient(name string, url string, user string, password string) *linkC
 		name:         name,
 		url:          url,
 		user:         user,
-		passHash:     getMD5Hash(password),
+		passHash:     getSHA256Hash(password),
 		token:        "",
 		monitorNames: make([]string, 0),
 	}
@@ -58,7 +58,7 @@ func (l *linkClient) login() {
 	l.token = ""
 	agent := fiber.Post(l.url + "/login").InsecureSkipVerify()
 	args := fiber.AcquireArgs()
-	args.Set("a", getMD5Hash(l.user))
+	args.Set("a", getSHA256Hash(l.user))
 	args.Set("b", l.passHash)
 	agent.Form(args)
 	if err := agent.Parse(); err == nil {

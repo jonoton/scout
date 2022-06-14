@@ -1,70 +1,118 @@
 <html>
-   <head>
-      <title>Scout</title>
-      <link rel="stylesheet" href="css/bootstrap.min.css">
-      <link rel="stylesheet" href="css/bootstrap-grid.min.css">
-      <link rel="stylesheet" href="css/bootstrap-reboot.min.css">
-      <link rel="stylesheet" href="css/scout.css">
-      <script type="text/javascript" src="js/popper.min.js"></script>
-      <script type="text/javascript" src="js/jquery-3.5.1.min.js"></script>
-      <script type="text/javascript" src="js/js.cookie.min.js"></script>
-      <script type="text/javascript" src="js/pako.min.js"></script>
-      <script type="text/javascript" src="js/md5.js"></script>
-      <script type="text/javascript" src="js/bootstrap.min.js"></script>
-      <script type="text/javascript" src="js/bootstrap.bundle.min.js"></script>
 
-      <script type="text/javascript" src="js/stringtoarray.js"></script>
-      <script type="text/javascript" src="js/blobtostring.js"></script>
-      <script type="text/javascript" src="js/login.js"></script>
-      <script type="text/javascript" src="js/index.js"></script>      
-   </head>
-   
-   <body>
-      <nav class="navbar navbar-expand-lg navbar-dark bgColorLight">
-         <a class="navbar-brand" href="#">
-           <img src="images/hawk-wing.png" height="75" alt="">
-           Scout
-         </a>
-         <button id="login-button" type="button" class="d-none btn btn-primary ml-auto" data-toggle="modal" data-target="#login-modal">Login</button>
-         <button id="logout-button" type="button" class="d-none btn btn-secondary ml-auto">Logout</button>
-      </nav>
-      <div id="status-body" class="container-fluid text-white">
-         <div class="row">
-            <div id="status" class="col text-right"></div>
+<head>
+   <title>Scout</title>
+   <link rel="stylesheet" href="css/bootstrap.min.css">
+   <link rel="stylesheet" href="css/bootstrap-grid.min.css">
+   <link rel="stylesheet" href="css/bootstrap-reboot.min.css">
+   <link rel="stylesheet" href="css/scout.css">
+   <script type="text/javascript" src="js/popper.min.js"></script>
+   <script type="text/javascript" src="js/jquery-3.5.1.min.js"></script>
+   <script type="text/javascript" src="js/js.cookie.min.js"></script>
+   <script type="text/javascript" src="js/pako.min.js"></script>
+   <script type="text/javascript" src="js/crypto-js.min.js"></script>
+   <script type="text/javascript" src="js/bootstrap.min.js"></script>
+   <script type="text/javascript" src="js/bootstrap.bundle.min.js"></script>
+
+   <script type="text/javascript" src="js/stringtoarray.js"></script>
+   <script type="text/javascript" src="js/blobtostring.js"></script>
+   <script type="text/javascript" src="js/login.js"></script>
+   <script type="text/javascript" src="js/index.js"></script>
+</head>
+
+<body>
+   <nav class="navbar navbar-expand-lg navbar-dark bgColorLight">
+      <a class="navbar-brand" href="#">
+         <img src="images/hawk-wing.png" height="75" alt="">
+         Scout
+      </a>
+      <button id="login-button" type="button" class="d-none btn btn-primary ml-auto" data-toggle="modal"
+         data-target="#login-modal">Login</button>
+      <button id="logout-button" type="button" class="d-none btn btn-secondary ml-auto">Logout</button>
+   </nav>
+   <div id="status-body" class="container-fluid text-white">
+      <div class="row">
+         <div id="status" class="col text-right"></div>
+      </div>
+   </div>
+   <div id="memory-body" class="container-fluid bgColorLight text-white">
+      <div class="row">
+         <div id="memory" class="col text-right">
          </div>
       </div>
-      <div id="memory-body" class="container-fluid bgColorLight text-white">
-         <div class="row">
-            <div id="memory" class="col text-right">
+   </div>
+   <div id="login-modal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h4 class="modal-title">Login</h4>
+               <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+               <form role="form" autocomplete="off">
+                  <div class="form-group">
+                     <input id="login_user" type="user" class="form-control m-2" placeholder="User" />
+                     <input id="login_pwd" type="password" class="form-control m-2" placeholder="Password" />
+                  </div>
+               </form>
+               <div id="bad_user" class="d-none text-danger">Bad username and/or password.</div>
+            </div>
+            <div class="modal-footer">
+               <button id="login-btn" type="button" class="btn btn-primary">Login</button>
+               <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
             </div>
          </div>
       </div>
-      <div id="login-modal" class="modal fade" role="dialog">
-         <div class="modal-dialog">
-           <div class="modal-content">
-             <div class="modal-header">
-               <h4 class="modal-title">Login</h4>
+   </div>
+   <div id="login-choose-modal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h4 class="modal-title">Need Verification</h4>
                <button type="button" class="close" data-dismiss="modal">&times;</button>
-             </div>
-             <div class="modal-body">
-               <form role="form">
+            </div>
+            <div class="modal-body">
+               <form role="form" autocomplete="off">
                   <div class="form-group">
-                    <input id="login_user" type="user" class="form-control m-2" placeholder="User"/>
-                    <input id="login_pwd" type="password" class="form-control m-2" placeholder="Password" />
+                     <label class="mr-2">Choose one:</label>
+                     <select name="login_choose" id="login_choose">
+                     </select>
                   </div>
-                </form>
-                <div id="bad_user" class="d-none text-danger" >Bad username and/or password.</div>
-             </div>
-             <div class="modal-footer">
-               <button id="login" type="button" class="btn btn-primary">Login</button>
+               </form>
+            </div>
+            <div class="modal-footer">
+               <button id="login-choose-btn" type="button" class="btn btn-primary">Select</button>
                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-             </div>
-           </div>
-       
+            </div>
          </div>
-       </div>
-      <div id="content-body" class="container-fluid">
-         <div id="monitor-container" class="container-fluid"></div>
       </div>
-   </body>
+   </div>
+   <div id="login-passcode-modal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+         <div class="modal-content">
+            <div class="modal-header">
+               <h4 class="modal-title">Passcode</h4>
+               <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+               <form role="form" autocomplete="off">
+                  <div class="form-group">
+                     <input id="login_passcode" class="form-control m-2" placeholder="Passcode" />
+                  </div>
+               </form>
+               <div id="login-passcode-duration" class="font-italic"></div>
+               <div id="bad_passcode" class="d-none text-danger">Bad passcode.</div>
+            </div>
+            <div class="modal-footer">
+               <button id="login-passcode-btn" type="button" class="btn btn-primary">Login</button>
+               <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+         </div>
+      </div>
+   </div>
+   <div id="content-body" class="container-fluid">
+      <div id="monitor-container" class="container-fluid"></div>
+   </div>
+</body>
+
 </html>

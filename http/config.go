@@ -3,6 +3,7 @@ package http
 import (
 	"io/ioutil"
 
+	"github.com/jonoton/scout/notify"
 	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v2"
@@ -13,10 +14,11 @@ var (
 	ConfigFilename = "http.yaml"
 )
 
-// UserPassword contains the username and password
-type UserPassword struct {
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+// UserAuth contains the username, password, and optional two factor
+type UserAuth struct {
+	User      string          `yaml:"user"`
+	Password  string          `yaml:"password"`
+	TwoFactor notify.RxConfig `yaml:"twoFactor"`
 }
 
 type link struct {
@@ -28,12 +30,13 @@ type link struct {
 
 // Config contains the parameters for Http
 type Config struct {
-	Port             int            `yaml:"port,omitempty"`
-	LimitPerSecond   int            `yaml:"limitPerSecond,omitempty"`
-	Users            []UserPassword `yaml:"users,omitempty"`
-	SignInExpireDays int            `yaml:"signInExpireDays,omitempty"`
-	Links            []link         `yaml:"links,omitempty"`
-	LinkRetry        int            `yaml:"linkRetry,omitempty"`
+	Port                int        `yaml:"port,omitempty"`
+	LimitPerSecond      int        `yaml:"limitPerSecond,omitempty"`
+	Users               []UserAuth `yaml:"users,omitempty"`
+	SignInExpireDays    int        `yaml:"signInExpireDays,omitempty"`
+	Links               []link     `yaml:"links,omitempty"`
+	LinkRetry           int        `yaml:"linkRetry,omitempty"`
+	TwoFactorTimeoutSec int        `yaml:"twoFactorTimeoutSec,omitempty"`
 }
 
 // NewConfig creates a new Config

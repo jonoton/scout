@@ -3,8 +3,15 @@ limitPerSecond: 100
 users:
     - user: "USER1"
       password: "PASSWORD1"
+      twoFactor: # Optional but Recommended
+        email:
+          - "EMAIL1"
     - user: "USER2"
       password: "PASSWORD2"
+      twoFactor: # Optional but Recommended
+        sms:
+          att:
+            - "PHONE_NUMBER2"
 signInExpireDays: 7
 links:
   - name: "link1"
@@ -12,3 +19,4 @@ links:
     user: "LINK_USER1"
     password: "LINK_PASSWORD1"
 linkRetry: 2
+twoFactorTimeoutSec: 60

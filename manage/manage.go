@@ -26,7 +26,7 @@ type Manage struct {
 	monGuard         sync.RWMutex
 	manageConf       Config
 	notifySenderConf *notify.SenderConfig
-	notifier         *notify.Notify
+	Notifier         *notify.Notify
 	wtr              *watcher.Watcher
 	done             chan bool
 }
@@ -38,12 +38,12 @@ func NewManage() *Manage {
 		monGuard:         sync.RWMutex{},
 		manageConf:       *NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
-		notifier:         nil,
+		Notifier:         nil,
 		wtr:              watcher.New(),
 		done:             make(chan bool),
 	}
 	if m.notifySenderConf != nil {
-		m.notifier = notify.NewNotify(m.notifySenderConf.Host,
+		m.Notifier = notify.NewNotify(m.notifySenderConf.Host,
 			m.notifySenderConf.Port,
 			m.notifySenderConf.User,
 			m.notifySenderConf.Password)
@@ -168,9 +168,9 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 			notifyRxPath := runtimeConfigDir + monConf.NotifyRxFilename
 			notifyRxConf := notify.NewRxConfig(notifyRxPath)
 			mon.ConfigPaths = append(mon.ConfigPaths, notifyRxPath)
-			mon.SetAlert(m.notifier, notifyRxConf, m.manageConf.Data, alertSettings)
+			mon.SetAlert(m.Notifier, notifyRxConf, m.manageConf.Data, alertSettings)
 		} else {
-			mon.SetAlert(m.notifier, nil, m.manageConf.Data, alertSettings)
+			mon.SetAlert(m.Notifier, nil, m.manageConf.Data, alertSettings)
 		}
 	}
 	if monConf.MotionFilename != "" {
