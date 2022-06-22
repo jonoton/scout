@@ -119,7 +119,7 @@ func (h *Http) createToken(user string, timeNow time.Time) (string, error) {
 
 func (h *Http) sendSecret(index int, rxConfig *notify.RxConfig, attempt twoFactorAttempt) {
 	title := "Scout Passcode"
-	html := "Scout Passcode:  " + attempt.secret
+	html := "Scout Passcode: <br>" + attempt.secret
 	pos := 0
 	for _, cur := range rxConfig.Email {
 		if pos == index {
@@ -155,6 +155,7 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 				if hasSharedSecret {
 					// Secret Provided
 					if userCheck, found := h.twoFactorCheck[vUser]; found && sharedSecret == userCheck.secret {
+						delete(h.twoFactorCheck, vUser)
 						t, err := h.createToken(user, timeNow)
 						if err != nil {
 							h.loginLogger.Printf("%s,error,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
