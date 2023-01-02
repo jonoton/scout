@@ -3,12 +3,15 @@ package motion
 import (
 	"image"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/jonoton/scout/videosource"
 	"gocv.io/x/gocv"
 )
 
 // Motion detects motion within images
 type Motion struct {
+	Name               string
 	Skip               bool
 	padding            int
 	scaleWidth         int
@@ -23,8 +26,9 @@ type Motion struct {
 }
 
 // NewMotion creates a new Motion
-func NewMotion() *Motion {
+func NewMotion(name string) *Motion {
 	m := &Motion{
+		Name:               name,
 		padding:            0,
 		scaleWidth:         320,
 		minimumPercentage:  2,
@@ -80,6 +84,12 @@ func (m *Motion) SetConfig(config *Config) {
 func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer func() {
+			// recover from panic if one occured
+			if recover() != nil {
+				log.Errorln("Recovered from panic in motion for", m.Name)
+			}
+		}()
 		mog2 := gocv.NewBackgroundSubtractorMOG2()
 		for cur := range input {
 			result := *videosource.NewProcessedImage(cur)

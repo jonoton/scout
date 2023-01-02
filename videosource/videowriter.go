@@ -7,10 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cskr/pubsub"
+	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
 	"github.com/jonoton/scout/sharedmat"
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
+
+const topicGetFrameStats = "topic-get-frame-stats"
+const topicCurrentFrameStats = "topic-current-frame-stats"
 
 // SaveImage will save an Image
 func SaveImage(img Image, t time.Time, saveDirectory string, jpegQuality int, name string, title string, percentage string) (savePath string) {
@@ -70,12 +75,13 @@ type VideoWriter struct {
 	secTick          *time.Ticker
 	recordChan       chan bool
 	done             chan bool
-	VideoStats       *VideoStats
+	videoStats       *VideoStats
 	savePreview      bool
 	savePortable     bool
 	saveFull         bool
 	activityType     int
 	PortableWidth    int
+	pubsub           pubsubmutex.PubSubMutex
 }
 
 // NewVideoWriter creates a new VideoWriter
@@ -111,23 +117,34 @@ func NewVideoWriter(name string, saveDirectory string, codec string, fileType st
 		secTick:          time.NewTicker(time.Second),
 		recordChan:       make(chan bool),
 		done:             make(chan bool),
-		VideoStats:       NewVideoStats(),
+		videoStats:       NewVideoStats(),
 		savePreview:      savePreview,
 		savePortable:     savePortable,
 		saveFull:         saveFull,
 		activityType:     activityType,
 		PortableWidth:    1080,
+		pubsub:           *pubsubmutex.New(0),
 	}
 	return v
 }
 
 // Start runs the processes
 func (v *VideoWriter) Start() {
+	v.pubsub.Start()
 	go func() {
-		v.VideoStats.Start()
+		statTick := time.NewTicker(time.Second)
+		getFrameStatsChan := v.pubsub.Sub(topicGetFrameStats)
 	Loop:
 		for {
 			select {
+			case <-statTick.C:
+				v.videoStats.Tick()
+				v.pubStats()
+			case _, ok := <-getFrameStatsChan:
+				if !ok {
+					continue
+				}
+				v.pubStats()
 			case <-v.recordChan:
 				v.record = true
 				v.lastActivityTime = time.Now()
@@ -152,12 +169,12 @@ func (v *VideoWriter) Start() {
 					if v.recording {
 						// write
 						v.writeRecord(origImg)
-						v.VideoStats.AddAccepted()
+						v.videoStats.AddAccepted()
 					} else {
 						// buffer
 						oldest := v.preRingBuffer.Push(*origImg.Ref())
 						if filled, closed := oldest.Cleanup(); filled && closed {
-							v.VideoStats.AddDropped()
+							v.videoStats.AddDropped()
 						}
 					}
 				}
@@ -198,8 +215,10 @@ func (v *VideoWriter) Start() {
 				}
 			}
 		}
-		v.VideoStats.Cleanup()
+		statTick.Stop()
 		v.secTick.Stop()
+		v.videoStats.ClearPerSecond()
+		v.pubsub.Shutdown()
 		cleanupRingBuffer(&v.preRingBuffer)
 		close(v.done)
 	}()
@@ -342,4 +361,19 @@ func GetImageFilename(t time.Time, saveDirectory string, name string, title stri
 	filename := GetBaseFilename(t, saveDirectory, name, title, percentage)
 	filename += ".jpg"
 	return filename
+}
+
+// GetStats returns the FrameStats
+func (v *VideoWriter) GetStats(timeoutMs int) (result *FrameStats) {
+	r := v.pubsub.SendReceive(topicGetFrameStatsOutput, topicCurrentFrameStats,
+		nil, timeoutMs)
+	if r != nil {
+		result = r.(*FrameStats)
+	}
+	return
+}
+func (v *VideoWriter) pubStats() {
+	v.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(v.videoStats.GetStats(), topicCurrentFrameStats)
+	})
 }

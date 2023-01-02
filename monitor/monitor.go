@@ -6,35 +6,48 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cskr/pubsub"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
 	"github.com/jonoton/scout/notify"
+	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
 	"github.com/jonoton/scout/tensor"
 	"github.com/jonoton/scout/videosource"
+	log "github.com/sirupsen/logrus"
 )
+
+const topicSubscribe = "topic-monitor-subscribe"
+const topicUnsubscribe = "topic-monitor-unsubscribe"
+const topicGetMonitorFrameStats = "topic-get-monitor-frame-stats"
+const topicCurrentMonitorFrameStats = "topic-current-monitor-frame-stats"
+
+type subscribeMonitor struct {
+	key     string
+	subChan chan videosource.ProcessedImage
+}
 
 // Monitor contains the video source
 type Monitor struct {
-	Name             string
-	bufferSize       int
-	ConfigPaths      []string
-	reader           *videosource.VideoReader
-	record           *Record
-	continuous       *Continuous
-	notifier         *notify.Notify
-	notifyRxConf     *notify.RxConfig
-	staleTimeout     int
-	StaleRetry       int
-	StaleMaxRetry    int
-	IsDoneProcessing bool
-	IsStale          bool
-	motion           *motion.Motion
-	tensor           *tensor.Tensor
-	face             *face.Face
-	subscriptions    map[string]chan videosource.ProcessedImage
-	subGuard         sync.RWMutex
-	alert            *Alert
-	done             chan bool
+	Name            string
+	bufferSize      int
+	ConfigPaths     []string
+	reader          *videosource.VideoReader
+	record          *Record
+	continuous      *Continuous
+	notifier        *notify.Notify
+	notifyRxConf    *notify.RxConfig
+	staleTimeout    int
+	StaleRetry      int
+	StaleMaxRetry   int
+	IsStale         bool
+	frameStatsCombo videosource.FrameStatsCombo
+	motion          *motion.Motion
+	tensor          *tensor.Tensor
+	face            *face.Face
+	subscriptions   map[string]chan videosource.ProcessedImage
+	alert           *Alert
+	pubsub          pubsubmutex.PubSubMutex
+	done            chan bool
 }
 
 // Map is a map of names to Monitor
@@ -43,25 +56,25 @@ type Map map[string]*Monitor
 // NewMonitor creates a new Monitor
 func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 	m := &Monitor{
-		Name:             name,
-		bufferSize:       0,
-		reader:           reader,
-		record:           nil,
-		continuous:       nil,
-		notifier:         nil,
-		notifyRxConf:     nil,
-		staleTimeout:     20,
-		StaleRetry:       10,
-		StaleMaxRetry:    10,
-		IsDoneProcessing: false,
-		IsStale:          false,
-		motion:           motion.NewMotion(),
-		tensor:           tensor.NewTensor(),
-		face:             face.NewFace(),
-		subscriptions:    make(map[string]chan videosource.ProcessedImage),
-		subGuard:         sync.RWMutex{},
-		alert:            nil,
-		done:             make(chan bool),
+		Name:            name,
+		bufferSize:      0,
+		reader:          reader,
+		record:          nil,
+		continuous:      nil,
+		notifier:        nil,
+		notifyRxConf:    nil,
+		staleTimeout:    20,
+		StaleRetry:      10,
+		StaleMaxRetry:   10,
+		IsStale:         false,
+		frameStatsCombo: videosource.FrameStatsCombo{},
+		motion:          motion.NewMotion(name),
+		tensor:          tensor.NewTensor(name),
+		face:            face.NewFace(name),
+		subscriptions:   make(map[string]chan videosource.ProcessedImage),
+		pubsub:          *pubsubmutex.New(0),
+		alert:           nil,
+		done:            make(chan bool),
 	}
 
 	return m
@@ -119,33 +132,7 @@ func (m *Monitor) SetFace(config *face.Config) {
 // Start will run the processes
 func (m *Monitor) Start() {
 	go func() {
-		staleTicker := time.NewTicker(time.Second)
-		staleSec := 0
-		lastTotal := 0
-	Loop:
-		for {
-			select {
-			case <-m.done:
-				break Loop
-			case <-staleTicker.C:
-				curTotal := m.reader.SourceStats.AcceptedTotal
-				if lastTotal == curTotal {
-					staleSec++
-				} else {
-					staleSec = 0
-					m.IsStale = false
-					m.StaleRetry = m.StaleMaxRetry
-				}
-				lastTotal = curTotal
-				if staleSec >= m.staleTimeout {
-					m.IsStale = true
-					break Loop
-				}
-			}
-		}
-		staleTicker.Stop()
-	}()
-	go func() {
+		m.pubsub.Start()
 		readerOutput := m.reader.Start()
 
 		motionInput := make(chan videosource.Image, m.bufferSize)
@@ -186,27 +173,81 @@ func (m *Monitor) Start() {
 			if m.alert != nil {
 				m.alert.Start()
 			}
-			for cur := range faceOutput {
-				m.subGuard.RLock()
-				for _, val := range m.subscriptions {
-					select {
-					case val <- *cur.Ref():
-					default:
+			subChan := m.pubsub.Sub(topicSubscribe)
+			unsubChan := m.pubsub.Sub(topicUnsubscribe)
+			getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
+			sourceStatsChan := m.reader.GetSourceStatsChan()
+			outputStatsChan := m.reader.GetOutputStatsChan()
+			staleTicker := time.NewTicker(time.Second)
+			staleSec := 0
+			lastTotal := 0
+		FaceLoop:
+			for {
+				select {
+				case _, ok := <-getMonFrameStatsChan:
+					if !ok {
+						continue
+					}
+					m.pubMonitorFrameStats()
+				case cur, ok := <-sourceStatsChan:
+					if !ok || cur == nil {
+						continue
+					}
+					m.frameStatsCombo.In = *cur.(*videosource.FrameStats)
+				case cur, ok := <-outputStatsChan:
+					if !ok || cur == nil {
+						continue
+					}
+					m.frameStatsCombo.Out = *cur.(*videosource.FrameStats)
+				case subMon, ok := <-subChan:
+					if !ok {
+						continue
+					}
+					m.subscribe(subMon.(subscribeMonitor))
+				case key, ok := <-unsubChan:
+					if !ok {
+						continue
+					}
+					m.unsubscribe(key.(string))
+				case cur, ok := <-faceOutput:
+					if !ok {
+						cur.Cleanup()
+						break FaceLoop
+					}
+					for _, val := range m.subscriptions {
+						subImage := *cur.Ref()
+						select {
+						case val <- subImage:
+						default:
+							subImage.Cleanup()
+						}
+					}
+					if m.alert != nil {
+						m.alert.Push(*cur.Ref())
+					}
+					if m.record != nil {
+						m.record.Send(*cur.Ref())
+					}
+					if m.continuous != nil {
+						m.continuous.Send(*cur.Ref())
+					}
+					cur.Cleanup()
+				case <-staleTicker.C:
+					curTotal := m.frameStatsCombo.In.AcceptedTotal
+					if lastTotal == curTotal {
+						staleSec++
+					} else {
+						staleSec = 0
+						m.IsStale = false
+						m.StaleRetry = m.StaleMaxRetry
+					}
+					lastTotal = curTotal
+					if staleSec >= m.staleTimeout {
+						m.IsStale = true
 					}
 				}
-				m.subGuard.RUnlock()
-
-				if m.alert != nil {
-					m.alert.Push(*cur.Ref())
-				}
-				if m.record != nil {
-					m.record.Send(*cur.Ref())
-				}
-				if m.continuous != nil {
-					m.continuous.Send(*cur.Ref())
-				}
-				cur.Cleanup()
 			}
+			staleTicker.Stop()
 			if m.alert != nil {
 				m.alert.Stop()
 				m.alert.Wait()
@@ -219,7 +260,6 @@ func (m *Monitor) Start() {
 				m.continuous.Close()
 				m.continuous.Wait()
 			}
-			m.IsDoneProcessing = true
 			m.clearSubscriptions()
 			wg.Done()
 		}()
@@ -232,8 +272,10 @@ func (m *Monitor) Start() {
 
 		m.reader.Wait()
 		wg.Wait()
+		m.pubsub.Shutdown()
 		m.IsStale = true
 		close(m.done)
+		log.Infoln("Done monitor", m.Name)
 	}()
 }
 
@@ -248,45 +290,66 @@ func (m *Monitor) Wait() {
 }
 
 // Subscribe to video images
-func (m *Monitor) Subscribe(key string) (result <-chan videosource.ProcessedImage) {
-	if m.IsDoneProcessing {
-		return
-	}
-
-	m.subGuard.Lock()
-	m.subscriptions[key] = make(chan videosource.ProcessedImage)
-	result = m.subscriptions[key]
-	m.subGuard.Unlock()
+func (m *Monitor) Subscribe(key string) (result chan videosource.ProcessedImage) {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		subMon := subscribeMonitor{
+			key:     key,
+			subChan: make(chan videosource.ProcessedImage),
+		}
+		result = subMon.subChan
+		instance.TryPub(subMon, topicSubscribe)
+	})
 	return
+}
+
+// Subscribe to video images with channel
+func (m *Monitor) SubscribeWithChan(key string, subChan chan videosource.ProcessedImage) {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		subMon := subscribeMonitor{
+			key:     key,
+			subChan: subChan,
+		}
+		instance.TryPub(subMon, topicSubscribe)
+	})
 }
 
 // Unsubscribe to video images
 func (m *Monitor) Unsubscribe(key string) {
-	m.subGuard.Lock()
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(key, topicUnsubscribe)
+	})
+}
+
+func (m *Monitor) subscribe(subMon subscribeMonitor) {
+	m.subscriptions[subMon.key] = subMon.subChan
+}
+func (m *Monitor) unsubscribe(key string) {
 	if _, found := m.subscriptions[key]; found {
 		close(m.subscriptions[key])
 		delete(m.subscriptions, key)
 	}
-	m.subGuard.Unlock()
 }
-
 func (m *Monitor) clearSubscriptions() {
-	m.subGuard.Lock()
 	for _, val := range m.subscriptions {
 		close(val)
 	}
 	m.subscriptions = make(map[string]chan videosource.ProcessedImage)
-	m.subGuard.Unlock()
 }
 
-// GetReaderInStats returns the reader source stats
-func (m *Monitor) GetReaderInStats() videosource.FrameStats {
-	return m.reader.SourceStats.GetStats()
+// GetMonitorFrameStats returns the monitor's frame stats
+func (m *Monitor) GetMonitorFrameStats(timeoutMs int) (result *videosource.FrameStatsCombo) {
+	r := m.pubsub.SendReceive(topicGetMonitorFrameStats, topicCurrentMonitorFrameStats,
+		nil, timeoutMs)
+	if r != nil {
+		result = r.(*videosource.FrameStatsCombo)
+	}
+	return
 }
 
-// GetReaderOutStats returns the reader output stats
-func (m *Monitor) GetReaderOutStats() videosource.FrameStats {
-	return m.reader.OutputStats.GetStats()
+func (m *Monitor) pubMonitorFrameStats() {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(&m.frameStatsCombo, topicCurrentMonitorFrameStats)
+	})
 }
 
 // GetAlertTimes returns the alert times

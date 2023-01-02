@@ -18,6 +18,9 @@ func Run(c *websocket.Conn, socketClosed chan bool, receive func(int, []byte), s
 	go func() {
 	Loop:
 		for {
+			if c.Conn == nil {
+				break Loop
+			}
 			msgType, data, err := c.ReadMessage()
 			if err != nil {
 				// socket closed

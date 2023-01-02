@@ -187,10 +187,12 @@ function getMonitorInfo(monitorName) {
             `;
             $(`#${monitorName}-info`).html(html);
          }
+         return true;
+      },
+      complete: function () {
          if (connected) {
             setTimeout(getMonitorInfo, 2000, monitorName);
          }
-         return true;
       }
    });
 }
@@ -216,10 +218,12 @@ function getMemory() {
                memoryDiv.addClass('bg-warning');
             }
          }
+         return true;
+      },
+      complete: function () {
          if (connected) {
             setTimeout(getMemory, 2000);
          }
-         return true;
       }
    });
 }

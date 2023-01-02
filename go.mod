@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/cskr/pubsub v1.0.2
 	github.com/fasthttp/websocket v1.4.3 // indirect
 	github.com/gofiber/fiber/v2 v2.17.0
 	github.com/gofiber/jwt/v2 v2.2.1

@@ -2,6 +2,7 @@ package http
 
 import (
 	"strconv"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,10 +50,26 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		ringBuffer := videosource.NewRingBufferProcessedImage(1)
 		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
 		go func() {
-			for img := range images {
-				popped := ringBuffer.Push(img)
-				popped.Cleanup()
+			timeoutTick := time.NewTicker(time.Second * 4)
+			rx := 0
+		ringLoop:
+			for {
+				select {
+				case img, ok := <-images:
+					if !ok {
+						break ringLoop
+					}
+					rx++
+					popped := ringBuffer.Push(img)
+					popped.Cleanup()
+				case <-timeoutTick.C:
+					if rx == 0 {
+						break ringLoop
+					}
+					rx = 0
+				}
 			}
+			timeoutTick.Stop()
 			close(sourceDone)
 		}()
 

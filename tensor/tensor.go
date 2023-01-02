@@ -19,6 +19,7 @@ const fileLocation = "data/tensor"
 
 // Tensor detects objects within images
 type Tensor struct {
+	Name                    string
 	Skip                    bool
 	forceCpu                bool
 	padding                 int
@@ -40,7 +41,7 @@ type Tensor struct {
 }
 
 // NewTensor creates a new Tensor
-func NewTensor() *Tensor {
+func NewTensor(name string) *Tensor {
 	// check cuda available
 	backend := gocv.NetBackendDefault
 	target := gocv.NetTargetCPU
@@ -50,6 +51,7 @@ func NewTensor() *Tensor {
 	}
 
 	t := &Tensor{
+		Name:                    name,
 		forceCpu:                false,
 		padding:                 0,
 		modelFile:               "frozen_inference_graph.pb",
@@ -129,13 +131,19 @@ func (t *Tensor) SetConfig(config *Config) {
 func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer func() {
+			// recover from panic if one occured
+			if recover() != nil {
+				log.Errorln("Recovered from panic in tensor for", t.Name)
+			}
+		}()
 		defer close(r)
 		modelFile := runtime.GetRuntimeDirectory(fileLocation) + t.modelFile
 		configFile := runtime.GetRuntimeDirectory(fileLocation) + t.configFile
 		descFile := runtime.GetRuntimeDirectory(fileLocation) + t.descFile
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v\n", modelFile, configFile)
+			log.Printf("Error reading network model from : %v %v for %s\n", modelFile, configFile, t.Name)
 			return
 		}
 
@@ -160,13 +168,13 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		if t.descFile != "" {
 			descs, err := readDescriptions(descFile)
 			if err != nil {
-				log.Printf("Error reading descriptions file: %v\n", t.descFile)
+				log.Printf("Error reading descriptions file: %v for %s\n", t.descFile, t.Name)
 				return
 			}
 			descriptions = descs
 		}
 
-		log.Infof("Tensor %s using %s and %s with %s\n", targetName, modelFile, configFile, descFile)
+		log.Infof("Tensor %s using %s and %s with %s for %s\n", targetName, modelFile, configFile, descFile, t.Name)
 
 		var ratio float64
 		var mean gocv.Scalar

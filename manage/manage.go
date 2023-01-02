@@ -4,11 +4,12 @@ package manage
 
 import (
 	"sort"
-	"sync"
 	"time"
 
+	"github.com/cskr/pubsub"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
+	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
 	"github.com/jonoton/scout/tensor"
 
 	"github.com/radovskyb/watcher"
@@ -20,14 +21,26 @@ import (
 	"github.com/jonoton/scout/videosource"
 )
 
+const topicAddMon = "topic-add-mon"
+const topicRemoveMon = "topic-remove-mon"
+const topicSubscribe = "topic-manage-subscribe"
+const topicUnsubscribe = "topic-manage-unsubscribe"
+const topicStop = "topic-stop"
+const topicGetMonitorNames = "topic-get-monitor-names"
+const topicCurrentMonitorNames = "topic-current-monitor-names"
+const topicGetMonitorFrameStats = "topic-get-monitor-frame-stats"
+const topicCurrentMonitorFrameStats = "topic-current-monitor-frame-stats"
+const topicGetMonitorAlertTimes = "topic-get-monitor-alert-times"
+const topicCurrentMonitorAlertTimes = "topic-current-monitor-alert-times"
+
 // Manage contains all the monitors and manages them
 type Manage struct {
 	mons             monitor.Map
-	monGuard         sync.RWMutex
 	manageConf       Config
 	notifySenderConf *notify.SenderConfig
 	Notifier         *notify.Notify
 	wtr              *watcher.Watcher
+	pubsub           pubsubmutex.PubSubMutex
 	done             chan bool
 }
 
@@ -35,11 +48,11 @@ type Manage struct {
 func NewManage() *Manage {
 	m := &Manage{
 		mons:             make(monitor.Map),
-		monGuard:         sync.RWMutex{},
 		manageConf:       *NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
 		Notifier:         nil,
 		wtr:              watcher.New(),
+		pubsub:           *pubsubmutex.New(0),
 		done:             make(chan bool),
 	}
 	if m.notifySenderConf != nil {
@@ -53,11 +66,12 @@ func NewManage() *Manage {
 
 // AddMonitor adds a new monitor to manage
 func (m *Manage) AddMonitor(mon *monitor.Monitor) {
-	m.monGuard.Lock()
-	m.addMonitor(mon)
-	m.monGuard.Unlock()
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(mon, topicAddMon)
+	})
 }
 func (m *Manage) addMonitor(mon *monitor.Monitor) {
+	log.Infoln("Add monitor", mon.Name)
 	m.mons[mon.Name] = mon
 	for _, pathName := range mon.ConfigPaths {
 		go func(pathName string) {
@@ -68,36 +82,64 @@ func (m *Manage) addMonitor(mon *monitor.Monitor) {
 }
 
 // GetMonitorNames returns a list of monitor names
-func (m *Manage) GetMonitorNames() (result []string) {
-	m.monGuard.RLock()
-	for key := range m.mons {
-		result = append(result, key)
+func (m *Manage) GetMonitorNames(timeoutMs int) (result []string) {
+	r := m.pubsub.SendReceive(topicGetMonitorNames, topicCurrentMonitorNames,
+		nil, timeoutMs)
+	if r != nil {
+		result = r.([]string)
 	}
-	m.monGuard.RUnlock()
-	sort.Strings(result)
+	return
+}
+func (m *Manage) pubMonitorNames() {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		result := make([]string, 0)
+		for key := range m.mons {
+			result = append(result, key)
+		}
+		sort.Strings(result)
+		instance.TryPub(result, topicCurrentMonitorNames)
+	})
+}
+
+// GetMonitorFrameStats returns the monitor's frame stats
+func (m *Manage) GetMonitorFrameStats(monitorName string, timeoutMs int) (result *videosource.FrameStatsCombo) {
+	r := m.pubsub.SendReceive(topicGetMonitorFrameStats, topicCurrentMonitorFrameStats,
+		monitorName, timeoutMs)
+	if r != nil {
+		result = r.(*videosource.FrameStatsCombo)
+	}
 	return
 }
 
-// GetMonitorVideoStats returns the monitor's video stats
-func (m *Manage) GetMonitorVideoStats(monitorName string) (readerIn videosource.FrameStats, readerOut videosource.FrameStats) {
-	m.monGuard.RLock()
-	if mon, found := m.mons[monitorName]; found {
-		readerIn = mon.GetReaderInStats()
-		readerOut = mon.GetReaderOutStats()
-	}
-	m.monGuard.RUnlock()
-	return
+func (m *Manage) pubMonitorFrameStats(monitorName string) {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		if mon, found := m.mons[monitorName]; found {
+			combo := mon.GetMonitorFrameStats(200)
+			instance.TryPub(combo, topicCurrentMonitorFrameStats)
+		} else {
+			instance.TryPub(nil, topicCurrentMonitorFrameStats)
+		}
+	})
 }
 
 // GetMonitorAlertTimes returns all monitor alert times
-func (m *Manage) GetMonitorAlertTimes() (result map[string]monitor.AlertTimes) {
-	m.monGuard.RLock()
-	result = make(map[string]monitor.AlertTimes)
-	for _, mon := range m.mons {
-		result[mon.Name] = mon.GetAlertTimes()
+func (m *Manage) GetMonitorAlertTimes(timeoutMs int) (result map[string]monitor.AlertTimes) {
+	r := m.pubsub.SendReceive(topicGetMonitorAlertTimes, topicCurrentMonitorAlertTimes,
+		nil, timeoutMs)
+	if r != nil {
+		alertTimes := r.(map[string]monitor.AlertTimes)
+		result = alertTimes
 	}
-	m.monGuard.RUnlock()
 	return
+}
+func (m *Manage) pubMonitorAlertTimes() {
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		alertTimes := make(map[string]monitor.AlertTimes)
+		for _, mon := range m.mons {
+			alertTimes[mon.Name] = mon.GetAlertTimes()
+		}
+		instance.TryPub(alertTimes, topicCurrentMonitorAlertTimes)
+	})
 }
 
 // GetDataDirectory returns the save data directory
@@ -107,14 +149,16 @@ func (m *Manage) GetDataDirectory() string {
 
 // Start runs the processes
 func (m *Manage) Start() {
+	m.run()
+}
+
+func (m *Manage) addAllMonitors() {
 	for _, cur := range m.manageConf.Monitors {
 		mon := m.setupMonitor(cur.Name, cur.ConfigPath)
 		if mon != nil {
-			m.AddMonitor(mon)
+			m.addMonitor(mon)
 		}
 	}
-	m.checkStaleMonitors()
-	m.monitorConfigChanges()
 }
 
 func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Monitor) {
@@ -195,15 +239,19 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 
 // Stop the manage
 func (m *Manage) Stop() {
-	m.monGuard.Lock()
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(nil, topicStop)
+	})
+}
+func (m *Manage) stop() {
+	m.pubsub.Shutdown()
 	tmpMap := make(monitor.Map)
 	for k, v := range m.mons {
 		tmpMap[k] = v
 	}
 	for _, v := range tmpMap {
-		m.removeMonitor(v)
+		m.removeMonitor(v, true)
 	}
-	m.monGuard.Unlock()
 	close(m.done)
 }
 
@@ -212,27 +260,50 @@ func (m *Manage) Wait() {
 	<-m.done
 }
 
+type subscribeMonitor struct {
+	monitorName string
+	key         string
+	subChan     chan videosource.ProcessedImage
+}
+
 // Subscribe to a monitor's video images
 func (m *Manage) Subscribe(monitorName string, key string) (result <-chan videosource.ProcessedImage) {
-	m.monGuard.RLock()
-	if mon, ok := m.mons[monitorName]; ok {
-		result = mon.Subscribe(key)
-	}
-	m.monGuard.RUnlock()
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		subMon := subscribeMonitor{
+			monitorName: monitorName,
+			key:         key,
+			subChan:     make(chan videosource.ProcessedImage),
+		}
+		instance.TryPub(subMon, topicSubscribe)
+		result = subMon.subChan
+	})
 	return
+}
+func (m *Manage) subscribe(subMon subscribeMonitor) {
+	if mon, ok := m.mons[subMon.monitorName]; ok {
+		mon.SubscribeWithChan(subMon.key, subMon.subChan)
+	} else {
+		close(subMon.subChan)
+	}
 }
 
 // Unsubscribe to a monitor's video images
 func (m *Manage) Unsubscribe(monitorName string, key string) {
-	m.monGuard.RLock()
-	if mon, ok := m.mons[monitorName]; ok {
-		mon.Unsubscribe(key)
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(subscribeMonitor{
+			monitorName: monitorName,
+			key:         key,
+			subChan:     nil,
+		}, topicUnsubscribe)
+	})
+}
+func (m *Manage) unsubscribe(subMon subscribeMonitor) {
+	if mon, ok := m.mons[subMon.monitorName]; ok {
+		mon.Unsubscribe(subMon.key)
 	}
-	m.monGuard.RUnlock()
 }
 
 func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleList []*monitor.Monitor) {
-	m.monGuard.Lock()
 	staleList = make([]*monitor.Monitor, 0)
 	for _, cur := range m.mons {
 		if cur.IsStale {
@@ -241,13 +312,15 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 		}
 	}
 	for _, stale := range staleList {
-		m.removeMonitor(stale)
+		m.removeMonitor(stale, true)
 		if stale.StaleRetry == 0 {
+			log.Errorln("Stale monitor DONE retrying for", stale.Name)
 			continue
 		}
 		if found, conf := m.getMonitorConf(stale.Name); found {
 			newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
 			if newMon == nil {
+				log.Errorln("Stale setup monitor FAILED for", stale.Name)
 				continue
 			}
 			for _, lastStale := range lastStaleList {
@@ -263,19 +336,75 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 			log.Infoln("Stale restarted monitor", newMon.Name)
 		}
 	}
-	m.monGuard.Unlock()
 	return
 }
 
-func (m *Manage) checkStaleMonitors() {
+func (m *Manage) run() {
+	m.pubsub.Start()
+	m.monitorConfigChanges()
 	go func() {
+		m.addAllMonitors()
+		addMonChan := m.pubsub.Sub(topicAddMon)
+		removeMonChan := m.pubsub.Sub(topicRemoveMon)
+		subChan := m.pubsub.Sub(topicSubscribe)
+		unsubChan := m.pubsub.Sub(topicUnsubscribe)
+		stopChan := m.pubsub.Sub(topicStop)
+		getMonNamesChan := m.pubsub.Sub(topicGetMonitorNames)
+		getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
+		getMonAlertTimesChan := m.pubsub.Sub(topicGetMonitorAlertTimes)
 		staleTicker := time.NewTicker(time.Second)
 		lastStaleList := make([]*monitor.Monitor, 0)
+		retryList := make([]mon, 0)
 	Loop:
 		for {
 			select {
+			case mon, ok := <-removeMonChan:
+				if !ok {
+					continue
+				}
+				m.removeMonitor(mon.(*monitor.Monitor), true)
+			case mon, ok := <-addMonChan:
+				if !ok {
+					continue
+				}
+				m.addMonitor(mon.(*monitor.Monitor))
+			case subMon, ok := <-subChan:
+				if !ok {
+					continue
+				}
+				m.subscribe(subMon.(subscribeMonitor))
+			case subMon, ok := <-unsubChan:
+				if !ok {
+					continue
+				}
+				m.unsubscribe(subMon.(subscribeMonitor))
+			case _, ok := <-stopChan:
+				if !ok {
+					continue
+				}
+				m.stop()
+			case _, ok := <-getMonNamesChan:
+				if !ok {
+					continue
+				}
+				m.pubMonitorNames()
+			case name, ok := <-getMonFrameStatsChan:
+				if !ok {
+					continue
+				}
+				m.pubMonitorFrameStats(name.(string))
+			case _, ok := <-getMonAlertTimesChan:
+				if !ok {
+					continue
+				}
+				m.pubMonitorAlertTimes()
 			case <-staleTicker.C:
 				lastStaleList = m.doCheckStaleMonitors(lastStaleList)
+			case event, ok := <-m.wtr.Event:
+				if !ok {
+					continue
+				}
+				retryList = m.doMonitorConfigChanges(event.Path, retryList)
 			case <-m.done:
 				break Loop
 			}
@@ -286,14 +415,21 @@ func (m *Manage) checkStaleMonitors() {
 
 // RemoveMonitor will stop, wait, and remove from manage
 func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
-	m.monGuard.Lock()
-	m.removeMonitor(mon)
-	m.monGuard.Unlock()
+	m.pubsub.Use(func(instance *pubsub.PubSub) {
+		instance.TryPub(mon, topicRemoveMon)
+	})
 }
 
-func (m *Manage) removeMonitor(mon *monitor.Monitor) {
+func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {
+	log.Infoln("Remove monitor", mon.Name)
 	mon.Stop()
 	mon.Wait()
+	if removeWatchPaths {
+		m.removeMonitorWatchPaths(mon)
+	}
+	delete(m.mons, mon.Name)
+}
+func (m *Manage) removeMonitorWatchPaths(mon *monitor.Monitor) {
 	uniquePaths := make(map[string]bool)
 	for _, pathName := range mon.ConfigPaths {
 		uniquePaths[pathName] = true
@@ -315,38 +451,32 @@ func (m *Manage) removeMonitor(mon *monitor.Monitor) {
 			}(pathName)
 		}
 	}
-	delete(m.mons, mon.Name)
 }
 
-func (m *Manage) doMonitorConfigChanges(modPath string) {
-	m.monGuard.Lock()
+func (m *Manage) doMonitorConfigChanges(modPath string, inList []mon) (retryList []mon) {
 	log.Infoln("Config changed", modPath)
 	aMons := m.associatedMonitors(modPath)
+	tryList := inList
 	for _, cur := range aMons {
-		m.removeMonitor(cur)
+		m.removeMonitor(cur, false)
 		if found, conf := m.getMonitorConf(cur.Name); found {
-			newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
-			if newMon == nil {
-				continue
-			}
-			m.addMonitor(newMon)
-			log.Infoln("Config restarted monitor", newMon.Name)
+			tryList = append(tryList, conf)
 		}
 	}
-	m.monGuard.Unlock()
+	for _, conf := range tryList {
+		newMon := m.setupMonitor(conf.Name, conf.ConfigPath)
+		if newMon == nil {
+			log.Warningln("Config change setup monitor FAILED for", conf.Name)
+			retryList = append(retryList, conf)
+			continue
+		}
+		m.addMonitor(newMon)
+		log.Infoln("Config restarted monitor", newMon.Name)
+	}
+	return
 }
 
 func (m *Manage) monitorConfigChanges() {
-	go func() {
-		for {
-			select {
-			case event := <-m.wtr.Event:
-				m.doMonitorConfigChanges(event.Path)
-			case <-m.wtr.Closed:
-				return
-			}
-		}
-	}()
 	go func() {
 		if err := m.wtr.Start(time.Millisecond * 500); err != nil {
 			log.Errorln(err)

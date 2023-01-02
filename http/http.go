@@ -11,6 +11,7 @@ import (
 	"time"
 
 	fiber "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/google/uuid"
@@ -152,7 +153,7 @@ func (h *Http) setup() {
 			return c.Next()
 		}
 		monitorName := localsMonName.(string)
-		monitorList := h.manage.GetMonitorNames()
+		monitorList := h.manage.GetMonitorNames(2000)
 		for _, cur := range monitorList {
 			if cur == monitorName {
 				return c.Next()
@@ -182,8 +183,11 @@ func (h *Http) setup() {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
+	h.fiber.Use("/info/list", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/info/list", func(c *fiber.Ctx) error {
-		monitorList := h.manage.GetMonitorNames()
+		monitorList := h.manage.GetMonitorNames(2000)
 		for _, cur := range h.linkClients {
 			curList := cur.getMonList(h.linkRetry)
 			monitorList = append(monitorList, curList...)
@@ -194,6 +198,9 @@ func (h *Http) setup() {
 		return c.JSON(data)
 	})
 
+	h.fiber.Use("/info/:name", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/info/:name", func(c *fiber.Ctx) error {
 		monitorName := c.Params("name")
 		for _, cur := range h.linkClients {
@@ -207,14 +214,20 @@ func (h *Http) setup() {
 			ReaderInFps:  0,
 			ReaderOutFps: 0,
 		}
-		readerIn, readerOut := h.manage.GetMonitorVideoStats(monitorName)
-		data.ReaderInFps = readerIn.AcceptedPerSecond
-		data.ReaderOutFps = readerOut.AcceptedPerSecond
+		frameStatsCombo := h.manage.GetMonitorFrameStats(monitorName, 1000)
+		if frameStatsCombo == nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		data.ReaderInFps = frameStatsCombo.In.AcceptedPerSecond
+		data.ReaderOutFps = frameStatsCombo.Out.AcceptedPerSecond
 		return c.JSON(data)
 	})
 
+	h.fiber.Use("/alerts/latest", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/alerts/latest", func(c *fiber.Ctx) error {
-		monAlertTimes := h.manage.GetMonitorAlertTimes()
+		monAlertTimes := h.manage.GetMonitorAlertTimes(1000)
 		// RFC RFC3339 time used
 		data := make(map[string]map[string]string)
 		for monName, monAlertTime := range monAlertTimes {
@@ -241,6 +254,9 @@ func (h *Http) setup() {
 		return c.JSON(data)
 	})
 
+	h.fiber.Use("/alerts/list", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/alerts/list", func(c *fiber.Ctx) error {
 		data := make([]string, 0)
 		files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/alerts"),
@@ -287,6 +303,9 @@ func (h *Http) setup() {
 		},
 	)
 
+	h.fiber.Use("/recordings/list", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/recordings/list", func(c *fiber.Ctx) error {
 		data := make([]string, 0)
 		files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/recordings"),
@@ -333,6 +352,9 @@ func (h *Http) setup() {
 		},
 	)
 
+	h.fiber.Use("/continuous/list", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/continuous/list", func(c *fiber.Ctx) error {
 		data := make([]string, 0)
 		files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/continuous"),
@@ -379,6 +401,9 @@ func (h *Http) setup() {
 		},
 	)
 
+	h.fiber.Use("/memory", cache.New(cache.Config{
+		Expiration: 2 * time.Second,
+	}))
 	h.fiber.Get("/memory", func(c *fiber.Ctx) error {
 		mem := memory.NewMemory()
 		type info struct {

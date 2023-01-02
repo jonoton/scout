@@ -15,6 +15,7 @@ const fileLocation = "data/face"
 
 // Face detects faces within images
 type Face struct {
+	Name                    string
 	Skip                    bool
 	forceCpu                bool
 	padding                 int
@@ -31,7 +32,7 @@ type Face struct {
 }
 
 // NewFace creates a new Face
-func NewFace() *Face {
+func NewFace(name string) *Face {
 	// check cuda available
 	backend := gocv.NetBackendDefault
 	target := gocv.NetTargetCPU
@@ -40,6 +41,7 @@ func NewFace() *Face {
 		target = gocv.NetTargetCUDA
 	}
 	f := &Face{
+		Name:                    name,
 		forceCpu:                false,
 		padding:                 0,
 		modelFile:               "res10_300x300_ssd_iter_140000.caffemodel",
@@ -99,12 +101,18 @@ func (f *Face) SetConfig(config *Config) {
 func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer func() {
+			// recover from panic if one occured
+			if recover() != nil {
+				log.Errorln("Recovered from panic in face for", f.Name)
+			}
+		}()
 		defer close(r)
 		modelFile := runtime.GetRuntimeDirectory(fileLocation) + f.modelFile
 		configFile := runtime.GetRuntimeDirectory(fileLocation) + f.configFile
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v\n", modelFile, configFile)
+			log.Printf("Error reading network model from : %v %v for %s\n", modelFile, configFile, f.Name)
 			return
 		}
 
@@ -125,7 +133,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			targetName = "CPU"
 		}
 
-		log.Infof("Face %s using %s and %s\n", targetName, modelFile, configFile)
+		log.Infof("Face %s using %s and %s for %s\n", targetName, modelFile, configFile, f.Name)
 
 		var ratio float64
 		var mean gocv.Scalar
