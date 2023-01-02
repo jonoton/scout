@@ -18,6 +18,7 @@ ENV GOPATH=/go
 ENV GO111MODULE=on
 RUN mkdir -p "$GOPATH/src"
 WORKDIR /go/src
-RUN go get -d gocv.io/x/gocv@v0.30.0
+RUN mkdir -p $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
+RUN git clone --depth 1 --branch v0.30.0 https://github.com/hybridgroup/gocv.git $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
 RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0 && make install
 RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0 && go install -v .
