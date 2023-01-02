@@ -10,7 +10,7 @@ ENV TZ="America/New_York"
 RUN apt update && apt install -y sudo git wget
 RUN apt purge -y golang
 RUN mkdir /Downloads
-RUN wget -c https://golang.org/dl/go1.15.8.linux-amd64.tar.gz -O - | tar -xz -C /Downloads
+RUN wget -c https://go.dev/dl/go1.19.4.linux-amd64.tar.gz -O - | tar -xz -C /Downloads
 ENV GOROOT="/Downloads/go"
 ENV PATH=$PATH:$GOROOT/bin
 RUN which go && go version
