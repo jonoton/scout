@@ -3,46 +3,86 @@ package videosource
 import (
 	"image"
 	"time"
+
+	"gocv.io/x/gocv"
 )
+
+// MotionInfo contains the motion information
+type MotionInfo struct {
+	Rect          image.Rectangle
+	HighlightInfo ColorThickness
+}
+
+// NewMotionInfo creates a new MotionInfo
+func NewMotionInfo(rect image.Rectangle, colorThickness ColorThickness) *MotionInfo {
+	m := &MotionInfo{
+		Rect:          rect,
+		HighlightInfo: colorThickness,
+	}
+	return m
+}
+
+// Ref will reference the MotionInfo and underlying SharedMat
+func (m *MotionInfo) Ref() *MotionInfo {
+	return m
+}
+
+// Clone will clone the MotionInfo
+func (m *MotionInfo) Clone() *MotionInfo {
+	c := &MotionInfo{
+		Rect:          m.Rect,
+		HighlightInfo: m.HighlightInfo,
+	}
+	return c
+}
+
+// Cleanup will cleanup the MotionInfo
+func (m *MotionInfo) Cleanup() {
+	m.Rect = image.Rectangle{}
+	m.HighlightInfo = ColorThickness{}
+}
 
 // ObjectInfo contains the object information
 type ObjectInfo struct {
-	Object      Image
-	Description string
-	Percentage  int
+	Rect          image.Rectangle
+	Description   string
+	Percentage    int
+	HighlightInfo ColorThickness
 }
 
 // NewObjectInfo creates a new ObjectInfo
-func NewObjectInfo(img Image) *ObjectInfo {
+func NewObjectInfo(rect image.Rectangle, colorThickness ColorThickness) *ObjectInfo {
 	o := &ObjectInfo{
-		Object:      img,
-		Description: "",
-		Percentage:  0,
+		Rect:          rect,
+		Description:   "",
+		Percentage:    0,
+		HighlightInfo: colorThickness,
 	}
 	return o
 }
 
 // Ref will reference the ObjectInfo and underlying SharedMat
 func (o *ObjectInfo) Ref() *ObjectInfo {
-	o.Object.Ref()
 	return o
 }
 
 // Clone will clone the ObjectInfo
 func (o *ObjectInfo) Clone() *ObjectInfo {
 	c := &ObjectInfo{
-		Object:      *o.Object.Clone(),
-		Description: o.Description,
-		Percentage:  o.Percentage,
+		Rect:          o.Rect,
+		Description:   o.Description,
+		Percentage:    o.Percentage,
+		HighlightInfo: o.HighlightInfo,
 	}
 	return c
 }
 
 // Cleanup will cleanup the ObjectInfo
 func (o *ObjectInfo) Cleanup() {
-	o.Object.Cleanup()
+	o.Rect = image.Rectangle{}
 	o.Description = ""
 	o.Percentage = 0
+	o.HighlightInfo = ColorThickness{}
 }
 
 func getHighestObjectPercentage(objs []ObjectInfo) (result int) {
@@ -56,38 +96,41 @@ func getHighestObjectPercentage(objs []ObjectInfo) (result int) {
 
 // FaceInfo contains the face information
 type FaceInfo struct {
-	Face       Image
-	Percentage int
+	Rect          image.Rectangle
+	Percentage    int
+	HighlightInfo ColorThickness
 }
 
 // NewFaceInfo creates a new FaceInfo
-func NewFaceInfo(img Image) *FaceInfo {
+func NewFaceInfo(rect image.Rectangle, colorThickness ColorThickness) *FaceInfo {
 	f := &FaceInfo{
-		Face:       img,
-		Percentage: 0,
+		Rect:          rect,
+		Percentage:    0,
+		HighlightInfo: colorThickness,
 	}
 	return f
 }
 
 // Ref will reference the FaceInfo and underlying SharedMat
 func (f *FaceInfo) Ref() *FaceInfo {
-	f.Face.Ref()
 	return f
 }
 
 // Clone will clone the FaceInfo
 func (f *FaceInfo) Clone() *FaceInfo {
 	c := &FaceInfo{
-		Face:       *f.Face.Clone(),
-		Percentage: f.Percentage,
+		Rect:          f.Rect,
+		Percentage:    f.Percentage,
+		HighlightInfo: f.HighlightInfo,
 	}
 	return c
 }
 
 // Cleanup will cleanup the FaceInfo
 func (f *FaceInfo) Cleanup() {
-	f.Face.Cleanup()
+	f.Rect = image.Rectangle{}
 	f.Percentage = 0
+	f.HighlightInfo = ColorThickness{}
 }
 
 func getHighestFacePercentage(faces []FaceInfo) (result int) {
@@ -101,41 +144,97 @@ func getHighestFacePercentage(faces []FaceInfo) (result int) {
 
 // ProcessedImage is the result of running through the processes
 type ProcessedImage struct {
-	Original          Image
-	HighlightedMotion Image
-	HighlightedObject Image
-	HighlightedFace   Image
-	Motions           []Image
-	MotionRects       []image.Rectangle
-	Objects           []ObjectInfo
-	ObjectRects       []image.Rectangle
-	Faces             []FaceInfo
-	FaceRects         []image.Rectangle
+	Original Image
+	Motions  []MotionInfo
+	Objects  []ObjectInfo
+	Faces    []FaceInfo
 }
 
 // NewProcessedImage creates a new ProcessedImage
 func NewProcessedImage(original Image) *ProcessedImage {
 	p := &ProcessedImage{
-		Original:          original,
-		HighlightedMotion: Image{},
-		HighlightedObject: Image{},
-		HighlightedFace:   Image{},
-		Motions:           make([]Image, 0),
-		MotionRects:       make([]image.Rectangle, 0),
-		Objects:           make([]ObjectInfo, 0),
-		ObjectRects:       make([]image.Rectangle, 0),
-		Faces:             make([]FaceInfo, 0),
-		FaceRects:         make([]image.Rectangle, 0),
+		Original: original,
+		Motions:  make([]MotionInfo, 0),
+		Objects:  make([]ObjectInfo, 0),
+		Faces:    make([]FaceInfo, 0),
 	}
 	return p
+}
+
+func (p *ProcessedImage) HasMotion() bool {
+	return len(p.Motions) > 0
+}
+func (p *ProcessedImage) HasObject() bool {
+	return len(p.Objects) > 0
+}
+func (p *ProcessedImage) HasFace() bool {
+	return len(p.Faces) > 0
+}
+
+func (p *ProcessedImage) HighlightedMotion() *Image {
+	highlightedImage := p.Original.Clone()
+	highlightedMat := highlightedImage.SharedMat.Mat
+	for _, cur := range p.Motions {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	return highlightedImage
+}
+func (p *ProcessedImage) HighlightedObject() *Image {
+	highlightedImage := p.Original.Clone()
+	highlightedMat := highlightedImage.SharedMat.Mat
+	for _, cur := range p.Objects {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	return highlightedImage
+}
+func (p *ProcessedImage) HighlightedFace() *Image {
+	highlightedImage := p.Original.Clone()
+	highlightedMat := highlightedImage.SharedMat.Mat
+	for _, cur := range p.Faces {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	return highlightedImage
+}
+func (p *ProcessedImage) HighlightedAll() *Image {
+	highlightedImage := p.Original.Clone()
+	highlightedMat := highlightedImage.SharedMat.Mat
+	for _, cur := range p.Motions {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	for _, cur := range p.Objects {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	for _, cur := range p.Faces {
+		gocv.Rectangle(&highlightedMat, cur.Rect, cur.HighlightInfo.Color.GetRGBA(), cur.HighlightInfo.Thickness)
+	}
+	return highlightedImage
+}
+
+func (p ProcessedImage) Motion(index int) *Image {
+	if index > 0 && index < len(p.Motions) {
+		r := p.Original.GetRegion(p.Motions[index].Rect)
+		return &r
+	}
+	return &Image{}
+}
+func (p ProcessedImage) Object(index int) *Image {
+	if index > 0 && index < len(p.Objects) {
+		r := p.Original.GetRegion(p.Objects[index].Rect)
+		return &r
+	}
+	return &Image{}
+}
+func (p ProcessedImage) Face(index int) *Image {
+	if index > 0 && index < len(p.Faces) {
+		r := p.Original.GetRegion(p.Faces[index].Rect)
+		return &r
+	}
+	return &Image{}
 }
 
 // Ref will reference the ProcessedImage and underlying SharedMats
 func (p *ProcessedImage) Ref() *ProcessedImage {
 	p.Original.Ref()
-	p.HighlightedMotion.Ref()
-	p.HighlightedObject.Ref()
-	p.HighlightedFace.Ref()
 	for _, cur := range p.Motions {
 		cur.Ref()
 	}
@@ -151,16 +250,10 @@ func (p *ProcessedImage) Ref() *ProcessedImage {
 // Clone will clone the ProcessedImage
 func (p *ProcessedImage) Clone() *ProcessedImage {
 	c := &ProcessedImage{
-		Original:          *p.Original.Clone(),
-		HighlightedMotion: *p.HighlightedMotion.Clone(),
-		HighlightedObject: *p.HighlightedObject.Clone(),
-		HighlightedFace:   *p.HighlightedFace.Clone(),
-		Motions:           make([]Image, 0),
-		MotionRects:       p.MotionRects,
-		Objects:           make([]ObjectInfo, 0),
-		ObjectRects:       p.ObjectRects,
-		Faces:             make([]FaceInfo, 0),
-		FaceRects:         p.FaceRects,
+		Original: *p.Original.Clone(),
+		Motions:  make([]MotionInfo, 0),
+		Objects:  make([]ObjectInfo, 0),
+		Faces:    make([]FaceInfo, 0),
 	}
 	for _, cur := range p.Motions {
 		c.Motions = append(c.Motions, *cur.Clone())
@@ -177,24 +270,18 @@ func (p *ProcessedImage) Clone() *ProcessedImage {
 // Cleanup will cleanup the ProcessedImage
 func (p *ProcessedImage) Cleanup() {
 	p.Original.Cleanup()
-	p.HighlightedMotion.Cleanup()
-	p.HighlightedObject.Cleanup()
-	p.HighlightedFace.Cleanup()
 	for _, cur := range p.Motions {
 		cur.Cleanup()
 	}
-	p.Motions = make([]Image, 0)
-	p.MotionRects = make([]image.Rectangle, 0)
+	p.Motions = make([]MotionInfo, 0)
 	for _, cur := range p.Objects {
 		cur.Cleanup()
 	}
 	p.Objects = make([]ObjectInfo, 0)
-	p.ObjectRects = make([]image.Rectangle, 0)
 	for _, cur := range p.Faces {
 		cur.Cleanup()
 	}
 	p.Faces = make([]FaceInfo, 0)
-	p.FaceRects = make([]image.Rectangle, 0)
 }
 
 // ProcessedImageByCreatedTime sorting ascending order

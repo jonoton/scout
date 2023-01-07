@@ -131,16 +131,9 @@ func writeOut(h *Http, c *websocket.Conn,
 		img.Cleanup()
 		return true
 	}
-	var selectedImage videosource.Image
-	if img.HighlightedFace.IsFilled() {
-		selectedImage = img.HighlightedFace.ScaleToWidth(width)
-	} else if img.HighlightedObject.IsFilled() {
-		selectedImage = img.HighlightedObject.ScaleToWidth(width)
-	} else if img.HighlightedMotion.IsFilled() {
-		selectedImage = img.HighlightedMotion.ScaleToWidth(width)
-	} else {
-		selectedImage = img.Original.ScaleToWidth(width)
-	}
+	highlighted := img.HighlightedAll()
+	selectedImage := highlighted.ScaleToWidth(width)
+	highlighted.Cleanup()
 	imgArray := selectedImage.EncodedQuality(jpegQuality)
 	selectedImage.Cleanup()
 	img.Cleanup()

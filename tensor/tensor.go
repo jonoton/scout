@@ -187,7 +187,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		motionFrames := 0
 		for cur := range input {
 			result := cur
-			if t.Skip || !cur.HighlightedMotion.IsFilled() {
+			if t.Skip || !cur.HasMotion() {
 				motionFrames = 0
 				r <- result
 				continue
@@ -258,8 +258,8 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					}
 					finalRect := videosource.RectPadded(cur.Original, scaledRect, t.padding)
 					withinMotion := false
-					for _, motionRect := range cur.MotionRects {
-						if fPercent, _ := videosource.RectOverlap(finalRect, motionRect); fPercent >= t.minOverlapPercentage {
+					for _, curMotion := range cur.Motions {
+						if fPercent, _ := videosource.RectOverlap(finalRect, curMotion.Rect); fPercent >= t.minOverlapPercentage {
 							withinMotion = true
 							break
 						}
@@ -269,18 +269,18 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					}
 					newObj := true
 					confidencePercent := int(confidence * 100)
-					for oIndex, objRect := range result.ObjectRects {
+					for oIndex, curObj := range result.Objects {
+						objRect := curObj.Rect
 						if fPercent, oPercent := videosource.RectOverlap(finalRect, objRect); fPercent >= t.sameOverlapPercentage && oPercent >= t.sameOverlapPercentage {
 							newObj = false
-							if (result.Objects[oIndex].Percentage < confidencePercent) ||
-								(strings.ToLower(desc) == "person" && strings.ToLower(result.Objects[oIndex].Description) != "person") {
+							if (curObj.Percentage < confidencePercent) ||
+								(strings.ToLower(desc) == "person" && strings.ToLower(curObj.Description) != "person") {
 								// replace object with better
-								result.Objects[oIndex].Cleanup()
-								objectInfo := videosource.NewObjectInfo(cur.Original.GetRegion(finalRect))
+								curObj.Cleanup()
+								objectInfo := videosource.NewObjectInfo(finalRect, *videosource.NewColorThickness(t.highlightColor, t.highlightThickness))
 								objectInfo.Description = strings.Title(strings.ToLower(desc))
 								objectInfo.Percentage = confidencePercent
 								result.Objects[oIndex] = *objectInfo
-								result.ObjectRects[oIndex] = finalRect
 								break
 							}
 						}
@@ -288,25 +288,16 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					if !newObj {
 						continue
 					}
-					objectInfo := videosource.NewObjectInfo(cur.Original.GetRegion(finalRect))
+					objectInfo := videosource.NewObjectInfo(finalRect, *videosource.NewColorThickness(t.highlightColor, t.highlightThickness))
 					objectInfo.Description = strings.Title(strings.ToLower(desc))
 					objectInfo.Percentage = confidencePercent
 					result.Objects = append(result.Objects, *objectInfo)
-					result.ObjectRects = append(result.ObjectRects, finalRect)
 				}
 			}
 			scaledImg.Cleanup()
 			prob.Close()
 			blob.Close()
-			if len(result.ObjectRects) > 0 {
-				highlightedImage := *cur.Original.Clone()
-				mat := highlightedImage.SharedMat.Mat
-				for _, rect := range result.ObjectRects {
-					rectColor := videosource.StringToColor(t.highlightColor)
-					gocv.Rectangle(&mat, rect, rectColor.GetRGBA(), t.highlightThickness)
-				}
-				result.HighlightedObject = highlightedImage
-			}
+
 			r <- result
 		}
 		net.Close()

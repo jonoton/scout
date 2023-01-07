@@ -97,8 +97,6 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				r <- result
 				continue
 			}
-			highlightedImage := *cur.Clone()
-			highlightedMat := highlightedImage.SharedMat.Mat
 
 			origWidth := cur.Width()
 			scaleWidth := m.scaleWidth
@@ -148,8 +146,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 					for _, motion := range result.Motions {
 						motion.Cleanup()
 					}
-					result.Motions = make([]videosource.Image, 0)
-					result.MotionRects = make([]image.Rectangle, 0)
+					result.Motions = make([]videosource.MotionInfo, 0)
 					break
 				}
 				if area < minimumArea || area > maximumArea {
@@ -166,19 +163,12 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				}
 				scaledRect := videosource.RectScale(cur, rect, scaleRatio)
 				finalRect := videosource.RectPadded(cur, scaledRect, m.padding)
-				region := cur.GetRegion(finalRect)
-				rectColor := videosource.StringToColor(m.highlightColor)
-				gocv.Rectangle(&highlightedMat, finalRect, rectColor.GetRGBA(), m.highlightThickness)
-				result.Motions = append(result.Motions, region)
-				result.MotionRects = append(result.MotionRects, finalRect)
+				motionInfo := videosource.NewMotionInfo(finalRect, *videosource.NewColorThickness(m.highlightColor, m.highlightThickness))
+				result.Motions = append(result.Motions, *motionInfo)
 				numMotions++
 			}
 			contours.Close()
-			if numMotions > 0 {
-				result.HighlightedMotion = *highlightedImage.Ref()
-			}
 			scaledImg.Cleanup()
-			highlightedImage.Cleanup()
 			blurMat.Close()
 
 			r <- result

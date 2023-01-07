@@ -145,7 +145,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 
 		for cur := range input {
 			result := cur
-			if f.Skip || !cur.HighlightedObject.IsFilled() {
+			if f.Skip || !cur.HasObject() {
 				r <- result
 				continue
 			}
@@ -191,8 +191,8 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					paddedRect := videosource.RectPadded(cur.Original, scaledRect, f.padding)
 					finalRect := videosource.RectSquare(cur.Original, paddedRect)
 					withinObj := false
-					for _, objRect := range cur.ObjectRects {
-						if fPercent, _ := videosource.RectOverlap(finalRect, objRect); fPercent >= f.minOverlapPercentage {
+					for _, curObj := range cur.Objects {
+						if fPercent, _ := videosource.RectOverlap(finalRect, curObj.Rect); fPercent >= f.minOverlapPercentage {
 							withinObj = true
 							break
 						}
@@ -202,16 +202,16 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					}
 					newFace := true
 					confidencePercent := int(confidence * 100)
-					for fIndex, faceRect := range result.FaceRects {
+					for fIndex, curFace := range result.Faces {
+						faceRect := curFace.Rect
 						if finalRect.Overlaps(faceRect) {
 							newFace = false
 							if result.Faces[fIndex].Percentage < confidencePercent {
 								// replace face with better percentage
 								result.Faces[fIndex].Cleanup()
-								faceInfo := videosource.NewFaceInfo(cur.Original.GetRegion(finalRect))
+								faceInfo := videosource.NewFaceInfo(finalRect, *videosource.NewColorThickness(f.highlightColor, f.highlightThickness))
 								faceInfo.Percentage = confidencePercent
 								result.Faces[fIndex] = *faceInfo
-								result.FaceRects[fIndex] = finalRect
 								break
 							}
 						}
@@ -219,24 +219,15 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 					if !newFace {
 						continue
 					}
-					faceInfo := videosource.NewFaceInfo(cur.Original.GetRegion(finalRect))
+					faceInfo := videosource.NewFaceInfo(finalRect, *videosource.NewColorThickness(f.highlightColor, f.highlightThickness))
 					faceInfo.Percentage = confidencePercent
 					result.Faces = append(result.Faces, *faceInfo)
-					result.FaceRects = append(result.FaceRects, finalRect)
 				}
 			}
 			scaledImg.Cleanup()
 			prob.Close()
 			blob.Close()
-			if len(result.FaceRects) > 0 {
-				highlightedImage := *cur.Original.Clone()
-				mat := highlightedImage.SharedMat.Mat
-				for _, rect := range result.FaceRects {
-					rectColor := videosource.StringToColor(f.highlightColor)
-					gocv.Rectangle(&mat, rect, rectColor.GetRGBA(), f.highlightThickness)
-				}
-				result.HighlightedFace = highlightedImage
-			}
+
 			r <- result
 		}
 		net.Close()

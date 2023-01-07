@@ -103,7 +103,7 @@ func (a *Alert) Start() {
 
 // Push a processed image to buffer
 func (a *Alert) Push(img videosource.ProcessedImage) {
-	if img.HighlightedObject.IsFilled() {
+	if img.HasObject() {
 		popped := a.ringBuffer.Push(*img.Ref())
 		popped.Cleanup()
 	}
@@ -222,11 +222,13 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			}
 			infos = append(infos, info)
 		}
-		if a.alertConf.SaveHighlighted && curPop.HighlightedObject.IsFilled() {
+		if a.alertConf.SaveHighlighted && curPop.HasObject() {
 			title := "Highlighted"
 			percentage := ""
-			videosource.SavePreview(curPop.HighlightedObject, curPop.HighlightedObject.CreatedTime, a.saveDirectory, a.name, title, percentage)
-			s := videosource.SaveImage(curPop.HighlightedObject, curPop.HighlightedObject.CreatedTime, a.saveDirectory, a.alertConf.SaveQuality, a.name, title, percentage)
+			highlighted := curPop.HighlightedAll()
+			videosource.SavePreview(*highlighted, curPop.Original.CreatedTime, a.saveDirectory, a.name, title, percentage)
+			s := videosource.SaveImage(*highlighted, curPop.Original.CreatedTime, a.saveDirectory, a.alertConf.SaveQuality, a.name, title, percentage)
+			highlighted.Cleanup()
 			info := attachedInfo{
 				Title:      title,
 				Percentage: percentage,
@@ -236,11 +238,13 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			infos = append(infos, info)
 		}
 		for i, cur := range curPop.Objects {
-			if i < a.alertConf.SaveObjectsCount && cur.Object.IsFilled() {
+			if i < a.alertConf.SaveObjectsCount {
 				title := cur.Description
 				percentage := fmt.Sprintf("%d", cur.Percentage)
-				videosource.SavePreview(cur.Object, cur.Object.CreatedTime, a.saveDirectory, a.name, title, percentage)
-				s := videosource.SaveImage(cur.Object, cur.Object.CreatedTime, a.saveDirectory, 100, a.name, title, percentage)
+				object := curPop.Object(i)
+				videosource.SavePreview(*object, curPop.Original.CreatedTime, a.saveDirectory, a.name, title, percentage)
+				s := videosource.SaveImage(*object, curPop.Original.CreatedTime, a.saveDirectory, 100, a.name, title, percentage)
+				object.Cleanup()
 				info := attachedInfo{
 					Title:      title,
 					Percentage: fmt.Sprintf("%d%%", cur.Percentage),
@@ -251,11 +255,13 @@ func (a *Alert) saveAlerts(poppedList []videosource.ProcessedImage) (result []im
 			}
 		}
 		for i, cur := range curPop.Faces {
-			if i < a.alertConf.SaveFacesCount && cur.Face.IsFilled() {
+			if i < a.alertConf.SaveFacesCount {
 				title := "Face"
 				percentage := fmt.Sprintf("%d", cur.Percentage)
-				videosource.SavePreview(cur.Face, cur.Face.CreatedTime, a.saveDirectory, a.name, title, percentage)
-				s := videosource.SaveImage(cur.Face, cur.Face.CreatedTime, a.saveDirectory, 100, a.name, title, percentage)
+				face := curPop.Face(i)
+				videosource.SavePreview(*face, curPop.Original.CreatedTime, a.saveDirectory, a.name, title, percentage)
+				s := videosource.SaveImage(*face, curPop.Original.CreatedTime, a.saveDirectory, 100, a.name, title, percentage)
+				face.Cleanup()
 				info := attachedInfo{
 					Title:      title,
 					Percentage: fmt.Sprintf("%d%%", cur.Percentage),

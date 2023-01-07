@@ -2,20 +2,21 @@ package videosource
 
 import (
 	"fmt"
+	"image"
 	"sort"
 	"testing"
 	"time"
 )
 
 func TestProcessedImageContentSort(t *testing.T) {
-	obj1 := NewObjectInfo(Image{})
+	obj1 := NewObjectInfo(image.Rectangle{}, *NewColorThickness("blue", 1))
 	obj1.Percentage = 80
-	obj2 := NewObjectInfo(Image{})
+	obj2 := NewObjectInfo(image.Rectangle{}, *NewColorThickness("blue", 1))
 	obj2.Percentage = 90
 
-	face1 := NewFaceInfo(Image{})
+	face1 := NewFaceInfo(image.Rectangle{}, *NewColorThickness("green", 1))
 	face1.Percentage = 80
-	face2 := NewFaceInfo(Image{})
+	face2 := NewFaceInfo(image.Rectangle{}, *NewColorThickness("green", 1))
 	face2.Percentage = 90
 
 	now := time.Now()

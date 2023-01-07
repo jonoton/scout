@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+type ColorThickness struct {
+	Color     Color
+	Thickness int
+}
+
+func NewColorThickness(color string, thickness int) *ColorThickness {
+	c := &ColorThickness{
+		Color:     StringToColor(color),
+		Thickness: thickness,
+	}
+	return c
+}
+
 // Color represents a color
 type Color int
 
