@@ -146,129 +146,10 @@ func (m *Monitor) Start() {
 
 		wg := &sync.WaitGroup{}
 		wg.Add(3)
-		// motion -> tensor
-		go func() {
-			for cur := range motionOutput {
-				tensorInput <- cur
-			}
-			close(tensorInput)
-			wg.Done()
-		}()
-		// tensor -> face
-		go func() {
-			for cur := range tensorOutput {
-				faceInput <- cur
-			}
-			close(faceInput)
-			wg.Done()
-		}()
-		// face -> process results
-		go func() {
-			if m.continuous != nil {
-				m.continuous.Start()
-			}
-			if m.record != nil {
-				m.record.Start()
-			}
-			if m.alert != nil {
-				m.alert.Start()
-			}
-			subChan := m.pubsub.Sub(topicSubscribe)
-			unsubChan := m.pubsub.Sub(topicUnsubscribe)
-			getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
-			sourceStatsChan := m.reader.GetSourceStatsChan()
-			outputStatsChan := m.reader.GetOutputStatsChan()
-			staleTicker := time.NewTicker(time.Second)
-			staleSec := 0
-			lastTotal := 0
-		FaceLoop:
-			for {
-				select {
-				case _, ok := <-getMonFrameStatsChan:
-					if !ok {
-						continue
-					}
-					m.pubMonitorFrameStats()
-				case cur, ok := <-sourceStatsChan:
-					if !ok || cur == nil {
-						continue
-					}
-					m.frameStatsCombo.In = *cur.(*videosource.FrameStats)
-				case cur, ok := <-outputStatsChan:
-					if !ok || cur == nil {
-						continue
-					}
-					m.frameStatsCombo.Out = *cur.(*videosource.FrameStats)
-				case subMon, ok := <-subChan:
-					if !ok {
-						continue
-					}
-					m.subscribe(subMon.(subscribeMonitor))
-				case key, ok := <-unsubChan:
-					if !ok {
-						continue
-					}
-					m.unsubscribe(key.(string))
-				case cur, ok := <-faceOutput:
-					if !ok {
-						cur.Cleanup()
-						break FaceLoop
-					}
-					for _, val := range m.subscriptions {
-						subImage := *cur.Ref()
-						select {
-						case val <- subImage:
-						default:
-							subImage.Cleanup()
-						}
-					}
-					if m.alert != nil {
-						m.alert.Push(*cur.Ref())
-					}
-					if m.record != nil {
-						m.record.Send(*cur.Ref())
-					}
-					if m.continuous != nil {
-						m.continuous.Send(*cur.Ref())
-					}
-					cur.Cleanup()
-				case <-staleTicker.C:
-					curTotal := m.frameStatsCombo.In.AcceptedTotal
-					if lastTotal == curTotal {
-						staleSec++
-					} else {
-						staleSec = 0
-						m.IsStale = false
-						m.StaleRetry = m.StaleMaxRetry
-					}
-					lastTotal = curTotal
-					if staleSec >= m.staleTimeout {
-						m.IsStale = true
-					}
-				}
-			}
-			staleTicker.Stop()
-			if m.alert != nil {
-				m.alert.Stop()
-				m.alert.Wait()
-			}
-			if m.record != nil {
-				m.record.Close()
-				m.record.Wait()
-			}
-			if m.continuous != nil {
-				m.continuous.Close()
-				m.continuous.Wait()
-			}
-			m.clearSubscriptions()
-			wg.Done()
-		}()
-
-		// reader -> motion
-		for img := range readerOutput {
-			motionInput <- img
-		}
-		close(motionInput)
+		go motionToTensor(motionOutput, tensorInput, wg)
+		go tensorToFace(tensorOutput, faceInput, wg)
+		go m.processResults(faceOutput, wg)
+		readerToMotion(readerOutput, motionInput)
 
 		m.reader.Wait()
 		wg.Wait()
@@ -277,6 +158,130 @@ func (m *Monitor) Start() {
 		close(m.done)
 		log.Infoln("Done monitor", m.Name)
 	}()
+}
+
+func readerToMotion(inChan <-chan videosource.Image, outChan chan videosource.Image) {
+	for img := range inChan {
+		outChan <- img
+	}
+	close(outChan)
+}
+
+func motionToTensor(inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	for img := range inChan {
+		outChan <- img
+	}
+	close(outChan)
+	wg.Done()
+}
+
+func tensorToFace(inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	for img := range inChan {
+		outChan <- img
+	}
+	close(outChan)
+	wg.Done()
+}
+
+func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	if m.continuous != nil {
+		m.continuous.Start()
+	}
+	if m.record != nil {
+		m.record.Start()
+	}
+	if m.alert != nil {
+		m.alert.Start()
+	}
+	subChan := m.pubsub.Sub(topicSubscribe)
+	unsubChan := m.pubsub.Sub(topicUnsubscribe)
+	getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
+	sourceStatsChan := m.reader.GetSourceStatsChan()
+	outputStatsChan := m.reader.GetOutputStatsChan()
+	staleTicker := time.NewTicker(time.Second)
+	staleSec := 0
+	lastTotal := 0
+FaceLoop:
+	for {
+		select {
+		case _, ok := <-getMonFrameStatsChan:
+			if !ok {
+				continue
+			}
+			m.pubMonitorFrameStats()
+		case cur, ok := <-sourceStatsChan:
+			if !ok || cur == nil {
+				continue
+			}
+			m.frameStatsCombo.In = *cur.(*videosource.FrameStats)
+		case cur, ok := <-outputStatsChan:
+			if !ok || cur == nil {
+				continue
+			}
+			m.frameStatsCombo.Out = *cur.(*videosource.FrameStats)
+		case subMon, ok := <-subChan:
+			if !ok {
+				continue
+			}
+			m.subscribe(subMon.(subscribeMonitor))
+		case key, ok := <-unsubChan:
+			if !ok {
+				continue
+			}
+			m.unsubscribe(key.(string))
+		case cur, ok := <-inChan:
+			if !ok {
+				cur.Cleanup()
+				break FaceLoop
+			}
+			for _, val := range m.subscriptions {
+				subImage := *cur.Ref()
+				select {
+				case val <- subImage:
+				default:
+					subImage.Cleanup()
+				}
+			}
+			if m.alert != nil {
+				m.alert.Push(*cur.Ref())
+			}
+			if m.record != nil {
+				m.record.Send(*cur.Ref())
+			}
+			if m.continuous != nil {
+				m.continuous.Send(*cur.Ref())
+			}
+			cur.Cleanup()
+		case <-staleTicker.C:
+			curTotal := m.frameStatsCombo.In.AcceptedTotal
+			if lastTotal == curTotal {
+				staleSec++
+			} else {
+				staleSec = 0
+				m.IsStale = false
+				m.StaleRetry = m.StaleMaxRetry
+			}
+			lastTotal = curTotal
+			if staleSec >= m.staleTimeout {
+				m.IsStale = true
+			}
+		}
+	}
+	staleTicker.Stop()
+	if m.alert != nil {
+		m.alert.Stop()
+		m.alert.Wait()
+	}
+	if m.record != nil {
+		m.record.Close()
+		m.record.Wait()
+	}
+	if m.continuous != nil {
+		m.continuous.Close()
+		m.continuous.Wait()
+	}
+	m.clearSubscriptions()
+	wg.Done()
 }
 
 // Stop will stop the processes
