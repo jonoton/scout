@@ -159,9 +159,9 @@ func (v *VideoWriter) Start() {
 				}
 				if v.record &&
 					((v.activityType == ActivityImage && img.Original.IsFilled()) ||
-						(v.activityType == ActivityMotion && len(img.Motions) > 0) ||
-						(v.activityType == ActivityObject && len(img.Objects) > 0) ||
-						(v.activityType == ActivityFace && len(img.Faces) > 0)) {
+						(v.activityType == ActivityMotion && img.HasMotion()) ||
+						(v.activityType == ActivityObject && img.HasObject()) ||
+						(v.activityType == ActivityFace && img.HasFace())) {
 					v.lastActivityTime = time.Now()
 				}
 				origImg := *img.Original.Ref()

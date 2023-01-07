@@ -211,21 +211,21 @@ func (p *ProcessedImage) HighlightedAll() *Image {
 }
 
 func (p ProcessedImage) Motion(index int) *Image {
-	if index > 0 && index < len(p.Motions) {
+	if index >= 0 && index < len(p.Motions) {
 		r := p.Original.GetRegion(p.Motions[index].Rect)
 		return &r
 	}
 	return &Image{}
 }
 func (p ProcessedImage) Object(index int) *Image {
-	if index > 0 && index < len(p.Objects) {
+	if index >= 0 && index < len(p.Objects) {
 		r := p.Original.GetRegion(p.Objects[index].Rect)
 		return &r
 	}
 	return &Image{}
 }
 func (p ProcessedImage) Face(index int) *Image {
-	if index > 0 && index < len(p.Faces) {
+	if index >= 0 && index < len(p.Faces) {
 		r := p.Original.GetRegion(p.Faces[index].Rect)
 		return &r
 	}

@@ -183,14 +183,14 @@ func getFormattedKitchenTimestamp(t time.Time) string {
 
 func (a *Alert) setLastAlerts(poppedList []videosource.ProcessedImage, alertTime time.Time) {
 	for _, curPop := range poppedList {
-		if len(curPop.Objects) > 0 {
+		if curPop.HasObject() {
 			if hasPersonObject(curPop.Objects) {
 				a.LastAlert.Person = alertTime
 			} else {
 				a.LastAlert.Object = alertTime
 			}
 		}
-		if len(curPop.Faces) > 0 {
+		if curPop.HasFace() {
 			a.LastAlert.Face = alertTime
 		}
 	}
