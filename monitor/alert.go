@@ -131,7 +131,7 @@ func (a *Alert) doAlerts() {
 	nowTime := time.Now()
 	nowTimeStr := getFormattedKitchenTimestamp(nowTime)
 
-	a.setLastAlerts(poppedList, nowTime)
+	a.setLastAlerts(poppedList)
 	imageInfos := a.saveAlerts(poppedList)
 	a.sendAlerts(imageInfos, nowTimeStr)
 }
@@ -181,17 +181,24 @@ func getFormattedKitchenTimestamp(t time.Time) string {
 	return t.Format("03:04:05 PM 01-02-2006")
 }
 
-func (a *Alert) setLastAlerts(poppedList []videosource.ProcessedImage, alertTime time.Time) {
+func (a *Alert) setLastAlerts(poppedList []videosource.ProcessedImage) {
 	for _, curPop := range poppedList {
+		createdTime := curPop.Original.CreatedTime
 		if curPop.HasObject() {
 			if hasPersonObject(curPop.Objects) {
-				a.LastAlert.Person = alertTime
+				if createdTime.After(a.LastAlert.Person) {
+					a.LastAlert.Person = createdTime
+				}
 			} else {
-				a.LastAlert.Object = alertTime
+				if createdTime.After(a.LastAlert.Object) {
+					a.LastAlert.Object = createdTime
+				}
 			}
 		}
 		if curPop.HasFace() {
-			a.LastAlert.Face = alertTime
+			if createdTime.After(a.LastAlert.Face) {
+				a.LastAlert.Face = createdTime
+			}
 		}
 	}
 }
