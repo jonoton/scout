@@ -3,7 +3,7 @@
 ## Get Dependencies without Building
 ### Go Module
 ```
-go get -d github.com/jonoton/scout@v1.21.0
+go get -d github.com/jonoton/scout@v1.28.0
 ```
 ### Cloned
 ```
@@ -14,7 +14,7 @@ go get -d ./...
 ### GoCV
 #### Navigate to folder
 ```
-cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
+cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0
 ```
 #### Choose One
 ##### Build
@@ -29,7 +29,7 @@ sudo make install_cuda
 ## Install Scout
 ### Go Module
 ```
-go get github.com/jonoton/scout@v1.21.0
+go get github.com/jonoton/scout@v1.28.0
 ```
 ### Cloned
 ```

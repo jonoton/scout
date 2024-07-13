@@ -10,7 +10,7 @@ ENV TZ="America/New_York"
 RUN apt update && apt install -y sudo git wget
 RUN apt purge -y golang
 RUN mkdir /Downloads
-RUN wget -c https://go.dev/dl/go1.19.4.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
+RUN wget -c https://go.dev/dl/go1.22.5.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
 ENV GOROOT="/Downloads/go"
 ENV PATH=$PATH:$GOROOT/bin
 RUN which go && go version
@@ -18,7 +18,7 @@ ENV GOPATH=/go
 ENV GO111MODULE=on
 RUN mkdir -p "$GOPATH/src"
 WORKDIR /go/src
-RUN mkdir -p $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
-RUN git clone --depth 1 --branch v0.30.0 https://github.com/hybridgroup/gocv.git $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0 && make install_cuda
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.30.0 && go install -v .
+RUN mkdir -p $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0
+RUN git clone --depth 1 --branch v0.37.0 https://github.com/hybridgroup/gocv.git $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && make install_cuda
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && go install -v .
