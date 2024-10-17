@@ -1,7 +1,9 @@
 package http
 
 import (
+	"context"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -45,86 +47,84 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		}
 
 		log.Infoln("Websocket opened", uuid)
-		socketClosed := make(chan bool)
-		sourceDone := make(chan bool)
+		socketCtx, socketCancel := context.WithCancel(context.Background())
+		sourceCtx, sourceCancel := context.WithCancel(context.Background())
+
 		ringBuffer := videosource.NewRingBufferProcessedImage(1)
 		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
 		go func() {
+			defer sourceCancel()
 			timeoutTick := time.NewTicker(time.Second * 4)
 			rx := 0
-		ringLoop:
+			var unsubOnce sync.Once
+			unsubFunc := func() {
+				h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
+			}
+		SourceLoop:
 			for {
 				select {
+				case <-socketCtx.Done():
+					unsubOnce.Do(unsubFunc)
 				case img, ok := <-images:
 					if !ok {
-						break ringLoop
+						break SourceLoop
 					}
 					rx++
 					popped := ringBuffer.Push(img)
 					popped.Cleanup()
 				case <-timeoutTick.C:
 					if rx == 0 {
-						break ringLoop
+						unsubOnce.Do(unsubFunc)
 					}
 					rx = 0
 				}
 			}
 			timeoutTick.Stop()
-			close(sourceDone)
+			if socketCtx.Err() != nil {
+				cleanupRingBuffer(ringBuffer)
+			}
 		}()
 
 		receive := func(msgType int, data []byte) {
 			// Nothing
 		}
 		send := func(c *websocket.Conn) {
-			mySend(h, c, socketClosed, sourceDone, ringBuffer, uuid,
-				monitorName, width, jpegQuality)
+			defer socketCancel()
+		SendLoop:
+			for {
+				select {
+				case <-sourceCtx.Done():
+					if ringBuffer.Len() == 0 {
+						break SendLoop
+					}
+					for ringBuffer.Len() != 0 {
+						if !writeOut(c, ringBuffer, width, jpegQuality) {
+							break
+						}
+					}
+					cleanupRingBuffer(ringBuffer)
+					break SendLoop
+				case _, ok := <-ringBuffer.Ready():
+					if !ok {
+						break SendLoop
+					}
+					if !writeOut(c, ringBuffer, width, jpegQuality) {
+						break SendLoop
+					}
+				}
+			}
 		}
 		cleanup := func() {
-			myCleanup(uuid, ringBuffer)
+			cleanupRingBuffer(ringBuffer)
+			log.Infoln("Websocket closed", uuid)
 		}
 
-		websockets.Run(c, socketClosed, receive, send, cleanup)
+		websockets.Run(socketCtx, c, receive, send, cleanup)
 	})
 }
 
-func mySend(h *Http, c *websocket.Conn,
-	socketClosed chan bool, sourceDone chan bool,
+func writeOut(c *websocket.Conn,
 	ringBuffer *videosource.RingBufferProcessedImage,
-	uuid string, monitorName string,
-	width int, jpegQuality int) {
-Loop:
-	for {
-		select {
-		case <-socketClosed:
-			h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
-			break Loop
-		case <-sourceDone:
-			if ringBuffer.Len() == 0 {
-				break Loop
-			}
-			for ringBuffer.Len() != 0 {
-				if !writeOut(h, c, ringBuffer, uuid, monitorName,
-					width, jpegQuality) {
-					break Loop
-				}
-			}
-			break Loop
-		case _, ok := <-ringBuffer.Ready():
-			if !ok {
-				break Loop
-			}
-			if !writeOut(h, c, ringBuffer, uuid, monitorName,
-				width, jpegQuality) {
-				break Loop
-			}
-		}
-	}
-}
-
-func writeOut(h *Http, c *websocket.Conn,
-	ringBuffer *videosource.RingBufferProcessedImage,
-	uuid string, monitorName string,
 	width int, jpegQuality int) (ok bool) {
 	img := ringBuffer.Pop()
 	if !img.Original.IsFilled() {
@@ -139,18 +139,12 @@ func writeOut(h *Http, c *websocket.Conn,
 	img.Cleanup()
 	zipped := gzip.Encode(imgArray, nil)
 	err := c.WriteMessage(websocket.BinaryMessage, zipped)
-	if err != nil {
-		// socket closed
-		h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
-		return false
-	}
-	return true
+	return err == nil
 }
 
-func myCleanup(uuid string, ringBuffer *videosource.RingBufferProcessedImage) {
+func cleanupRingBuffer(ringBuffer *videosource.RingBufferProcessedImage) {
 	for ringBuffer.Len() > 0 {
 		img := ringBuffer.Pop()
 		img.Cleanup()
 	}
-	log.Infoln("Websocket closed", uuid)
 }

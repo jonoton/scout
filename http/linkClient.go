@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -318,7 +319,6 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 		u.Scheme = "ws"
 	}
 	return websocket.New(func(c *websocket.Conn) {
-		socketClosed := make(chan bool)
 		dialer := gorillaWebsocket.DefaultDialer
 		connBackend, _, err := dialer.Dial(u.String(), http.Header{})
 		if err != nil {
@@ -327,26 +327,28 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 		}
 		uuid := uuid.New().String()
 		log.Infoln("Link Websocket opened", u.Scheme, uuid)
+		socketCtx, socketCancel := context.WithCancel(context.Background())
 		receive := func(msgType int, data []byte) {
 			connBackend.WriteMessage(msgType, data)
 		}
 		send := func(c *websocket.Conn) {
-		Loop:
+			defer socketCancel()
+		SendLoop:
 			for {
 				select {
-				case <-socketClosed:
-					break Loop
+				case <-socketCtx.Done():
+					break SendLoop
 				default:
 				}
 				msgType, msg, err := connBackend.ReadMessage()
 				if err != nil {
 					m := websocket.FormatCloseMessage(websocket.CloseNormalClosure, fmt.Sprintf("%v", err))
 					c.WriteMessage(websocket.CloseMessage, m)
-					break Loop
+					break SendLoop
 				}
 				err = c.WriteMessage(msgType, msg)
 				if err != nil {
-					break Loop
+					break SendLoop
 				}
 			}
 		}
@@ -354,6 +356,6 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 			connBackend.Close()
 			log.Infoln("Link Websocket closed", u.Scheme, uuid)
 		}
-		websockets.Run(c, socketClosed, receive, send, cleanup)
+		websockets.Run(socketCtx, c, receive, send, cleanup)
 	})
 }

@@ -12,8 +12,8 @@ Example:
 	}
 	log.Println("Websocket opened")
 
-	socketClosed := make(chan bool)
-	sourceDone := make(chan bool)
+	socketCtx, socketCancel := context.WithCancel(context.Background())
+	sourceCtx, sourceCancel := context.WithCancel(context.Background())
 
 	// use or implement custom buffer so non blocking
 	// see videosource.RingBufferProcessedImage for an example which allows for drops
@@ -21,71 +21,27 @@ Example:
 	ringBuffer := customringbuffer.NewRingBuffer(1)
 	stuffChan := h.myEngine.Subscribe("stuff")
 	go func() {
-		for cur := range stuffChan {
-			popped := ringBuffer.Push(cur)
-			if popped.IsValid() {
-				log.Println("Dropped stuff at websocket, but that's expected/ok")
-			}
-			popped.Cleanup()
-		}
-		close(sourceDone)
+		defer sourceCancel()
+		// for select 
+		//   read stuffChan and push into ringBuffer
+		//   unsubscribe from stuff if socketCtx.Done() or stale
 	}()
 
 	receive := func(msgType int, data []byte) {
 		log.Println("Read Func called")
 	}
 	send := func(c *websocket.Conn) {
-		writeOut := func() (ok bool) {
-			stuff := ringBuffer.Pop()
-			if !stuff.IsValid() {
-				stuff.Cleanup()
-				return true
-			}
-			var stuffArray []byte
-			// serialize stuff into stuffAray
-			stuff.Cleanup()
-			err := c.WriteMessage(websocket.BinaryMessage, stuffArray)
-			if err != nil {
-				// socket closed
-				h.myEngine.Unsubscribe("stuff")
-				return false
-			}
-			return true
-		}
-	Loop:
-		for {
-			select {
-			case <-socketClosed:
-				h.myEngine.Unsubscribe("stuff")
-				break Loop
-			case <-sourceDone:
-				if ringBuffer.Len() == 0 {
-					break Loop
-				}
-				for ringBuffer.Len() != 0 {
-					if !writeOut() {
-						break Loop
-					}
-				}
-			case _, ok := <-ringBuffer.Ready():
-				if !ok {
-					break Loop
-				}
-				if !writeOut() {
-					break Loop
-				}
-			}
-		}
+		defer socketCancel()
+		// for select 
+		//   use ring buffer to write out to socket
+		//   check sourceCtx.Done() and send all ring buffer then cleanup
 	}
 	cleanup := func() {
-		for ringBuffer.Len() > 0 {
-			stuff := ringBuffer.Pop()
-			stuff.Cleanup()
-		}
+		// cleanup ring buffer
 		log.Println("Websocket closed")
 	}
 
-	websockets.Run(c, socketClosed, receive, send, cleanup)
+	websockets.Run(socketCtx, c, receive, send, cleanup)
   }))
 */
 package websockets
