@@ -1,4 +1,8 @@
+debug
+__debug_bin*
+.vscode/
 .config/
 .logs/
+*.fasthttp.gz
 .git/
-.vscode/
+.devcontainer/

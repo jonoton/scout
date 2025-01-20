@@ -3,7 +3,7 @@
 ## Get Dependencies without Building
 ### Go Module
 ```
-go get -d github.com/jonoton/scout@v1.28.0
+go get -d github.com/jonoton/scout@v1.29.0
 ```
 ### Cloned
 ```
@@ -29,7 +29,7 @@ sudo make install_cuda
 ## Install Scout
 ### Go Module
 ```
-go get github.com/jonoton/scout@v1.28.0
+go get github.com/jonoton/scout@v1.29.0
 ```
 ### Cloned
 ```

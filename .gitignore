@@ -1,6 +1,6 @@
 debug
+__debug_bin*
 .vscode
 .config
 .logs
-__debug_bin
 *.fasthttp.gz
