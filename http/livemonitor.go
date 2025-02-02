@@ -75,6 +75,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 				case <-timeoutTick.C:
 					if rx == 0 {
 						unsubOnce.Do(unsubFunc)
+						break SourceLoop
 					}
 					rx = 0
 				}
