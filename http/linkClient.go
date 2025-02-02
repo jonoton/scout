@@ -331,12 +331,11 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 		receive := func(msgType int, data []byte) {
 			connBackend.WriteMessage(msgType, data)
 		}
-		send := func(c *websocket.Conn) {
-			defer socketCancel()
+		send := func(ctx context.Context, c *websocket.Conn) {
 		SendLoop:
 			for {
 				select {
-				case <-socketCtx.Done():
+				case <-ctx.Done():
 					break SendLoop
 				default:
 				}
@@ -356,6 +355,6 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 			connBackend.Close()
 			log.Infoln("Link Websocket closed", u.Scheme, uuid)
 		}
-		websockets.Run(socketCtx, c, receive, send, cleanup)
+		websockets.Run(socketCtx, socketCancel, c, receive, send, cleanup)
 	})
 }

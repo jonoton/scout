@@ -88,20 +88,20 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		receive := func(msgType int, data []byte) {
 			// Nothing
 		}
-		send := func(c *websocket.Conn) {
-			defer socketCancel()
+		send := func(ctx context.Context, c *websocket.Conn) {
 		SendLoop:
 			for {
 				select {
+				case <-ctx.Done():
+					cleanupRingBuffer(ringBuffer)
+					break SendLoop
 				case <-sourceCtx.Done():
-					if ringBuffer.Len() == 0 {
-						break SendLoop
-					}
 					for ringBuffer.Len() != 0 {
 						if !writeOut(c, ringBuffer, width, jpegQuality) {
 							break
 						}
 					}
+					c.Close()
 					cleanupRingBuffer(ringBuffer)
 					break SendLoop
 				case _, ok := <-ringBuffer.Ready():
@@ -119,7 +119,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			log.Infoln("Websocket closed", uuid)
 		}
 
-		websockets.Run(socketCtx, c, receive, send, cleanup)
+		websockets.Run(socketCtx, socketCancel, c, receive, send, cleanup)
 	})
 }
 
