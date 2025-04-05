@@ -3,7 +3,7 @@ package http
 import (
 	"io/ioutil"
 
-	"github.com/jonoton/scout/notify"
+	"github.com/jonoton/go-notify"
 	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v2"

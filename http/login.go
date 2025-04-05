@@ -13,7 +13,7 @@ import (
 	jwtware "github.com/gofiber/jwt/v2"
 	"github.com/golang-jwt/jwt"
 
-	"github.com/jonoton/scout/notify"
+	"github.com/jonoton/go-notify"
 )
 
 func getSHA256Hash(text string) string {

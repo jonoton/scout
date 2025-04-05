@@ -34,6 +34,8 @@ github.com/jonoton/go-gzip v1.0.0 h1:cUVpvM6uzxFM7rEGI+K3JfXictlP6WcKglwPEYuUyN4
 github.com/jonoton/go-gzip v1.0.0/go.mod h1:lvYeKIY8BKYpF2D8ZSgsy4afTb8WaqU5q//K1ldW5aA=
 github.com/jonoton/go-memory v1.0.0 h1:KUWkJBKBH3b67CFmH8dsVpjI8w3nkzQlRd107bdr5co=
 github.com/jonoton/go-memory v1.0.0/go.mod h1:N0UOK96J/P6K2w0nwUQLvJOv8rN6JLU1KX3xgqyJgKg=
+github.com/jonoton/go-notify v1.0.0 h1:WFHPhUGtr1vVoy2RxbEe7jHw/25ub3UsY00+v9KZofs=
+github.com/jonoton/go-notify v1.0.0/go.mod h1:egNE9bVl3YYGUz3h10rnGieADApw6Rz9d+WEE5ZckG8=
 github.com/jonoton/go-websockets v1.0.0 h1:hYfgQl7p43ZSXoWEG6MBTu0dQ/RveVnUG08upWt87Ng=
 github.com/jonoton/go-websockets v1.0.0/go.mod h1:+V6VIv4DU0hXgwmM8ndy0Mxdm2zNIObD0hZ0Asg2s6g=
 github.com/klauspost/compress v1.12.2/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
