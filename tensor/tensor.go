@@ -10,7 +10,7 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/jonoton/scout/cuda"
+	"github.com/jonoton/go-cuda"
 	"github.com/jonoton/scout/runtime"
 	"github.com/jonoton/scout/videosource"
 )
