@@ -1,3 +1,4 @@
+//go:build profile
 // +build profile
 
 package main
@@ -12,7 +13,7 @@ package main
 //
 //     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/heap`
 //     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/goroutine`
-//     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/scout/sharedmat.counts`
+//     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/go-sharedmat.counts`
 //
 
 import (

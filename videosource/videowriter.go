@@ -9,7 +9,7 @@ import (
 
 	"github.com/cskr/pubsub"
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
-	"github.com/jonoton/scout/sharedmat"
+	"github.com/jonoton/go-sharedmat"
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )

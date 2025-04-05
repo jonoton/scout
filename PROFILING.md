@@ -52,7 +52,7 @@
         go run -tags profile PROJECT
         ```
         ```
-        go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/scout/sharedmat.counts
+        go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/go-sharedmat.counts
         ```
         See `scout/main_profile.go` and `scout/sharedmat/sharedmat_profile.go` for more insight
         

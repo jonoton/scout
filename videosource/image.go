@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/jonoton/scout/sharedmat"
+	"github.com/jonoton/go-sharedmat"
 	"gocv.io/x/gocv"
 )
 
