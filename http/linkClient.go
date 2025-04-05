@@ -12,7 +12,7 @@ import (
 	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	gorillaWebsocket "github.com/gorilla/websocket"
-	"github.com/jonoton/scout/http/websockets"
+	"github.com/jonoton/go-websockets"
 	log "github.com/sirupsen/logrus"
 )
 

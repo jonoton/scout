@@ -11,8 +11,8 @@ import (
 	fiber "github.com/gofiber/fiber/v2"
 	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"github.com/jonoton/go-websockets"
 	"github.com/jonoton/scout/gzip"
-	"github.com/jonoton/scout/http/websockets"
 	"github.com/jonoton/scout/videosource"
 )
 
