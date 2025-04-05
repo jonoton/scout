@@ -9,10 +9,10 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/jonoton/go-notify"
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
+	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
 	"github.com/jonoton/scout/tensor"
-	"github.com/jonoton/scout/videosource"
 	log "github.com/sirupsen/logrus"
 )
 

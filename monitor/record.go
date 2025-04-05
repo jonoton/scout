@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-dir"
-	"github.com/jonoton/scout/videosource"
+	"github.com/jonoton/go-videosource"
 )
 
 // Record buffers ProcessedImages and writes to disk

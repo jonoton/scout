@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jonoton/scout/videosource"
+	"github.com/jonoton/go-videosource"
 	"gocv.io/x/gocv"
 )
 

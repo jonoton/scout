@@ -18,7 +18,7 @@ require (
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0
 	github.com/jonoton/go-pubsubmutex v1.0.0
-	github.com/jonoton/go-sharedmat v1.0.0
+	github.com/jonoton/go-videosource v1.0.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3
@@ -32,6 +32,7 @@ require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
+	github.com/jonoton/go-sharedmat v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

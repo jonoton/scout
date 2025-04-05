@@ -12,8 +12,8 @@ import (
 	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"github.com/jonoton/go-gzip"
+	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/go-websockets"
-	"github.com/jonoton/scout/videosource"
 )
 
 func (h *Http) liveMonitor() func(*fiber.Ctx) error {
