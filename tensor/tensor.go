@@ -11,8 +11,8 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/jonoton/go-cuda"
+	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/go-videosource"
-	"github.com/jonoton/scout/runtime"
 )
 
 const fileLocation = "data/tensor"

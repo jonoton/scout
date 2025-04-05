@@ -18,6 +18,7 @@ require (
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0
 	github.com/jonoton/go-pubsubmutex v1.0.0
+	github.com/jonoton/go-runtime v1.0.0
 	github.com/jonoton/go-videosource v1.0.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7

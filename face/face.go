@@ -6,8 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-cuda"
+	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/go-videosource"
-	"github.com/jonoton/scout/runtime"
 	"gocv.io/x/gocv"
 )
 

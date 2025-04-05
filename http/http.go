@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonoton/go-dir"
 	"github.com/jonoton/go-memory"
+	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/scout/manage"
-	"github.com/jonoton/scout/runtime"
 	"github.com/valyala/bytebufferpool"
 
 	"gopkg.in/natefinch/lumberjack.v2"

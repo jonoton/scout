@@ -38,6 +38,8 @@ github.com/jonoton/go-notify v1.0.0 h1:WFHPhUGtr1vVoy2RxbEe7jHw/25ub3UsY00+v9KZo
 github.com/jonoton/go-notify v1.0.0/go.mod h1:egNE9bVl3YYGUz3h10rnGieADApw6Rz9d+WEE5ZckG8=
 github.com/jonoton/go-pubsubmutex v1.0.0 h1:mRJR/a48dSCR5cLoKnjLvdVrXjkcREcORKlVKxlBu3c=
 github.com/jonoton/go-pubsubmutex v1.0.0/go.mod h1:VUcHGGjWmMtsGwQhjqTxso8KrzKNvFgbRw/Bpw2AGrQ=
+github.com/jonoton/go-runtime v1.0.0 h1:ydVuHGcHcSsRG955QJZ8zTV0MoOLLxCXjtr0Lerp0TM=
+github.com/jonoton/go-runtime v1.0.0/go.mod h1:MchOdipJ65y8rjIBRcGTKWDde7rbwKfRUtPoYKc5yeI=
 github.com/jonoton/go-sharedmat v1.0.0 h1:mLpifo23IVjnehJNryozG21WM4JJa8EBMFOFynPpzEY=
 github.com/jonoton/go-sharedmat v1.0.0/go.mod h1:ZCzG6r3ziubgE5JNg2c7uCCKRHeWN5Xi4I9K74jocz4=
 github.com/jonoton/go-videosource v1.0.0 h1:dzAI+Fi4kjNjnQWNWVn5lfSQJNEtpB9psxj6h9P606w=

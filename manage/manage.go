@@ -16,9 +16,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-notify"
+	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/scout/monitor"
-	"github.com/jonoton/scout/runtime"
 )
 
 const topicAddMon = "topic-add-mon"

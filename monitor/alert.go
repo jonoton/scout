@@ -13,8 +13,8 @@ import (
 
 	"github.com/jonoton/go-dir"
 	"github.com/jonoton/go-notify"
+	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/go-videosource"
-	"github.com/jonoton/scout/runtime"
 )
 
 // Alert Constants
