@@ -11,7 +11,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jonoton/scout/dir"
+	"github.com/jonoton/go-dir"
 	"github.com/jonoton/scout/notify"
 	"github.com/jonoton/scout/runtime"
 	"github.com/jonoton/scout/videosource"

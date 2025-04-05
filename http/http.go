@@ -15,7 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/google/uuid"
-	"github.com/jonoton/scout/dir"
+	"github.com/jonoton/go-dir"
 	"github.com/jonoton/scout/manage"
 	"github.com/jonoton/scout/memory"
 	"github.com/jonoton/scout/runtime"
