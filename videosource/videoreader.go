@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/cskr/pubsub"
-	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
+	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -202,6 +202,7 @@ func (v *VideoReader) pubSourceStats() {
 		instance.TryPub(v.sourceStats.GetStats(), topicCurrentFrameStatsSource)
 	})
 }
+
 // GetSourceStatsChan returns the channel
 func (v *VideoReader) GetSourceStatsChan() (result <-chan interface{}) {
 	result = v.pubsubSource.SubAsync(topicCurrentFrameStatsSource)
@@ -222,6 +223,7 @@ func (v *VideoReader) pubOutputStats() {
 		instance.TryPub(v.outputStats.GetStats(), topicCurrentFrameStatsOutput)
 	})
 }
+
 // GetOutputStatsChan returns the channel
 func (v *VideoReader) GetOutputStatsChan() (result <-chan interface{}) {
 	result = v.pubsubOutput.SubAsync(topicCurrentFrameStatsOutput)

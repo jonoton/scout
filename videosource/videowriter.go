@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/cskr/pubsub"
-	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
+	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/scout/sharedmat"
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"

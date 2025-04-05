@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/cskr/pubsub"
+	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
-	pubsubmutex "github.com/jonoton/scout/pubsubMutex"
 	"github.com/jonoton/scout/tensor"
 
 	"github.com/radovskyb/watcher"
