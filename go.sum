@@ -2,8 +2,6 @@ github.com/andybalholm/brotli v1.0.2/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu
 github.com/andybalholm/brotli v1.1.1 h1:PR2pgnyFznKEugtsUo0xLdDop5SKXd5Qf5ysW+7XdTA=
 github.com/andybalholm/brotli v1.1.1/go.mod h1:05ib4cKhjx3OQYUY22hTVd34Bc8upXjOLL2rKwwZBoA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
-github.com/cskr/pubsub v1.0.2 h1:vlOzMhl6PFn60gRlTQQsIfVwaPB/B/8MziK8FhEPt/0=
-github.com/cskr/pubsub v1.0.2/go.mod h1:/8MzYXk/NJAz782G8RPkFzXTZVu63VotefPnR9TIRis=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -36,14 +34,14 @@ github.com/jonoton/go-memory v1.0.0 h1:KUWkJBKBH3b67CFmH8dsVpjI8w3nkzQlRd107bdr5
 github.com/jonoton/go-memory v1.0.0/go.mod h1:N0UOK96J/P6K2w0nwUQLvJOv8rN6JLU1KX3xgqyJgKg=
 github.com/jonoton/go-notify v1.0.0 h1:WFHPhUGtr1vVoy2RxbEe7jHw/25ub3UsY00+v9KZofs=
 github.com/jonoton/go-notify v1.0.0/go.mod h1:egNE9bVl3YYGUz3h10rnGieADApw6Rz9d+WEE5ZckG8=
-github.com/jonoton/go-pubsubmutex v1.0.0 h1:mRJR/a48dSCR5cLoKnjLvdVrXjkcREcORKlVKxlBu3c=
-github.com/jonoton/go-pubsubmutex v1.0.0/go.mod h1:VUcHGGjWmMtsGwQhjqTxso8KrzKNvFgbRw/Bpw2AGrQ=
+github.com/jonoton/go-pubsubmutex v1.2.0 h1:eXwRZFklb9JNiptwgv5eDdIFbJc7gvvB3VLZvCzKz0k=
+github.com/jonoton/go-pubsubmutex v1.2.0/go.mod h1:GBBhtLidNH0qT+T2OcRMGIcJg3Oqy/1pgP8cWOBbcI0=
 github.com/jonoton/go-runtime v1.0.0 h1:ydVuHGcHcSsRG955QJZ8zTV0MoOLLxCXjtr0Lerp0TM=
 github.com/jonoton/go-runtime v1.0.0/go.mod h1:MchOdipJ65y8rjIBRcGTKWDde7rbwKfRUtPoYKc5yeI=
 github.com/jonoton/go-sharedmat v1.0.0 h1:mLpifo23IVjnehJNryozG21WM4JJa8EBMFOFynPpzEY=
 github.com/jonoton/go-sharedmat v1.0.0/go.mod h1:ZCzG6r3ziubgE5JNg2c7uCCKRHeWN5Xi4I9K74jocz4=
-github.com/jonoton/go-videosource v1.0.0 h1:dzAI+Fi4kjNjnQWNWVn5lfSQJNEtpB9psxj6h9P606w=
-github.com/jonoton/go-videosource v1.0.0/go.mod h1:gjd6umIVH26JPqo2+EmQaoAnWf6u40496BQoPGGYufc=
+github.com/jonoton/go-videosource v1.2.0 h1:e5zdhyYO9fJb+c2ESz5Gb/bpyp53CQjxRjYgklGN1VM=
+github.com/jonoton/go-videosource v1.2.0/go.mod h1:G+AC+ybXtV216JTDgZJJtZ0Pbz0gKO0fM+RZjdtuBoQ=
 github.com/jonoton/go-websockets v1.0.0 h1:hYfgQl7p43ZSXoWEG6MBTu0dQ/RveVnUG08upWt87Ng=
 github.com/jonoton/go-websockets v1.0.0/go.mod h1:+V6VIv4DU0hXgwmM8ndy0Mxdm2zNIObD0hZ0Asg2s6g=
 github.com/klauspost/compress v1.12.2/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=

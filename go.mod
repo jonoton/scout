@@ -5,7 +5,6 @@ go 1.21
 toolchain go1.22.5
 
 require (
-	github.com/cskr/pubsub v1.0.2
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/gofiber/jwt/v2 v2.2.7
 	github.com/gofiber/websocket/v2 v2.2.1
@@ -17,9 +16,9 @@ require (
 	github.com/jonoton/go-gzip v1.0.0
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0
-	github.com/jonoton/go-pubsubmutex v1.0.0
+	github.com/jonoton/go-pubsubmutex v1.2.0
 	github.com/jonoton/go-runtime v1.0.0
-	github.com/jonoton/go-videosource v1.0.0
+	github.com/jonoton/go-videosource v1.2.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3

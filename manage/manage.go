@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cskr/pubsub"
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
@@ -40,7 +39,7 @@ type Manage struct {
 	notifySenderConf *notify.SenderConfig
 	Notifier         *notify.Notify
 	wtr              *watcher.Watcher
-	pubsub           pubsubmutex.PubSubMutex
+	pubsub           pubsubmutex.PubSub
 	done             chan bool
 }
 
@@ -52,7 +51,7 @@ func NewManage() *Manage {
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
 		Notifier:         nil,
 		wtr:              watcher.New(),
-		pubsub:           *pubsubmutex.New(0),
+		pubsub:           *pubsubmutex.NewPubSub(),
 		done:             make(chan bool),
 	}
 	if m.notifySenderConf != nil {
@@ -66,9 +65,7 @@ func NewManage() *Manage {
 
 // AddMonitor adds a new monitor to manage
 func (m *Manage) AddMonitor(mon *monitor.Monitor) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(mon, topicAddMon)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicAddMon, Data: mon})
 }
 func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	log.Infoln("Add monitor", mon.Name)
@@ -91,14 +88,12 @@ func (m *Manage) GetMonitorNames(timeoutMs int) (result []string) {
 	return
 }
 func (m *Manage) pubMonitorNames() {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		result := make([]string, 0)
-		for key := range m.mons {
-			result = append(result, key)
-		}
-		sort.Strings(result)
-		instance.TryPub(result, topicCurrentMonitorNames)
-	})
+	result := make([]string, 0)
+	for key := range m.mons {
+		result = append(result, key)
+	}
+	sort.Strings(result)
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorNames, Data: result})
 }
 
 // GetMonitorFrameStats returns the monitor's frame stats
@@ -112,14 +107,12 @@ func (m *Manage) GetMonitorFrameStats(monitorName string, timeoutMs int) (result
 }
 
 func (m *Manage) pubMonitorFrameStats(monitorName string) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		if mon, found := m.mons[monitorName]; found {
-			combo := mon.GetMonitorFrameStats(200)
-			instance.TryPub(combo, topicCurrentMonitorFrameStats)
-		} else {
-			instance.TryPub(nil, topicCurrentMonitorFrameStats)
-		}
-	})
+	if mon, found := m.mons[monitorName]; found {
+		combo := mon.GetMonitorFrameStats(200)
+		m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorFrameStats, Data: combo})
+	} else {
+		m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorFrameStats, Data: nil})
+	}
 }
 
 // GetMonitorAlertTimes returns all monitor alert times
@@ -133,13 +126,11 @@ func (m *Manage) GetMonitorAlertTimes(timeoutMs int) (result map[string]monitor.
 	return
 }
 func (m *Manage) pubMonitorAlertTimes() {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		alertTimes := make(map[string]monitor.AlertTimes)
-		for _, mon := range m.mons {
-			alertTimes[mon.Name] = mon.GetAlertTimes()
-		}
-		instance.TryPub(alertTimes, topicCurrentMonitorAlertTimes)
-	})
+	alertTimes := make(map[string]monitor.AlertTimes)
+	for _, mon := range m.mons {
+		alertTimes[mon.Name] = mon.GetAlertTimes()
+	}
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorAlertTimes, Data: alertTimes})
 }
 
 // GetDataDirectory returns the save data directory
@@ -239,12 +230,11 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 
 // Stop the manage
 func (m *Manage) Stop() {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(nil, topicStop)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicStop, Data: nil})
 }
 func (m *Manage) stop() {
-	m.pubsub.Shutdown()
+	close(m.done)
+	m.pubsub.Close()
 	tmpMap := make(monitor.Map)
 	for k, v := range m.mons {
 		tmpMap[k] = v
@@ -252,7 +242,6 @@ func (m *Manage) stop() {
 	for _, v := range tmpMap {
 		m.removeMonitor(v, true)
 	}
-	close(m.done)
 }
 
 // Wait until done
@@ -268,15 +257,13 @@ type subscribeMonitor struct {
 
 // Subscribe to a monitor's video images
 func (m *Manage) Subscribe(monitorName string, key string) (result <-chan videosource.ProcessedImage) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		subMon := subscribeMonitor{
-			monitorName: monitorName,
-			key:         key,
-			subChan:     make(chan videosource.ProcessedImage),
-		}
-		instance.TryPub(subMon, topicSubscribe)
-		result = subMon.subChan
-	})
+	subMon := subscribeMonitor{
+		monitorName: monitorName,
+		key:         key,
+		subChan:     make(chan videosource.ProcessedImage),
+	}
+	result = subMon.subChan
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicSubscribe, Data: subMon})
 	return
 }
 func (m *Manage) subscribe(subMon subscribeMonitor) {
@@ -289,13 +276,11 @@ func (m *Manage) subscribe(subMon subscribeMonitor) {
 
 // Unsubscribe to a monitor's video images
 func (m *Manage) Unsubscribe(monitorName string, key string) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(subscribeMonitor{
-			monitorName: monitorName,
-			key:         key,
-			subChan:     nil,
-		}, topicUnsubscribe)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicUnsubscribe, Data: subscribeMonitor{
+		monitorName: monitorName,
+		key:         key,
+		subChan:     nil,
+	}})
 }
 func (m *Manage) unsubscribe(subMon subscribeMonitor) {
 	if mon, ok := m.mons[subMon.monitorName]; ok {
@@ -340,60 +325,65 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 }
 
 func (m *Manage) run() {
-	m.pubsub.Start()
 	m.monitorConfigChanges()
 	go func() {
 		m.addAllMonitors()
-		addMonChan := m.pubsub.Sub(topicAddMon)
-		removeMonChan := m.pubsub.Sub(topicRemoveMon)
-		subChan := m.pubsub.Sub(topicSubscribe)
-		unsubChan := m.pubsub.Sub(topicUnsubscribe)
-		stopChan := m.pubsub.Sub(topicStop)
-		getMonNamesChan := m.pubsub.Sub(topicGetMonitorNames)
-		getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
-		getMonAlertTimesChan := m.pubsub.Sub(topicGetMonitorAlertTimes)
+		addMonSub := m.pubsub.Subscribe(topicAddMon, m.pubsub.GetUniqueSubscriberID(), 10)
+		removeMonSub := m.pubsub.Subscribe(topicRemoveMon, m.pubsub.GetUniqueSubscriberID(), 10)
+		subSub := m.pubsub.Subscribe(topicSubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
+		unsubSub := m.pubsub.Subscribe(topicUnsubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
+		stopSub := m.pubsub.Subscribe(topicStop, m.pubsub.GetUniqueSubscriberID(), 10)
+		getMonNamesSub := m.pubsub.Subscribe(topicGetMonitorNames, m.pubsub.GetUniqueSubscriberID(), 10)
+		getMonFrameStatsSub := m.pubsub.Subscribe(topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
+		getMonAlertTimesSub := m.pubsub.Subscribe(topicGetMonitorAlertTimes, m.pubsub.GetUniqueSubscriberID(), 10)
+
 		staleTicker := time.NewTicker(time.Second)
 		lastStaleList := make([]*monitor.Monitor, 0)
 		retryList := make([]mon, 0)
 	Loop:
 		for {
 			select {
-			case mon, ok := <-removeMonChan:
+			case msg, ok := <-removeMonSub.Ch:
 				if !ok {
 					continue
 				}
-				m.removeMonitor(mon.(*monitor.Monitor), true)
-			case mon, ok := <-addMonChan:
+				mon := msg.Data.(*monitor.Monitor)
+				m.removeMonitor(mon, true)
+			case msg, ok := <-addMonSub.Ch:
 				if !ok {
 					continue
 				}
-				m.addMonitor(mon.(*monitor.Monitor))
-			case subMon, ok := <-subChan:
+				mon := msg.Data.(*monitor.Monitor)
+				m.addMonitor(mon)
+			case msg, ok := <-subSub.Ch:
 				if !ok {
 					continue
 				}
-				m.subscribe(subMon.(subscribeMonitor))
-			case subMon, ok := <-unsubChan:
+				subMon := msg.Data.(subscribeMonitor)
+				m.subscribe(subMon)
+			case msg, ok := <-unsubSub.Ch:
 				if !ok {
 					continue
 				}
-				m.unsubscribe(subMon.(subscribeMonitor))
-			case _, ok := <-stopChan:
+				subMon := msg.Data.(subscribeMonitor)
+				m.unsubscribe(subMon)
+			case _, ok := <-stopSub.Ch:
 				if !ok {
 					continue
 				}
 				m.stop()
-			case _, ok := <-getMonNamesChan:
+			case _, ok := <-getMonNamesSub.Ch:
 				if !ok {
 					continue
 				}
 				m.pubMonitorNames()
-			case name, ok := <-getMonFrameStatsChan:
+			case msg, ok := <-getMonFrameStatsSub.Ch:
 				if !ok {
 					continue
 				}
-				m.pubMonitorFrameStats(name.(string))
-			case _, ok := <-getMonAlertTimesChan:
+				name := msg.Data.(string)
+				m.pubMonitorFrameStats(name)
+			case _, ok := <-getMonAlertTimesSub.Ch:
 				if !ok {
 					continue
 				}
@@ -415,9 +405,7 @@ func (m *Manage) run() {
 
 // RemoveMonitor will stop, wait, and remove from manage
 func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(mon, topicRemoveMon)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicRemoveMon, Data: mon})
 }
 
 func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cskr/pubsub"
 	"github.com/jonoton/go-notify"
+
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/scout/face"
@@ -46,7 +46,7 @@ type Monitor struct {
 	face            *face.Face
 	subscriptions   map[string]chan videosource.ProcessedImage
 	alert           *Alert
-	pubsub          pubsubmutex.PubSubMutex
+	pubsub          pubsubmutex.PubSub
 	done            chan bool
 }
 
@@ -72,7 +72,7 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 		tensor:          tensor.NewTensor(name),
 		face:            face.NewFace(name),
 		subscriptions:   make(map[string]chan videosource.ProcessedImage),
-		pubsub:          *pubsubmutex.New(0),
+		pubsub:          *pubsubmutex.NewPubSub(),
 		alert:           nil,
 		done:            make(chan bool),
 	}
@@ -132,7 +132,6 @@ func (m *Monitor) SetFace(config *face.Config) {
 // Start will run the processes
 func (m *Monitor) Start() {
 	go func() {
-		m.pubsub.Start()
 		readerOutput := m.reader.Start()
 
 		motionInput := make(chan videosource.Image, m.bufferSize)
@@ -153,9 +152,9 @@ func (m *Monitor) Start() {
 
 		m.reader.Wait()
 		wg.Wait()
-		m.pubsub.Shutdown()
 		m.IsStale = true
 		close(m.done)
+		m.pubsub.Close()
 		log.Infoln("Done monitor", m.Name)
 	}()
 }
@@ -193,42 +192,51 @@ func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *s
 	if m.alert != nil {
 		m.alert.Start()
 	}
-	subChan := m.pubsub.Sub(topicSubscribe)
-	unsubChan := m.pubsub.Sub(topicUnsubscribe)
-	getMonFrameStatsChan := m.pubsub.Sub(topicGetMonitorFrameStats)
-	sourceStatsChan := m.reader.GetSourceStatsChan()
-	outputStatsChan := m.reader.GetOutputStatsChan()
+	subSub := m.pubsub.Subscribe(topicSubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
+	defer m.pubsub.CleanupSub(subSub)
+	unsubSub := m.pubsub.Subscribe(topicUnsubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
+	defer m.pubsub.CleanupSub(unsubSub)
+	getMonFrameStatsSub := m.pubsub.Subscribe(topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
+	defer m.pubsub.CleanupSub(getMonFrameStatsSub)
+	sourceStatsSub := m.reader.GetSourceStatsSub()
+	defer sourceStatsSub.ReadMessages(func(m pubsubmutex.Message) {})
+	outputStatsSub := m.reader.GetOutputStatsSub()
+	defer outputStatsSub.ReadMessages(func(m pubsubmutex.Message) {})
 	staleTicker := time.NewTicker(time.Second)
 	staleSec := 0
 	lastTotal := 0
 FaceLoop:
 	for {
 		select {
-		case _, ok := <-getMonFrameStatsChan:
+		case _, ok := <-getMonFrameStatsSub.Ch:
 			if !ok {
 				continue
 			}
 			m.pubMonitorFrameStats()
-		case cur, ok := <-sourceStatsChan:
-			if !ok || cur == nil {
+		case msg, ok := <-sourceStatsSub.Ch:
+			if !ok || msg.Data == nil {
 				continue
 			}
-			m.frameStatsCombo.In = *cur.(*videosource.FrameStats)
-		case cur, ok := <-outputStatsChan:
-			if !ok || cur == nil {
+			cur := msg.Data.(*videosource.FrameStats)
+			m.frameStatsCombo.In = *cur
+		case msg, ok := <-outputStatsSub.Ch:
+			if !ok || msg.Data == nil {
 				continue
 			}
-			m.frameStatsCombo.Out = *cur.(*videosource.FrameStats)
-		case subMon, ok := <-subChan:
+			cur := msg.Data.(*videosource.FrameStats)
+			m.frameStatsCombo.Out = *cur
+		case msg, ok := <-subSub.Ch:
 			if !ok {
 				continue
 			}
-			m.subscribe(subMon.(subscribeMonitor))
-		case key, ok := <-unsubChan:
+			subMon := msg.Data.(subscribeMonitor)
+			m.subscribe(subMon)
+		case msg, ok := <-unsubSub.Ch:
 			if !ok {
 				continue
 			}
-			m.unsubscribe(key.(string))
+			key := msg.Data.(string)
+			m.unsubscribe(key)
 		case cur, ok := <-inChan:
 			if !ok {
 				cur.Cleanup()
@@ -296,33 +304,27 @@ func (m *Monitor) Wait() {
 
 // Subscribe to video images
 func (m *Monitor) Subscribe(key string) (result chan videosource.ProcessedImage) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		subMon := subscribeMonitor{
-			key:     key,
-			subChan: make(chan videosource.ProcessedImage),
-		}
-		result = subMon.subChan
-		instance.TryPub(subMon, topicSubscribe)
-	})
+	subMon := subscribeMonitor{
+		key:     key,
+		subChan: make(chan videosource.ProcessedImage),
+	}
+	result = subMon.subChan
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicSubscribe, Data: subMon})
 	return
 }
 
 // Subscribe to video images with channel
 func (m *Monitor) SubscribeWithChan(key string, subChan chan videosource.ProcessedImage) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		subMon := subscribeMonitor{
-			key:     key,
-			subChan: subChan,
-		}
-		instance.TryPub(subMon, topicSubscribe)
-	})
+	subMon := subscribeMonitor{
+		key:     key,
+		subChan: subChan,
+	}
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicSubscribe, Data: subMon})
 }
 
 // Unsubscribe to video images
 func (m *Monitor) Unsubscribe(key string) {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(key, topicUnsubscribe)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicUnsubscribe, Data: key})
 }
 
 func (m *Monitor) subscribe(subMon subscribeMonitor) {
@@ -352,9 +354,7 @@ func (m *Monitor) GetMonitorFrameStats(timeoutMs int) (result *videosource.Frame
 }
 
 func (m *Monitor) pubMonitorFrameStats() {
-	m.pubsub.Use(func(instance *pubsub.PubSub) {
-		instance.TryPub(&m.frameStatsCombo, topicCurrentMonitorFrameStats)
-	})
+	m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorFrameStats, Data: &m.frameStatsCombo})
 }
 
 // GetAlertTimes returns the alert times
