@@ -119,9 +119,9 @@ func (h *Http) createToken(user string, timeNow time.Time) (string, error) {
 
 func (h *Http) sendSecret(index int, rxConfig *notify.RxConfig, attempt twoFactorAttempt) {
 	emailTitle := "Scout Passcode"
-	emailBody := fmt.Sprintf("The Scout Passcode expires in %d seconds.<br><br>Your passcode is: %s", h.httpConfig.TwoFactorTimeoutSec, attempt.secret)
+	emailBody := fmt.Sprintf("The Scout Passcode expires in %d seconds.<br><br>Your passcode is: %s", h.twoFactorTimeoutSec, attempt.secret)
 	textTitle := ""
-	textBodyExpire := fmt.Sprintf("The Scout Passcode expires in %d seconds", h.httpConfig.TwoFactorTimeoutSec)
+	textBodyExpire := fmt.Sprintf("The Scout Passcode expires in %d seconds", h.twoFactorTimeoutSec)
 	textBodyPasscode := attempt.secret
 	pos := 0
 	for _, cur := range rxConfig.Email {
