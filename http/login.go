@@ -118,19 +118,25 @@ func (h *Http) createToken(user string, timeNow time.Time) (string, error) {
 }
 
 func (h *Http) sendSecret(index int, rxConfig *notify.RxConfig, attempt twoFactorAttempt) {
-	title := "Scout Passcode"
-	html := "Scout Passcode: <br>" + attempt.secret
+	emailTitle := "Scout Passcode"
+	emailBody := fmt.Sprintf("The Scout Passcode expires in %d seconds.<br><br>Your passcode is: %s", h.httpConfig.TwoFactorTimeoutSec, attempt.secret)
+	textTitle := ""
+	textBodyExpire := fmt.Sprintf("The Scout Passcode expires in %d seconds", h.httpConfig.TwoFactorTimeoutSec)
+	textBodyPasscode := attempt.secret
 	pos := 0
 	for _, cur := range rxConfig.Email {
 		if pos == index {
-			h.manage.Notifier.SendEmail([]string{cur}, title, html, make([]string, 0), make([]string, 0))
+			h.manage.Notifier.SendEmail([]string{cur}, emailTitle, emailBody, make([]string, 0), make([]string, 0))
 			return
 		}
 		pos++
 	}
 	for _, cur := range rxConfig.GetPhones() {
 		if pos == index {
-			h.manage.Notifier.SendText([]notify.Phone{cur}, title, html, make([]string, 0))
+			// send easy to copy passcode first as some phone networks rate limit email to text messages
+			// note second message may be blocked or delayed by phone network thus only contains expiration reminder
+			h.manage.Notifier.SendText([]notify.Phone{cur}, textTitle, textBodyPasscode, make([]string, 0))
+			h.manage.Notifier.SendText([]notify.Phone{cur}, textTitle, textBodyExpire, make([]string, 0))
 			return
 		}
 		pos++

@@ -4,3 +4,4 @@ __debug_bin*
 .config
 .logs
 *.fasthttp.gz
+access
