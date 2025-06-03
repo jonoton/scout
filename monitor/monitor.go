@@ -193,15 +193,15 @@ func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *s
 		m.alert.Start()
 	}
 	subSub := m.pubsub.Subscribe(topicSubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
-	defer m.pubsub.CleanupSub(subSub)
+	defer subSub.Unsubscribe()
 	unsubSub := m.pubsub.Subscribe(topicUnsubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
-	defer m.pubsub.CleanupSub(unsubSub)
+	defer unsubSub.Unsubscribe()
 	getMonFrameStatsSub := m.pubsub.Subscribe(topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
-	defer m.pubsub.CleanupSub(getMonFrameStatsSub)
+	defer getMonFrameStatsSub.Unsubscribe()
 	sourceStatsSub := m.reader.GetSourceStatsSub()
-	defer sourceStatsSub.ReadMessages(func(m pubsubmutex.Message) {})
+	defer sourceStatsSub.Unsubscribe()
 	outputStatsSub := m.reader.GetOutputStatsSub()
-	defer outputStatsSub.ReadMessages(func(m pubsubmutex.Message) {})
+	defer outputStatsSub.Unsubscribe()
 	staleTicker := time.NewTicker(time.Second)
 	staleSec := 0
 	lastTotal := 0
