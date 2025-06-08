@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"io/ioutil"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -31,7 +31,7 @@ type Config struct {
 // NewConfig creates a new Config
 func NewConfig(configPath string) *Config {
 	c := &Config{}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil
@@ -61,7 +61,7 @@ type RecordConfig struct {
 // NewRecordConfig creates a new RecordConfig
 func NewRecordConfig(configPath string) *RecordConfig {
 	c := &RecordConfig{}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil
@@ -89,7 +89,7 @@ type ContinuousConfig struct {
 // NewContinuousConfig creates a new ContinuousConfig
 func NewContinuousConfig(configPath string) *ContinuousConfig {
 	c := &ContinuousConfig{}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil
@@ -120,7 +120,7 @@ type AlertConfig struct {
 // NewAlertConfig creates a new AlertConfig
 func NewAlertConfig(configPath string) *AlertConfig {
 	c := &AlertConfig{}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil

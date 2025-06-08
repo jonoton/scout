@@ -11,7 +11,7 @@ import (
 
 	fiber "github.com/gofiber/fiber/v2"
 	jwtware "github.com/gofiber/jwt/v2"
-	"github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/jonoton/go-notify"
 )

@@ -1,7 +1,7 @@
 package http
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/jonoton/go-notify"
 	log "github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ type Config struct {
 // NewConfig creates a new Config
 func NewConfig(configPath string) *Config {
 	c := &Config{}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil

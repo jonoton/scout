@@ -1,7 +1,7 @@
 package tensor
 
 import (
-	"io/ioutil"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -33,7 +33,7 @@ func NewConfig(configPath string) *Config {
 	c := &Config{
 		MinPercentage: -1,
 	}
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 		return nil
