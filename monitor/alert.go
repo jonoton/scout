@@ -13,6 +13,7 @@ import (
 
 	"github.com/jonoton/go-dir"
 	"github.com/jonoton/go-notify"
+	"github.com/jonoton/go-ringbuffer"
 	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/go-videosource"
 )
@@ -38,7 +39,7 @@ type Alert struct {
 	notifyRxConf  *notify.RxConfig
 	saveDirectory string
 	alertConf     *AlertConfig
-	ringBuffer    videosource.RingBufferProcessedImage
+	ringBuffer    ringbuffer.RingBuffer[*videosource.ProcessedImage]
 	intervalTick  *time.Ticker
 	hourTick      *time.Ticker
 	hourSent      int
@@ -61,7 +62,7 @@ func NewAlert(name string, notifier *notify.Notify, notifyRxConf *notify.RxConfi
 		notifyRxConf:  notifyRxConf,
 		saveDirectory: alertDir,
 		alertConf:     alertConf,
-		ringBuffer:    *videosource.NewRingBufferProcessedImage(alertConf.MaxImagesPerInterval),
+		ringBuffer:    *ringbuffer.New[*videosource.ProcessedImage](alertConf.MaxImagesPerInterval),
 		intervalTick:  time.NewTicker(time.Duration(alertConf.IntervalMinutes) * time.Minute),
 		hourTick:      time.NewTicker(time.Hour),
 		hourSent:      0,
@@ -69,7 +70,6 @@ func NewAlert(name string, notifier *notify.Notify, notifyRxConf *notify.RxConfi
 		cancel:        make(chan bool),
 		LastAlert:     AlertTimes{},
 	}
-	a.ringBuffer.IsSortByContent = true
 	return a
 }
 
@@ -97,6 +97,7 @@ func (a *Alert) Start() {
 		}
 		a.intervalTick.Stop()
 		a.hourTick.Stop()
+		a.ringBuffer.Stop()
 		close(a.done)
 	}()
 }
@@ -104,8 +105,7 @@ func (a *Alert) Start() {
 // Push a processed image to buffer
 func (a *Alert) Push(img videosource.ProcessedImage) {
 	if img.HasObject() {
-		popped := a.ringBuffer.Push(*img.Ref())
-		popped.Cleanup()
+		a.addUpdateBuffer(img.Ref())
 	}
 	img.Cleanup()
 }
@@ -114,10 +114,27 @@ func (a *Alert) Push(img videosource.ProcessedImage) {
 func (a *Alert) Stop() {
 	close(a.cancel)
 	<-a.done
-	for a.ringBuffer.Len() > 0 {
-		cur := a.ringBuffer.Pop()
-		cur.Cleanup()
+}
+
+func (a *Alert) addUpdateBuffer(img *videosource.ProcessedImage) {
+	a.ringBuffer.Add(img)
+	// pop all to sort by content and re-add
+	allBuffered := a.ptrSliceToSlice(a.ringBuffer.GetAll())
+	sort.Sort(videosource.ProcessedImageByObjLen(allBuffered))
+	sort.Sort(videosource.ProcessedImageByObjPercent(allBuffered))
+	sort.Sort(videosource.ProcessedImageByFaceLen(allBuffered))
+	sort.Sort(videosource.ProcessedImageByFacePercent(allBuffered))
+	for _, img := range allBuffered {
+		a.ringBuffer.Add(&img)
 	}
+}
+
+func (a *Alert) ptrSliceToSlice(ptrSlice []*videosource.ProcessedImage) []videosource.ProcessedImage {
+	result := make([]videosource.ProcessedImage, len(ptrSlice))
+	for i, ptrImg := range ptrSlice {
+		result[i] = *ptrImg
+	}
+	return result
 }
 
 func (a *Alert) prune() {
@@ -126,7 +143,7 @@ func (a *Alert) prune() {
 }
 
 func (a *Alert) doAlerts() {
-	poppedList := a.ringBuffer.PopAll()
+	poppedList := a.ptrSliceToSlice(a.ringBuffer.GetAll())
 	sort.Sort(videosource.ProcessedImageByCreatedTime(poppedList))
 	nowTime := time.Now()
 	nowTimeStr := getFormattedKitchenTimestamp(nowTime)

@@ -12,6 +12,7 @@ import (
 	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"github.com/jonoton/go-gzip"
+	"github.com/jonoton/go-ringbuffer"
 	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/go-websockets"
 )
@@ -50,7 +51,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		socketCtx, socketCancel := context.WithCancel(context.Background())
 		sourceCtx, sourceCancel := context.WithCancel(context.Background())
 
-		ringBuffer := videosource.NewRingBufferProcessedImage(1)
+		ringBuffer := ringbuffer.New[*videosource.ProcessedImage](1)
 		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
 		go func() {
 			defer sourceCancel()
@@ -70,8 +71,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 						break SourceLoop
 					}
 					rx++
-					popped := ringBuffer.Push(img)
-					popped.Cleanup()
+					ringBuffer.Add(&img)
 				case <-timeoutTick.C:
 					if rx == 0 {
 						unsubOnce.Do(unsubFunc)
@@ -81,9 +81,6 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 				}
 			}
 			timeoutTick.Stop()
-			if socketCtx.Err() != nil {
-				cleanupRingBuffer(ringBuffer)
-			}
 		}()
 
 		receive := func(msgType int, data []byte) {
@@ -94,29 +91,28 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			for {
 				select {
 				case <-ctx.Done():
-					cleanupRingBuffer(ringBuffer)
 					break SendLoop
 				case <-sourceCtx.Done():
-					for ringBuffer.Len() != 0 {
-						if !writeOut(c, ringBuffer, width, jpegQuality) {
+					remainingImgs := ringBuffer.GetAll()
+					for _, img := range remainingImgs {
+						if !writeOut(c, img, width, jpegQuality) {
 							break
 						}
 					}
 					c.Close()
-					cleanupRingBuffer(ringBuffer)
 					break SendLoop
-				case _, ok := <-ringBuffer.Ready():
-					if !ok {
+				case img, ok := <-ringBuffer.GetChan():
+					if !writeOut(c, img, width, jpegQuality) {
 						break SendLoop
 					}
-					if !writeOut(c, ringBuffer, width, jpegQuality) {
+					if !ok {
 						break SendLoop
 					}
 				}
 			}
 		}
 		cleanup := func() {
-			cleanupRingBuffer(ringBuffer)
+			ringBuffer.Stop()
 			log.Infoln("Websocket closed", uuid)
 		}
 
@@ -125,9 +121,8 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 }
 
 func writeOut(c *websocket.Conn,
-	ringBuffer *videosource.RingBufferProcessedImage,
+	img *videosource.ProcessedImage,
 	width int, jpegQuality int) (ok bool) {
-	img := ringBuffer.Pop()
 	if !img.Original.IsFilled() {
 		img.Cleanup()
 		return true
@@ -141,11 +136,4 @@ func writeOut(c *websocket.Conn,
 	zipped := gzip.Encode(imgArray, nil)
 	err := c.WriteMessage(websocket.BinaryMessage, zipped)
 	return err == nil
-}
-
-func cleanupRingBuffer(ringBuffer *videosource.RingBufferProcessedImage) {
-	for ringBuffer.Len() > 0 {
-		img := ringBuffer.Pop()
-		img.Cleanup()
-	}
 }

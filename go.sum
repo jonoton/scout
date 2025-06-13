@@ -34,12 +34,10 @@ github.com/jonoton/go-memory v1.0.0 h1:KUWkJBKBH3b67CFmH8dsVpjI8w3nkzQlRd107bdr5
 github.com/jonoton/go-memory v1.0.0/go.mod h1:N0UOK96J/P6K2w0nwUQLvJOv8rN6JLU1KX3xgqyJgKg=
 github.com/jonoton/go-notify v1.0.0 h1:WFHPhUGtr1vVoy2RxbEe7jHw/25ub3UsY00+v9KZofs=
 github.com/jonoton/go-notify v1.0.0/go.mod h1:egNE9bVl3YYGUz3h10rnGieADApw6Rz9d+WEE5ZckG8=
-github.com/jonoton/go-pubsubmutex v1.5.0 h1:pFPvvA4wQqFTWGtxYCHkdUzhFSRIkp7GviSunS3c0tM=
-github.com/jonoton/go-pubsubmutex v1.5.0/go.mod h1:GBBhtLidNH0qT+T2OcRMGIcJg3Oqy/1pgP8cWOBbcI0=
-github.com/jonoton/go-pubsubmutex v1.8.0 h1:F0EExED0AyEuX1/vnV9h0TQ9E/sUe19O2wndWZgC8dI=
-github.com/jonoton/go-pubsubmutex v1.8.0/go.mod h1:GBBhtLidNH0qT+T2OcRMGIcJg3Oqy/1pgP8cWOBbcI0=
 github.com/jonoton/go-pubsubmutex v1.9.0 h1:6E2wJDS5vjLnMhf7aSiNTQZkTwGGjR6fEY4lgrLnrOI=
 github.com/jonoton/go-pubsubmutex v1.9.0/go.mod h1:GBBhtLidNH0qT+T2OcRMGIcJg3Oqy/1pgP8cWOBbcI0=
+github.com/jonoton/go-ringbuffer v1.4.0 h1:Xeqyz6LisAyXpjJyTSAwrkeIFH6i8/nuQgc1LZ56yMQ=
+github.com/jonoton/go-ringbuffer v1.4.0/go.mod h1:FT9MtKbkAhqwoe8oT/fYND56TchFY3TnRDYS3LohIi0=
 github.com/jonoton/go-runtime v1.0.0 h1:ydVuHGcHcSsRG955QJZ8zTV0MoOLLxCXjtr0Lerp0TM=
 github.com/jonoton/go-runtime v1.0.0/go.mod h1:MchOdipJ65y8rjIBRcGTKWDde7rbwKfRUtPoYKc5yeI=
 github.com/jonoton/go-sharedmat v1.0.0 h1:mLpifo23IVjnehJNryozG21WM4JJa8EBMFOFynPpzEY=
