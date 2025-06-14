@@ -19,6 +19,7 @@ require (
 	github.com/jonoton/go-pubsubmutex v1.9.0
 	github.com/jonoton/go-ringbuffer v1.4.0
 	github.com/jonoton/go-runtime v1.0.0
+	github.com/jonoton/go-sharedmat v1.0.0
 	github.com/jonoton/go-videosource v1.5.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
@@ -34,7 +35,6 @@ require (
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/jonoton/go-chanlimiter v1.3.0 // indirect
-	github.com/jonoton/go-sharedmat v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

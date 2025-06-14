@@ -94,9 +94,13 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					break SendLoop
 				case <-sourceCtx.Done():
 					remainingImgs := ringBuffer.GetAll()
+					needCleanup := false
 					for _, img := range remainingImgs {
-						if !writeOut(c, img, width, jpegQuality) {
-							break
+						if needCleanup {
+							img.Cleanup()
+						} else if !writeOut(c, img, width, jpegQuality) {
+							// bad write so cleanup the remaining
+							needCleanup = true
 						}
 					}
 					c.Close()
