@@ -4,6 +4,7 @@ package manage
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
@@ -40,6 +41,8 @@ type Manage struct {
 	Notifier         *notify.Notify
 	wtr              *watcher.Watcher
 	pubsub           pubsubmutex.PubSub
+	cancel           chan bool
+	cancelOnce       sync.Once
 	done             chan bool
 }
 
@@ -52,6 +55,7 @@ func NewManage() *Manage {
 		Notifier:         nil,
 		wtr:              watcher.New(),
 		pubsub:           *pubsubmutex.NewPubSub(),
+		cancel:           make(chan bool),
 		done:             make(chan bool),
 	}
 	if m.notifySenderConf != nil {
@@ -233,15 +237,9 @@ func (m *Manage) Stop() {
 	m.pubsub.Publish(pubsubmutex.Message{Topic: topicStop, Data: nil})
 }
 func (m *Manage) stop() {
-	close(m.done)
-	m.pubsub.Close()
-	tmpMap := make(monitor.Map)
-	for k, v := range m.mons {
-		tmpMap[k] = v
-	}
-	for _, v := range tmpMap {
-		m.removeMonitor(v, true)
-	}
+	m.cancelOnce.Do(func() {
+		close(m.cancel)
+	})
 }
 
 // Wait until done
@@ -327,6 +325,10 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 func (m *Manage) run() {
 	m.monitorConfigChanges()
 	go func() {
+		defer m.pubsub.Close()
+		defer close(m.done)
+		defer m.cleanupAllMonitors()
+
 		m.addAllMonitors()
 		addMonSub := m.pubsub.Subscribe(topicAddMon, m.pubsub.GetUniqueSubscriberID(), 10)
 		defer addMonSub.Unsubscribe()
@@ -346,6 +348,7 @@ func (m *Manage) run() {
 		defer getMonAlertTimesSub.Unsubscribe()
 
 		staleTicker := time.NewTicker(time.Second)
+		defer staleTicker.Stop()
 		lastStaleList := make([]*monitor.Monitor, 0)
 		retryList := make([]mon, 0)
 	Loop:
@@ -403,12 +406,21 @@ func (m *Manage) run() {
 					continue
 				}
 				retryList = m.doMonitorConfigChanges(event.Path, retryList)
-			case <-m.done:
+			case <-m.cancel:
 				break Loop
 			}
 		}
-		staleTicker.Stop()
 	}()
+}
+
+func (m *Manage) cleanupAllMonitors() {
+	tmpMap := make(monitor.Map)
+	for k, v := range m.mons {
+		tmpMap[k] = v
+	}
+	for _, v := range tmpMap {
+		m.removeMonitor(v, true)
+	}
 }
 
 // RemoveMonitor will stop, wait, and remove from manage

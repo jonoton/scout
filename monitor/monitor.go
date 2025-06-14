@@ -153,9 +153,9 @@ func (m *Monitor) Start() {
 		m.reader.Wait()
 		wg.Wait()
 		m.IsStale = true
+		log.Infoln("Done monitor", m.Name)
 		close(m.done)
 		m.pubsub.Close()
-		log.Infoln("Done monitor", m.Name)
 	}()
 }
 

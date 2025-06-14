@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/jonoton/go-sharedmat"
 	"github.com/jonoton/scout/http"
 	"github.com/jonoton/scout/manage"
 	log "github.com/sirupsen/logrus"
@@ -52,4 +53,6 @@ func doMain() {
 	m.Start()
 	h.Listen()
 	m.Wait()
+
+	log.Infoln("SharedMat Profile Count:", sharedmat.SharedMatProfile.Count())
 }
