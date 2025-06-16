@@ -10,7 +10,6 @@ import (
 
 	fiber "github.com/gofiber/fiber/v2"
 	websocket "github.com/gofiber/websocket/v2"
-	"github.com/google/uuid"
 	"github.com/jonoton/go-gzip"
 	"github.com/jonoton/go-ringbuffer"
 	"github.com/jonoton/go-videosource"
@@ -35,7 +34,6 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			return
 		}
 
-		uuid := uuid.New().String()
 		monitorName := localsMonName.(string)
 
 		width, err := strconv.Atoi(localsWidth.(string))
@@ -47,31 +45,39 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			jpegQuality = 60
 		}
 
-		log.Infoln("Websocket opened", uuid)
+		imagesSub := h.manage.Subscribe(monitorName, 2, 500)
+		if imagesSub == nil {
+			log.Errorln("Failed to subscribe to monitor", monitorName)
+			return
+		}
+
+		websocketName := monitorName + "-" + imagesSub.ID
+		log.Infoln("Websocket opened", websocketName)
 		socketCtx, socketCancel := context.WithCancel(context.Background())
 		sourceCtx, sourceCancel := context.WithCancel(context.Background())
 
 		ringBuffer := ringbuffer.New[*videosource.ProcessedImage](1)
-		images := h.manage.Subscribe(monitorName, uuid+"-live-"+monitorName)
+
 		go func() {
 			defer sourceCancel()
 			timeoutTick := time.NewTicker(time.Second * 4)
 			rx := 0
 			var unsubOnce sync.Once
 			unsubFunc := func() {
-				h.manage.Unsubscribe(monitorName, uuid+"-live-"+monitorName)
+				imagesSub.Unsubscribe()
 			}
 		SourceLoop:
 			for {
 				select {
 				case <-socketCtx.Done():
 					unsubOnce.Do(unsubFunc)
-				case img, ok := <-images:
+				case msg, ok := <-imagesSub.Ch:
 					if !ok {
 						break SourceLoop
 					}
+					img := msg.Data.(*videosource.ProcessedImage)
 					rx++
-					ringBuffer.Add(&img)
+					ringBuffer.Add(img)
 				case <-timeoutTick.C:
 					if rx == 0 {
 						unsubOnce.Do(unsubFunc)
@@ -117,7 +123,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		}
 		cleanup := func() {
 			ringBuffer.Stop()
-			log.Infoln("Websocket closed", uuid)
+			log.Infoln("Websocket closed", websocketName)
 		}
 
 		websockets.Run(socketCtx, socketCancel, c, receive, send, cleanup)

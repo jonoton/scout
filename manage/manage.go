@@ -23,8 +23,7 @@ import (
 
 const topicAddMon = "topic-add-mon"
 const topicRemoveMon = "topic-remove-mon"
-const topicSubscribe = "topic-manage-subscribe"
-const topicUnsubscribe = "topic-manage-unsubscribe"
+const topicGetMonitorSubscribe = "topic-manage-get-monitor-subscribe"
 const topicStop = "topic-stop"
 const topicGetMonitorNames = "topic-get-monitor-names"
 const topicCurrentMonitorNames = "topic-current-monitor-names"
@@ -248,42 +247,29 @@ func (m *Manage) Wait() {
 }
 
 type subscribeMonitor struct {
-	monitorName string
-	key         string
-	subChan     chan videosource.ProcessedImage
+	monitorName       string
+	bufferSize        int
+	responseTopicName string
 }
 
 // Subscribe to a monitor's video images
-func (m *Manage) Subscribe(monitorName string, key string) (result <-chan videosource.ProcessedImage) {
+func (m *Manage) Subscribe(monitorName string, bufferSize int, timeoutMs int) (result *pubsubmutex.Subscriber) {
 	subMon := subscribeMonitor{
-		monitorName: monitorName,
-		key:         key,
-		subChan:     make(chan videosource.ProcessedImage),
+		monitorName:       monitorName,
+		bufferSize:        bufferSize,
+		responseTopicName: monitorName + m.pubsub.GetUniqueSubscriberID()}
+	r := m.pubsub.SendReceive(topicGetMonitorSubscribe, subMon.responseTopicName,
+		subMon, timeoutMs)
+	if r != nil {
+		result = r.(*pubsubmutex.Subscriber)
 	}
-	result = subMon.subChan
-	m.pubsub.Publish(pubsubmutex.Message{Topic: topicSubscribe, Data: subMon})
 	return
 }
-func (m *Manage) subscribe(subMon subscribeMonitor) {
+func (m *Manage) subscribe(subMon subscribeMonitor) (result *pubsubmutex.Subscriber) {
 	if mon, ok := m.mons[subMon.monitorName]; ok {
-		mon.SubscribeWithChan(subMon.key, subMon.subChan)
-	} else {
-		close(subMon.subChan)
+		result = mon.Subscribe(subMon.bufferSize)
 	}
-}
-
-// Unsubscribe to a monitor's video images
-func (m *Manage) Unsubscribe(monitorName string, key string) {
-	m.pubsub.Publish(pubsubmutex.Message{Topic: topicUnsubscribe, Data: subscribeMonitor{
-		monitorName: monitorName,
-		key:         key,
-		subChan:     nil,
-	}})
-}
-func (m *Manage) unsubscribe(subMon subscribeMonitor) {
-	if mon, ok := m.mons[subMon.monitorName]; ok {
-		mon.Unsubscribe(subMon.key)
-	}
+	return
 }
 
 func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleList []*monitor.Monitor) {
@@ -330,14 +316,13 @@ func (m *Manage) run() {
 		defer m.cleanupAllMonitors()
 
 		m.addAllMonitors()
+
 		addMonSub := m.pubsub.Subscribe(topicAddMon, m.pubsub.GetUniqueSubscriberID(), 10)
 		defer addMonSub.Unsubscribe()
 		removeMonSub := m.pubsub.Subscribe(topicRemoveMon, m.pubsub.GetUniqueSubscriberID(), 10)
 		defer removeMonSub.Unsubscribe()
-		subSub := m.pubsub.Subscribe(topicSubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
-		defer subSub.Unsubscribe()
-		unsubSub := m.pubsub.Subscribe(topicUnsubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
-		defer unsubSub.Unsubscribe()
+		getMonitorSubscribeSub := m.pubsub.Subscribe(topicGetMonitorSubscribe, m.pubsub.GetUniqueSubscriberID(), 10)
+		defer getMonitorSubscribeSub.Unsubscribe()
 		stopSub := m.pubsub.Subscribe(topicStop, m.pubsub.GetUniqueSubscriberID(), 10)
 		defer stopSub.Unsubscribe()
 		getMonNamesSub := m.pubsub.Subscribe(topicGetMonitorNames, m.pubsub.GetUniqueSubscriberID(), 10)
@@ -366,18 +351,13 @@ func (m *Manage) run() {
 				}
 				mon := msg.Data.(*monitor.Monitor)
 				m.addMonitor(mon)
-			case msg, ok := <-subSub.Ch:
+			case msg, ok := <-getMonitorSubscribeSub.Ch:
 				if !ok {
 					continue
 				}
 				subMon := msg.Data.(subscribeMonitor)
-				m.subscribe(subMon)
-			case msg, ok := <-unsubSub.Ch:
-				if !ok {
-					continue
-				}
-				subMon := msg.Data.(subscribeMonitor)
-				m.unsubscribe(subMon)
+				sub := m.subscribe(subMon)
+				m.pubsub.Publish(pubsubmutex.Message{Topic: subMon.responseTopicName, Data: sub})
 			case _, ok := <-stopSub.Ch:
 				if !ok {
 					continue

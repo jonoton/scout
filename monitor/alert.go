@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -45,6 +46,7 @@ type Alert struct {
 	hourSent      int
 	done          chan bool
 	cancel        chan bool
+	cancelOnce    sync.Once
 	LastAlert     AlertTimes
 }
 
@@ -103,17 +105,18 @@ func (a *Alert) Start() {
 }
 
 // Push a processed image to buffer
-func (a *Alert) Push(img videosource.ProcessedImage) {
+func (a *Alert) Push(img *videosource.ProcessedImage) {
 	if img.HasObject() {
 		a.addUpdateBuffer(img.Ref())
 	}
 	img.Cleanup()
 }
 
-// Stop the processes
-func (a *Alert) Stop() {
-	close(a.cancel)
-	<-a.done
+// Close the processes
+func (a *Alert) Close() {
+	a.cancelOnce.Do(func() {
+		close(a.cancel)
+	})
 }
 
 func (a *Alert) addUpdateBuffer(img *videosource.ProcessedImage) {

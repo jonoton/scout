@@ -13,7 +13,7 @@ package main
 //
 //     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/heap`
 //     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/goroutine`
-//     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/go-sharedmat.counts`
+//     Tab2 Run `go tool pprof -http localhost:8081 http://localhost:6060/debug/pprof/github.com/jonoton/go-sharedmat/sharedmat.counts`
 //
 
 import (
@@ -39,7 +39,7 @@ func doMain() {
 
 	// HTTP for Profiling
 	go func() {
-		log.Println(baseHttp.ListenAndServe("localhost:6060", nil))
+		log.Println(baseHttp.ListenAndServe(":6060", nil))
 	}()
 
 	m := manage.NewManage()

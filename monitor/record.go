@@ -5,13 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-dir"
+	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/go-videosource"
 )
+
+const topicRecordImages = "topic-record-images"
 
 // Record buffers ProcessedImages and writes to disk
 type Record struct {
@@ -19,8 +23,10 @@ type Record struct {
 	saveDirectory string
 	RecordConf    *RecordConfig
 	writer        *videosource.VideoWriter
-	streamChan    chan videosource.ProcessedImage
+	pubsub        pubsubmutex.PubSub
 	done          chan bool
+	cancel        chan bool
+	cancelOnce    sync.Once
 	hourTick      *time.Ticker
 }
 
@@ -46,9 +52,10 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 		RecordConf:    recordConf,
 		writer: videosource.NewVideoWriter(name, recordDir, codec, fileType, recordConf.BufferSeconds, recordConf.MaxPreSec,
 			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityObject),
-		streamChan: make(chan videosource.ProcessedImage),
-		done:       make(chan bool),
-		hourTick:   time.NewTicker(time.Hour),
+		pubsub:   *pubsubmutex.NewPubSub(),
+		done:     make(chan bool),
+		cancel:   make(chan bool),
+		hourTick: time.NewTicker(time.Hour),
 	}
 	return a
 }
@@ -62,24 +69,30 @@ func (r *Record) Wait() {
 func (r *Record) Start() {
 	go func() {
 		r.writer.Start()
+		imageSub := r.pubsub.Subscribe(topicRecordImages, r.pubsub.GetUniqueSubscriberID(), 4)
 	Loop:
 		for {
 			select {
 			case <-r.hourTick.C:
 				r.prune()
-			case img, ok := <-r.streamChan:
+			case msg, ok := <-imageSub.Ch:
+				img := msg.Data.(*videosource.ProcessedImage)
 				if !ok {
 					img.Cleanup()
 					break Loop
 				}
-				r.process(img)
+				r.process(*img)
+			case <-r.cancel:
+				break Loop
 			}
 		}
+		imageSub.Cleanup()
 		r.hourTick.Stop()
 		r.prune()
 		r.writer.Close()
 		r.writer.Wait()
 		close(r.done)
+		r.pubsub.Close()
 	}()
 }
 
@@ -127,11 +140,13 @@ func (r *Record) deleteWhenFull() {
 }
 
 // Send a processed image to buffer
-func (r *Record) Send(img videosource.ProcessedImage) {
-	r.streamChan <- img
+func (r *Record) Send(img *videosource.ProcessedImage) {
+	r.pubsub.Publish(pubsubmutex.Message{Topic: topicRecordImages, Data: img})
 }
 
 // Close notified by caller that input stream is done/closed
 func (r *Record) Close() {
-	close(r.streamChan)
+	r.cancelOnce.Do(func() {
+		close(r.cancel)
+	})
 }

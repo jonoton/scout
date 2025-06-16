@@ -102,7 +102,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 	r := make(chan videosource.ProcessedImage)
 	go func() {
 		defer func() {
-			// recover from panic if one occured
+			// recover from panic if one occurred
 			if recover() != nil {
 				log.Errorln("Recovered from panic in face for", f.Name)
 			}

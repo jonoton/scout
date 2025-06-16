@@ -5,13 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-dir"
+	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/go-videosource"
 )
+
+const topicContinuousImages = "topic-continuous-images"
 
 // Continuous buffers ProcessedImages and writes to disk
 type Continuous struct {
@@ -19,8 +23,10 @@ type Continuous struct {
 	saveDirectory  string
 	ContinuousConf *ContinuousConfig
 	writer         *videosource.VideoWriter
-	streamChan     chan videosource.ProcessedImage
+	pubsub         pubsubmutex.PubSub
 	done           chan bool
+	cancel         chan bool
+	cancelOnce     sync.Once
 	hourTick       *time.Ticker
 }
 
@@ -46,9 +52,10 @@ func NewContinuous(name string, saveDirectory string, continuousConf *Continuous
 		ContinuousConf: continuousConf,
 		writer: videosource.NewVideoWriter(name, continuousDir, codec, fileType, continuousConf.BufferSeconds, 0,
 			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityImage),
-		streamChan: make(chan videosource.ProcessedImage),
-		done:       make(chan bool),
-		hourTick:   time.NewTicker(time.Hour),
+		pubsub:   *pubsubmutex.NewPubSub(),
+		done:     make(chan bool),
+		cancel:   make(chan bool),
+		hourTick: time.NewTicker(time.Hour),
 	}
 	return c
 }
@@ -62,24 +69,30 @@ func (c *Continuous) Wait() {
 func (c *Continuous) Start() {
 	go func() {
 		c.writer.Start()
+		imageSub := c.pubsub.Subscribe(topicContinuousImages, c.pubsub.GetUniqueSubscriberID(), 4)
 	Loop:
 		for {
 			select {
 			case <-c.hourTick.C:
 				c.prune()
-			case img, ok := <-c.streamChan:
+			case msg, ok := <-imageSub.Ch:
+				img := msg.Data.(*videosource.ProcessedImage)
 				if !ok {
 					img.Cleanup()
 					break Loop
 				}
-				c.process(img)
+				c.process(*img)
+			case <-c.cancel:
+				break Loop
 			}
 		}
+		imageSub.Cleanup()
 		c.hourTick.Stop()
 		c.prune()
 		c.writer.Close()
 		c.writer.Wait()
 		close(c.done)
+		c.pubsub.Close()
 	}()
 }
 
@@ -125,11 +138,13 @@ func (c *Continuous) deleteWhenFull() {
 }
 
 // Send a processed image to buffer
-func (c *Continuous) Send(img videosource.ProcessedImage) {
-	c.streamChan <- img
+func (c *Continuous) Send(img *videosource.ProcessedImage) {
+	c.pubsub.Publish(pubsubmutex.Message{Topic: topicContinuousImages, Data: img})
 }
 
 // Close notified by caller that input stream is done/closed
 func (c *Continuous) Close() {
-	close(c.streamChan)
+	c.cancelOnce.Do(func() {
+		close(c.cancel)
+	})
 }
