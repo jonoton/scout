@@ -47,19 +47,24 @@ RUN git clone --depth 1 --branch v0.37.0 https://github.com/hybridgroup/gocv.git
 RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && make install
 RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && go install -v .
 
+# scout builder
+FROM --platform=$BUILDPLATFORM gocv-stage AS scout-builder-stage
+ARG TARGETOS=linux
+ARG TARGETARCH
+WORKDIR /go/src/github.com/jonoton/scout
+COPY . .
+RUN go get -d -v ./... && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install -v ./...
+
 # scout
-FROM gocv-stage AS scout
+FROM scout-builder-stage AS scout
 ARG UNAME=user
 ARG UID=1000
 ARG GID=1000
 RUN groupadd -g $GID -o $UNAME
 RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
-RUN mkdir /scout && chown $UID:$GID /scout
-WORKDIR /go/src/github.com/jonoton/scout
-COPY . .
+RUN mkdir /scout && mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
+RUN chown -R $UID:$GID /scout
 RUN chown -R $UID:$GID /go
-USER $UNAME
-RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
 RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
-RUN go get -d -v ./... && go install -v ./...
+USER $UNAME
 CMD ["/go/bin/scout"]
