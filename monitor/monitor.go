@@ -271,8 +271,8 @@ func (m *Monitor) Wait() {
 }
 
 // Subscribe to video images
-func (m *Monitor) Subscribe(bufferSize int) (result *pubsubmutex.Subscriber) {
-	result = m.pubsub.Subscribe(topicImages, m.pubsub.GetUniqueSubscriberID(), bufferSize)
+func (m *Monitor) Subscribe() (result *pubsubmutex.Subscriber) {
+	result = m.pubsub.Subscribe(topicImages, m.pubsub.GetUniqueSubscriberID(), m.bufferSize)
 	return
 }
 

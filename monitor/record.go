@@ -24,6 +24,7 @@ type Record struct {
 	RecordConf    *RecordConfig
 	writer        *videosource.VideoWriter
 	pubsub        pubsubmutex.PubSub
+	bufferSize    int
 	done          chan bool
 	cancel        chan bool
 	cancelOnce    sync.Once
@@ -52,10 +53,11 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 		RecordConf:    recordConf,
 		writer: videosource.NewVideoWriter(name, recordDir, codec, fileType, recordConf.BufferSeconds, recordConf.MaxPreSec,
 			recordConf.TimeoutSec, recordConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityObject),
-		pubsub:   *pubsubmutex.NewPubSub(),
-		done:     make(chan bool),
-		cancel:   make(chan bool),
-		hourTick: time.NewTicker(time.Hour),
+		pubsub:     *pubsubmutex.NewPubSub(),
+		bufferSize: recordConf.BufferSeconds * outFps,
+		done:       make(chan bool),
+		cancel:     make(chan bool),
+		hourTick:   time.NewTicker(time.Hour),
 	}
 	return a
 }
@@ -69,7 +71,7 @@ func (r *Record) Wait() {
 func (r *Record) Start() {
 	go func() {
 		r.writer.Start()
-		imageSub := r.pubsub.Subscribe(topicRecordImages, r.pubsub.GetUniqueSubscriberID(), 4)
+		imageSub := r.pubsub.Subscribe(topicRecordImages, r.pubsub.GetUniqueSubscriberID(), r.bufferSize)
 	Loop:
 		for {
 			select {

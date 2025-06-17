@@ -24,6 +24,7 @@ type Continuous struct {
 	ContinuousConf *ContinuousConfig
 	writer         *videosource.VideoWriter
 	pubsub         pubsubmutex.PubSub
+	bufferSize     int
 	done           chan bool
 	cancel         chan bool
 	cancelOnce     sync.Once
@@ -52,10 +53,11 @@ func NewContinuous(name string, saveDirectory string, continuousConf *Continuous
 		ContinuousConf: continuousConf,
 		writer: videosource.NewVideoWriter(name, continuousDir, codec, fileType, continuousConf.BufferSeconds, 0,
 			continuousConf.TimeoutSec, continuousConf.MaxSec, outFps, true, true, saveFull, videosource.ActivityImage),
-		pubsub:   *pubsubmutex.NewPubSub(),
-		done:     make(chan bool),
-		cancel:   make(chan bool),
-		hourTick: time.NewTicker(time.Hour),
+		pubsub:     *pubsubmutex.NewPubSub(),
+		bufferSize: continuousConf.BufferSeconds * outFps,
+		done:       make(chan bool),
+		cancel:     make(chan bool),
+		hourTick:   time.NewTicker(time.Hour),
 	}
 	return c
 }
@@ -69,7 +71,7 @@ func (c *Continuous) Wait() {
 func (c *Continuous) Start() {
 	go func() {
 		c.writer.Start()
-		imageSub := c.pubsub.Subscribe(topicContinuousImages, c.pubsub.GetUniqueSubscriberID(), 4)
+		imageSub := c.pubsub.Subscribe(topicContinuousImages, c.pubsub.GetUniqueSubscriberID(), c.bufferSize)
 	Loop:
 		for {
 			select {

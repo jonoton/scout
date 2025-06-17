@@ -248,15 +248,13 @@ func (m *Manage) Wait() {
 
 type subscribeMonitor struct {
 	monitorName       string
-	bufferSize        int
 	responseTopicName string
 }
 
 // Subscribe to a monitor's video images
-func (m *Manage) Subscribe(monitorName string, bufferSize int, timeoutMs int) (result *pubsubmutex.Subscriber) {
+func (m *Manage) Subscribe(monitorName string, timeoutMs int) (result *pubsubmutex.Subscriber) {
 	subMon := subscribeMonitor{
 		monitorName:       monitorName,
-		bufferSize:        bufferSize,
 		responseTopicName: monitorName + m.pubsub.GetUniqueSubscriberID()}
 	r := m.pubsub.SendReceive(topicGetMonitorSubscribe, subMon.responseTopicName,
 		subMon, timeoutMs)
@@ -267,7 +265,7 @@ func (m *Manage) Subscribe(monitorName string, bufferSize int, timeoutMs int) (r
 }
 func (m *Manage) subscribe(subMon subscribeMonitor) (result *pubsubmutex.Subscriber) {
 	if mon, ok := m.mons[subMon.monitorName]; ok {
-		result = mon.Subscribe(subMon.bufferSize)
+		result = mon.Subscribe()
 	}
 	return
 }
