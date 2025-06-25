@@ -32,4 +32,5 @@ func doMain() {
 	m.Start()
 	h.Listen()
 	m.Wait()
+	h.Wait()
 }

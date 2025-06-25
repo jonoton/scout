@@ -38,6 +38,7 @@ type Http struct {
 	twoFactorCheck      map[string]twoFactorAttempt
 	twoFactorTimeoutSec int
 	secTick             *time.Ticker
+	done                chan bool
 }
 
 // NewHttp returns a new Http
@@ -55,6 +56,7 @@ func NewHttp(manage *manage.Manage) *Http {
 		twoFactorCheck:      make(map[string]twoFactorAttempt),
 		twoFactorTimeoutSec: 60,
 		secTick:             time.NewTicker(time.Second),
+		done:                make(chan bool),
 	}
 	h.setup()
 	return h
@@ -445,6 +447,11 @@ func fileExists(filename string) bool {
 
 // Stop the http
 func (h *Http) Stop() {
+	defer close(h.done)
 	h.secTick.Stop()
 	h.fiber.Shutdown()
+}
+
+func (h *Http) Wait() {
+	<-h.done
 }

@@ -11,7 +11,7 @@ import (
 	fiber "github.com/gofiber/fiber/v2"
 	websocket "github.com/gofiber/websocket/v2"
 	"github.com/jonoton/go-gzip"
-	"github.com/jonoton/go-ringbuffer"
+	temporalbuffer "github.com/jonoton/go-temporalbuffer"
 	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/go-websockets"
 )
@@ -56,7 +56,8 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		socketCtx, socketCancel := context.WithCancel(context.Background())
 		sourceCtx, sourceCancel := context.WithCancel(context.Background())
 
-		ringBuffer := ringbuffer.New[*videosource.ProcessedImage](1)
+		temporalBuffer := temporalbuffer.New[*videosource.ProcessedImage](4)
+		temporalBufferChan := temporalBuffer.GetOldestChan()
 
 		go func() {
 			defer sourceCancel()
@@ -73,11 +74,18 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					unsubOnce.Do(unsubFunc)
 				case msg, ok := <-imagesSub.Ch:
 					if !ok {
+						if msg.Data != nil {
+							img := msg.Data
+							img.Cleanup()
+						}
 						break SourceLoop
 					}
-					img := msg.Data.(*videosource.ProcessedImage)
+					if msg.Data == nil {
+						continue
+					}
+					img := msg.Data
 					rx++
-					ringBuffer.Add(img)
+					temporalBuffer.Add(img)
 				case <-timeoutTick.C:
 					if rx == 0 {
 						unsubOnce.Do(unsubFunc)
@@ -99,7 +107,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 				case <-ctx.Done():
 					break SendLoop
 				case <-sourceCtx.Done():
-					remainingImgs := ringBuffer.GetAll()
+					remainingImgs := temporalBuffer.GetAll()
 					needCleanup := false
 					for _, img := range remainingImgs {
 						if needCleanup {
@@ -111,18 +119,22 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					}
 					c.Close()
 					break SendLoop
-				case img, ok := <-ringBuffer.GetChan():
+				case img, ok := <-temporalBufferChan:
 					if !writeOut(c, img, width, jpegQuality) {
 						break SendLoop
 					}
 					if !ok {
+						img.Cleanup()
 						break SendLoop
 					}
 				}
 			}
 		}
 		cleanup := func() {
-			ringBuffer.Stop()
+			temporalBuffer.Close()
+			for img := range temporalBufferChan {
+				img.Cleanup()
+			}
 			log.Infoln("Websocket closed", websocketName)
 		}
 
@@ -130,9 +142,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 	})
 }
 
-func writeOut(c *websocket.Conn,
-	img *videosource.ProcessedImage,
-	width int, jpegQuality int) (ok bool) {
+func writeOut(c *websocket.Conn, img *videosource.ProcessedImage, width int, jpegQuality int) (ok bool) {
 	if !img.Original.IsFilled() {
 		img.Cleanup()
 		return true

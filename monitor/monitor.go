@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const topicImages = "topic-monitor-images"
+const topicMonitorImages = "topic-monitor-images"
 const topicGetMonitorFrameStats = "topic-get-monitor-frame-stats"
 const topicCurrentMonitorFrameStats = "topic-current-monitor-frame-stats"
 
@@ -68,6 +68,9 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 		alert:           nil,
 		done:            make(chan bool),
 	}
+	pubsubmutex.RegisterTopic[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages)
+	pubsubmutex.RegisterTopic[any](&m.pubsub, topicGetMonitorFrameStats)
+	pubsubmutex.RegisterTopic[*videosource.FrameStatsCombo](&m.pubsub, topicCurrentMonitorFrameStats)
 
 	return m
 }
@@ -146,8 +149,8 @@ func (m *Monitor) Start() {
 		wg.Wait()
 		m.IsStale = true
 		log.Infoln("Done monitor", m.Name)
-		close(m.done)
 		m.pubsub.Close()
+		close(m.done)
 	}()
 }
 
@@ -184,7 +187,7 @@ func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *s
 	if m.alert != nil {
 		m.alert.Start()
 	}
-	getMonFrameStatsSub := m.pubsub.Subscribe(topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
+	getMonFrameStatsSub, _ := pubsubmutex.Subscribe[any](&m.pubsub, topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
 	defer getMonFrameStatsSub.Unsubscribe()
 	sourceStatsSub := m.reader.GetSourceStatsSub()
 	defer sourceStatsSub.Unsubscribe()
@@ -205,13 +208,13 @@ FaceLoop:
 			if !ok || msg.Data == nil {
 				continue
 			}
-			cur := msg.Data.(*videosource.FrameStats)
+			cur := msg.Data
 			m.frameStatsCombo.In = *cur
 		case msg, ok := <-outputStatsSub.Ch:
 			if !ok || msg.Data == nil {
 				continue
 			}
-			cur := msg.Data.(*videosource.FrameStats)
+			cur := msg.Data
 			m.frameStatsCombo.Out = *cur
 		case cur, ok := <-inChan:
 			if !ok {
@@ -227,7 +230,7 @@ FaceLoop:
 			if m.continuous != nil {
 				m.continuous.Send(cur.Ref())
 			}
-			m.pubsub.Publish(pubsubmutex.Message{Topic: topicImages, Data: cur.Ref()})
+			pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*videosource.ProcessedImage]{Topic: topicMonitorImages, Data: cur.Ref()})
 			cur.Cleanup()
 		case <-staleTicker.C:
 			curTotal := m.frameStatsCombo.In.AcceptedTotal
@@ -271,23 +274,28 @@ func (m *Monitor) Wait() {
 }
 
 // Subscribe to video images
-func (m *Monitor) Subscribe() (result *pubsubmutex.Subscriber) {
-	result = m.pubsub.Subscribe(topicImages, m.pubsub.GetUniqueSubscriberID(), m.bufferSize)
+func (m *Monitor) Subscribe() (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
+	r, err := pubsubmutex.Subscribe[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages, m.pubsub.GetUniqueSubscriberID(), m.bufferSize)
+	if err == nil && r != nil {
+		result = r
+	}
 	return
 }
 
 // GetMonitorFrameStats returns the monitor's frame stats
 func (m *Monitor) GetMonitorFrameStats(timeoutMs int) (result *videosource.FrameStatsCombo) {
-	r := m.pubsub.SendReceive(topicGetMonitorFrameStats, topicCurrentMonitorFrameStats,
+	r, ok := pubsubmutex.SendReceive[any, *videosource.FrameStatsCombo](&m.pubsub,
+		topicGetMonitorFrameStats, topicCurrentMonitorFrameStats,
 		nil, timeoutMs)
-	if r != nil {
-		result = r.(*videosource.FrameStatsCombo)
+	if ok && r != nil {
+		result = r
 	}
 	return
 }
 
 func (m *Monitor) pubMonitorFrameStats() {
-	m.pubsub.Publish(pubsubmutex.Message{Topic: topicCurrentMonitorFrameStats, Data: &m.frameStatsCombo})
+	pubsubmutex.Publish(&m.pubsub,
+		pubsubmutex.Message[*videosource.FrameStatsCombo]{Topic: topicCurrentMonitorFrameStats, Data: &m.frameStatsCombo})
 }
 
 // GetAlertTimes returns the alert times

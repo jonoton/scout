@@ -16,11 +16,12 @@ require (
 	github.com/jonoton/go-gzip v1.0.0
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0
-	github.com/jonoton/go-pubsubmutex v1.10.0
-	github.com/jonoton/go-ringbuffer v1.4.0
+	github.com/jonoton/go-pubsubmutex v1.11.0
+	github.com/jonoton/go-ringbuffer v1.5.0
 	github.com/jonoton/go-runtime v1.0.0
 	github.com/jonoton/go-sharedmat v1.0.0
-	github.com/jonoton/go-videosource v1.8.0
+	github.com/jonoton/go-temporalbuffer v1.4.0
+	github.com/jonoton/go-videosource v1.12.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3
@@ -31,7 +32,7 @@ require (
 )
 
 require (
-	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/jonoton/go-chanlimiter v1.3.0 // indirect

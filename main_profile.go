@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jonoton/go-sharedmat"
 	"github.com/jonoton/scout/http"
@@ -53,6 +54,9 @@ func doMain() {
 	m.Start()
 	h.Listen()
 	m.Wait()
-
-	log.Infoln("SharedMat Profile Count:", sharedmat.SharedMatProfile.Count())
+	h.Wait()
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Second)
+		log.Infoln("SharedMat Profile Count:", sharedmat.SharedMatProfile.Count())
+	}
 }

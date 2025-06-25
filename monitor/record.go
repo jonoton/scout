@@ -47,7 +47,7 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 		fileType = recordConf.FileType
 	}
 	saveFull := !recordConf.PortableOnly
-	a := &Record{
+	r := &Record{
 		name:          name,
 		saveDirectory: recordDir,
 		RecordConf:    recordConf,
@@ -59,7 +59,9 @@ func NewRecord(name string, saveDirectory string, recordConf *RecordConfig, outF
 		cancel:     make(chan bool),
 		hourTick:   time.NewTicker(time.Hour),
 	}
-	return a
+	pubsubmutex.RegisterTopic[*videosource.ProcessedImage](&r.pubsub, topicRecordImages)
+
+	return r
 }
 
 // Wait until done
@@ -71,30 +73,37 @@ func (r *Record) Wait() {
 func (r *Record) Start() {
 	go func() {
 		r.writer.Start()
-		imageSub := r.pubsub.Subscribe(topicRecordImages, r.pubsub.GetUniqueSubscriberID(), r.bufferSize)
+		imageSub, _ := pubsubmutex.Subscribe[*videosource.ProcessedImage](&r.pubsub,
+			topicRecordImages, r.pubsub.GetUniqueSubscriberID(), r.bufferSize)
 	Loop:
 		for {
 			select {
 			case <-r.hourTick.C:
 				r.prune()
 			case msg, ok := <-imageSub.Ch:
-				img := msg.Data.(*videosource.ProcessedImage)
 				if !ok {
-					img.Cleanup()
+					if msg.Data != nil {
+						img := msg.Data
+						img.Cleanup()
+					}
 					break Loop
 				}
+				if msg.Data == nil {
+					continue
+				}
+				img := msg.Data
 				r.process(*img)
 			case <-r.cancel:
 				break Loop
 			}
 		}
-		imageSub.Cleanup()
+		imageSub.Unsubscribe()
 		r.hourTick.Stop()
 		r.prune()
 		r.writer.Close()
 		r.writer.Wait()
-		close(r.done)
 		r.pubsub.Close()
+		close(r.done)
 	}()
 }
 
@@ -143,7 +152,8 @@ func (r *Record) deleteWhenFull() {
 
 // Send a processed image to buffer
 func (r *Record) Send(img *videosource.ProcessedImage) {
-	r.pubsub.Publish(pubsubmutex.Message{Topic: topicRecordImages, Data: img})
+	pubsubmutex.Publish(&r.pubsub,
+		pubsubmutex.Message[*videosource.ProcessedImage]{Topic: topicRecordImages, Data: img})
 }
 
 // Close notified by caller that input stream is done/closed
