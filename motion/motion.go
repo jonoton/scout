@@ -84,6 +84,7 @@ func (m *Motion) SetConfig(config *Config) {
 func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer close(r)
 		defer func() {
 			// recover from panic if one occurred
 			if recover() != nil {
@@ -174,7 +175,6 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			r <- result
 		}
 		mog2.Close()
-		close(r)
 	}()
 	return r
 }

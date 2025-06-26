@@ -131,13 +131,13 @@ func (t *Tensor) SetConfig(config *Config) {
 func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource.ProcessedImage {
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer close(r)
 		defer func() {
 			// recover from panic if one occurred
 			if recover() != nil {
 				log.Errorln("Recovered from panic in tensor for", t.Name)
 			}
 		}()
-		defer close(r)
 		modelFile := runtime.GetRuntimeDirectory(fileLocation) + t.modelFile
 		configFile := runtime.GetRuntimeDirectory(fileLocation) + t.configFile
 		descFile := runtime.GetRuntimeDirectory(fileLocation) + t.descFile
@@ -148,9 +148,10 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		}
 
 		targetName := "Unknown"
-		if t.target == gocv.NetTargetCUDA {
+		switch t.target {
+		case gocv.NetTargetCUDA:
 			targetName = "CUDA"
-		} else if t.target == gocv.NetTargetCPU {
+		case gocv.NetTargetCPU:
 			targetName = "CPU"
 		}
 		if err := net.SetPreferableBackend(gocv.NetBackendType(t.backend)); err != nil {

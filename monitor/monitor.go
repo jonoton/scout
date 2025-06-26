@@ -274,8 +274,8 @@ func (m *Monitor) Wait() {
 }
 
 // Subscribe to video images
-func (m *Monitor) Subscribe() (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
-	r, err := pubsubmutex.Subscribe[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages, m.pubsub.GetUniqueSubscriberID(), m.bufferSize)
+func (m *Monitor) Subscribe(bufferSize int) (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
+	r, err := pubsubmutex.Subscribe[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages, m.pubsub.GetUniqueSubscriberID(), bufferSize)
 	if err == nil && r != nil {
 		result = r
 	}

@@ -67,4 +67,5 @@ RUN chown -R $UID:$GID /scout
 RUN chown -R $UID:$GID /go
 RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
 USER $UNAME
+ENV OPENCV_FFMPEG_LOGLEVEL=fatal
 CMD ["/go/bin/scout"]

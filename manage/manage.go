@@ -260,13 +260,16 @@ func (m *Manage) Wait() {
 type subscribeMonitor struct {
 	monitorName       string
 	responseTopicName string
+	bufferSize        int
 }
 
 // Subscribe to a monitor's video images
-func (m *Manage) Subscribe(monitorName string, timeoutMs int) (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
+func (m *Manage) Subscribe(monitorName string, timeoutMs int, bufferSize int) (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
 	subMon := subscribeMonitor{
 		monitorName:       monitorName,
-		responseTopicName: monitorName + m.pubsub.GetUniqueSubscriberID()}
+		responseTopicName: monitorName + m.pubsub.GetUniqueSubscriberID(),
+		bufferSize:        bufferSize,
+	}
 	pubsubmutex.RegisterTopic[*pubsubmutex.Subscriber[*videosource.ProcessedImage]](&m.pubsub, subMon.responseTopicName)
 	r, ok := pubsubmutex.SendReceive[subscribeMonitor, *pubsubmutex.Subscriber[*videosource.ProcessedImage]](&m.pubsub,
 		topicGetMonitorSubscribe, subMon.responseTopicName, subMon, timeoutMs)
@@ -277,7 +280,7 @@ func (m *Manage) Subscribe(monitorName string, timeoutMs int) (result *pubsubmut
 }
 func (m *Manage) subscribe(subMon subscribeMonitor) (result *pubsubmutex.Subscriber[*videosource.ProcessedImage]) {
 	if mon, ok := m.mons[subMon.monitorName]; ok {
-		result = mon.Subscribe()
+		result = mon.Subscribe(subMon.bufferSize)
 	}
 	return
 }
@@ -415,10 +418,27 @@ func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 	pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*monitor.Monitor]{Topic: topicRemoveMon, Data: mon})
 }
 
+func (m *Manage) stopMon(mon *monitor.Monitor) chan bool {
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		mon.Stop()
+		mon.Wait()
+	}()
+	return done
+}
+
 func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {
 	log.Infoln("Remove monitor", mon.Name)
-	mon.Stop()
-	mon.Wait()
+	stopTimeoutSec := 2
+	stopMonDone := m.stopMon(mon)
+	select {
+	case <-stopMonDone:
+		log.Infoln("Stopped monitor", mon.Name)
+	case <-time.After(time.Duration(stopTimeoutSec) * time.Second):
+		log.Infoln("Timeout waiting to stop monitor", mon.Name)
+	}
+
 	if removeWatchPaths {
 		m.removeMonitorWatchPaths(mon)
 	}
