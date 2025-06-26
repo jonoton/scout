@@ -17,10 +17,10 @@ require (
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0
 	github.com/jonoton/go-pubsubmutex v1.11.0
-	github.com/jonoton/go-ringbuffer v1.5.0
+	github.com/jonoton/go-ringbuffer v1.6.0
 	github.com/jonoton/go-runtime v1.0.0
-	github.com/jonoton/go-sharedmat v1.0.0
-	github.com/jonoton/go-videosource v1.12.0
+	github.com/jonoton/go-sharedmat v1.1.0
+	github.com/jonoton/go-videosource v1.13.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3
@@ -35,13 +35,13 @@ require (
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/jonoton/go-chanlimiter v1.3.0 // indirect
-	github.com/jonoton/go-temporalbuffer v1.4.0 // indirect
+	github.com/jonoton/go-temporalbuffer v1.5.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
+	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/savsgio/gotils v0.0.0-20250408102913-196191ec6287 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect

@@ -132,6 +132,10 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		}
 		cleanup := func() {
 			ringBuffer.Stop()
+			for img := range ringBufferChan {
+				img.Cleanup()
+			}
+
 			log.Infoln("Websocket closed", websocketName)
 		}
 
