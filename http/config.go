@@ -37,6 +37,7 @@ type Config struct {
 	Links               []link     `yaml:"links,omitempty"`
 	LinkRetry           int        `yaml:"linkRetry,omitempty"`
 	TwoFactorTimeoutSec int        `yaml:"twoFactorTimeoutSec,omitempty"`
+	LoginSigningKey     string     `yaml:"loginSigningKey,omitempty"`
 }
 
 // NewConfig creates a new Config

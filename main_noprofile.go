@@ -26,8 +26,8 @@ func doMain() {
 	go func() {
 		<-ctlc
 		log.Println("Captured ctrl-c")
-		h.Stop()
 		m.Stop()
+		h.Stop()
 	}()
 	m.Start()
 	h.Listen()

@@ -46,8 +46,8 @@ github.com/jonoton/go-sharedmat v1.1.0 h1:eRT0AvH7Zo/M6ugI0gDF4sTNYNFNzmCU8ZycQj
 github.com/jonoton/go-sharedmat v1.1.0/go.mod h1:7/DFGqLQS6Iu7uBPmCMq7erEXncsLgXXSI1/udM0DEs=
 github.com/jonoton/go-temporalbuffer v1.5.0 h1:X4Gbjwu9WectUyWcyFDKmke7SItPEGKH959pCTVqQWQ=
 github.com/jonoton/go-temporalbuffer v1.5.0/go.mod h1:KBuuwUU8UulFqhTYRhZwP3m4vCLUpYH5K/VV9QP6nrM=
-github.com/jonoton/go-videosource v1.13.0 h1:T5hZSvbpCRXZIG62K5guVSxGQmm+Df68a9NJxFU1zgU=
-github.com/jonoton/go-videosource v1.13.0/go.mod h1:jjndfzjtRFESsiBtzBkWj7l0NiZCTJZKRdWtb8Y7d+s=
+github.com/jonoton/go-videosource v1.14.0 h1:IEtvlDqy22q0CUFUsaRaxA1bbkDLYHC8cM+z0ApYszU=
+github.com/jonoton/go-videosource v1.14.0/go.mod h1:jjndfzjtRFESsiBtzBkWj7l0NiZCTJZKRdWtb8Y7d+s=
 github.com/jonoton/go-websockets v1.0.0 h1:hYfgQl7p43ZSXoWEG6MBTu0dQ/RveVnUG08upWt87Ng=
 github.com/jonoton/go-websockets v1.0.0/go.mod h1:+V6VIv4DU0hXgwmM8ndy0Mxdm2zNIObD0hZ0Asg2s6g=
 github.com/klauspost/compress v1.12.2/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=

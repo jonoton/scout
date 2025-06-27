@@ -114,7 +114,7 @@ func (h *Http) createToken(user string, timeNow time.Time) (string, error) {
 		claims["exp"] = timeNow.Add(time.Hour * 24 * time.Duration(h.httpConfig.SignInExpireDays)).Unix()
 	}
 	// Generate encoded token
-	return token.SignedString([]byte(h.loginKey))
+	return token.SignedString([]byte(h.loginSigningKey))
 }
 
 func (h *Http) sendSecret(index int, rxConfig *notify.RxConfig, attempt twoFactorAttempt) {
@@ -220,7 +220,7 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 
 func (h *Http) loginMiddleware() func(*fiber.Ctx) error {
 	return jwtware.New(jwtware.Config{
-		SigningKey: []byte(h.loginKey),
+		SigningKey: []byte(h.loginSigningKey),
 		SuccessHandler: func(c *fiber.Ctx) error {
 			h.accessLogger.Printf("%s,access,%s,%s\r\n", getFormattedKitchenTimestamp(time.Now()), c.IP(), c.IPs())
 			return c.Next()

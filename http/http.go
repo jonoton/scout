@@ -19,6 +19,7 @@ import (
 	"github.com/jonoton/go-memory"
 	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/scout/manage"
+	logrus "github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -34,7 +35,7 @@ type Http struct {
 	linkClients         []*linkClient
 	linkRetry           int
 	loginNeeded         bool
-	loginKey            string
+	loginSigningKey     string
 	twoFactorCheck      map[string]twoFactorAttempt
 	twoFactorTimeoutSec int
 	secTick             *time.Ticker
@@ -52,7 +53,7 @@ func NewHttp(manage *manage.Manage) *Http {
 		linkClients:         make([]*linkClient, 0),
 		linkRetry:           2,
 		loginNeeded:         false,
-		loginKey:            uuid.New().String(),
+		loginSigningKey:     uuid.New().String(),
 		twoFactorCheck:      make(map[string]twoFactorAttempt),
 		twoFactorTimeoutSec: 60,
 		secTick:             time.NewTicker(time.Second),
@@ -78,6 +79,9 @@ func (h *Http) setup() {
 		MaxAge:     28,
 		Compress:   false,
 	})
+	if h.httpConfig != nil && h.httpConfig.LoginSigningKey != "" {
+		h.loginSigningKey = h.httpConfig.LoginSigningKey
+	}
 	if h.httpConfig != nil {
 		for _, curLink := range h.httpConfig.Links {
 			lc := newLinkClient(curLink.Name, curLink.Url, curLink.User, curLink.Password)
@@ -445,11 +449,26 @@ func fileExists(filename string) bool {
 	return !os.IsNotExist(err)
 }
 
+func (h *Http) stopFiber() {
+	stopTimeoutSec := 2
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		h.fiber.Shutdown()
+	}()
+	select {
+	case <-done:
+		logrus.Infoln("Stopped http fiber")
+	case <-time.After(time.Duration(stopTimeoutSec) * time.Second):
+		logrus.Infoln("Timeout waiting to stop http fiber")
+	}
+}
+
 // Stop the http
 func (h *Http) Stop() {
 	defer close(h.done)
 	h.secTick.Stop()
-	h.fiber.Shutdown()
+	h.stopFiber()
 }
 
 func (h *Http) Wait() {

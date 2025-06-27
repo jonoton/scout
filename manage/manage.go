@@ -418,27 +418,25 @@ func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 	pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*monitor.Monitor]{Topic: topicRemoveMon, Data: mon})
 }
 
-func (m *Manage) stopMon(mon *monitor.Monitor) chan bool {
+func (m *Manage) stopMon(mon *monitor.Monitor) {
+	stopTimeoutSec := 2
 	done := make(chan bool)
 	go func() {
 		defer close(done)
 		mon.Stop()
 		mon.Wait()
 	}()
-	return done
-}
-
-func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {
-	log.Infoln("Remove monitor", mon.Name)
-	stopTimeoutSec := 2
-	stopMonDone := m.stopMon(mon)
 	select {
-	case <-stopMonDone:
+	case <-done:
 		log.Infoln("Stopped monitor", mon.Name)
 	case <-time.After(time.Duration(stopTimeoutSec) * time.Second):
 		log.Infoln("Timeout waiting to stop monitor", mon.Name)
 	}
+}
 
+func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {
+	log.Infoln("Remove monitor", mon.Name)
+	m.stopMon(mon)
 	if removeWatchPaths {
 		m.removeMonitorWatchPaths(mon)
 	}

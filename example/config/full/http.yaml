@@ -20,3 +20,4 @@ links:
     password: "LINK_PASSWORD1"
 linkRetry: 2
 twoFactorTimeoutSec: 60
+loginSigningKey: "change_or_leave_blank_for_autogen_each_start"

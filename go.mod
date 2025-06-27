@@ -20,7 +20,7 @@ require (
 	github.com/jonoton/go-ringbuffer v1.6.0
 	github.com/jonoton/go-runtime v1.0.0
 	github.com/jonoton/go-sharedmat v1.1.0
-	github.com/jonoton/go-videosource v1.13.0
+	github.com/jonoton/go-videosource v1.14.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3
