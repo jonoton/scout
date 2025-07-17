@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jonoton/go-cuda v1.0.0
+	github.com/jonoton/go-delaybuffer v1.0.0
 	github.com/jonoton/go-dir v1.0.0
 	github.com/jonoton/go-gzip v1.0.0
 	github.com/jonoton/go-memory v1.0.0
@@ -20,7 +21,7 @@ require (
 	github.com/jonoton/go-ringbuffer v1.6.0
 	github.com/jonoton/go-runtime v1.0.0
 	github.com/jonoton/go-sharedmat v1.1.0
-	github.com/jonoton/go-videosource v1.15.0
+	github.com/jonoton/go-videosource v1.17.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/radovskyb/watcher v1.0.7
 	github.com/sirupsen/logrus v1.9.3
@@ -34,7 +35,7 @@ require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/fasthttp/websocket v1.5.12 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-	github.com/jonoton/go-chanlimiter v1.3.0 // indirect
+	github.com/jonoton/go-framebuffer v1.1.0 // indirect
 	github.com/jonoton/go-temporalbuffer v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

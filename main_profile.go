@@ -55,7 +55,7 @@ func doMain() {
 	h.Listen()
 	m.Wait()
 	h.Wait()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		time.Sleep(time.Second)
 		log.Infoln("SharedMat Profile Count:", sharedmat.SharedMatProfile.Count())
 	}

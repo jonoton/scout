@@ -242,6 +242,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)
 	mon.SetBufferSeconds(monConf.BufferSeconds)
+	mon.SetDelayBufferDuration(monConf.DelayBufferMilliSeconds)
 	return mon
 }
 

@@ -7,6 +7,7 @@ quality: 100
 staleTimeout: 20
 staleMaxRetry: 10
 bufferSeconds: 4
+delayBufferMilliSeconds: 0
 motion: motion.yaml
 tensor: tensor.yaml
 face: face.yaml

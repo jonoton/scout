@@ -8,7 +8,8 @@ import (
 
 	"github.com/jonoton/go-notify"
 
-	pubsubmutex "github.com/jonoton/go-pubsubmutex"
+	"github.com/jonoton/go-delaybuffer"
+	"github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/go-videosource"
 	"github.com/jonoton/scout/face"
 	"github.com/jonoton/scout/motion"
@@ -22,25 +23,27 @@ const topicCurrentMonitorFrameStats = "topic-current-monitor-frame-stats"
 
 // Monitor contains the video source
 type Monitor struct {
-	Name            string
-	bufferSize      int
-	ConfigPaths     []string
-	reader          *videosource.VideoReader
-	record          *Record
-	continuous      *Continuous
-	notifier        *notify.Notify
-	notifyRxConf    *notify.RxConfig
-	staleTimeout    int
-	StaleRetry      int
-	StaleMaxRetry   int
-	IsStale         bool
-	frameStatsCombo videosource.FrameStatsCombo
-	motion          *motion.Motion
-	tensor          *tensor.Tensor
-	face            *face.Face
-	alert           *Alert
-	pubsub          pubsubmutex.PubSub
-	done            chan bool
+	Name                string
+	bufferSize          int
+	bufferSec           int
+	delayBufferDuration time.Duration
+	ConfigPaths         []string
+	reader              *videosource.VideoReader
+	record              *Record
+	continuous          *Continuous
+	notifier            *notify.Notify
+	notifyRxConf        *notify.RxConfig
+	staleTimeout        int
+	StaleRetry          int
+	StaleMaxRetry       int
+	IsStale             bool
+	frameStatsCombo     videosource.FrameStatsCombo
+	motion              *motion.Motion
+	tensor              *tensor.Tensor
+	face                *face.Face
+	alert               *Alert
+	pubsub              pubsubmutex.PubSub
+	done                chan bool
 }
 
 // Map is a map of names to Monitor
@@ -49,24 +52,26 @@ type Map map[string]*Monitor
 // NewMonitor creates a new Monitor
 func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 	m := &Monitor{
-		Name:            name,
-		bufferSize:      0,
-		reader:          reader,
-		record:          nil,
-		continuous:      nil,
-		notifier:        nil,
-		notifyRxConf:    nil,
-		staleTimeout:    20,
-		StaleRetry:      10,
-		StaleMaxRetry:   10,
-		IsStale:         false,
-		frameStatsCombo: videosource.FrameStatsCombo{},
-		motion:          motion.NewMotion(name),
-		tensor:          tensor.NewTensor(name),
-		face:            face.NewFace(name),
-		pubsub:          *pubsubmutex.NewPubSub(),
-		alert:           nil,
-		done:            make(chan bool),
+		Name:                name,
+		bufferSize:          0,
+		bufferSec:           0,
+		delayBufferDuration: 0,
+		reader:              reader,
+		record:              nil,
+		continuous:          nil,
+		notifier:            nil,
+		notifyRxConf:        nil,
+		staleTimeout:        20,
+		StaleRetry:          10,
+		StaleMaxRetry:       10,
+		IsStale:             false,
+		frameStatsCombo:     videosource.FrameStatsCombo{},
+		motion:              motion.NewMotion(name),
+		tensor:              tensor.NewTensor(name),
+		face:                face.NewFace(name),
+		pubsub:              *pubsubmutex.NewPubSub(),
+		alert:               nil,
+		done:                make(chan bool),
 	}
 	pubsubmutex.RegisterTopic[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages)
 	pubsubmutex.RegisterTopic[any](&m.pubsub, topicGetMonitorFrameStats)
@@ -78,8 +83,18 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 func (m *Monitor) SetBufferSeconds(sec int) {
 	if sec > 0 {
 		m.bufferSize = m.reader.MaxOutputFps * sec
+		m.bufferSec = sec
 	} else {
 		m.bufferSize = 0
+		m.bufferSec = 0
+	}
+}
+
+func (m *Monitor) SetDelayBufferDuration(milliSecond int) {
+	if milliSecond <= 0 {
+		m.delayBufferDuration = 0
+	} else {
+		m.delayBufferDuration = time.Duration(milliSecond) * time.Millisecond
 	}
 }
 
@@ -127,8 +142,6 @@ func (m *Monitor) SetFace(config *face.Config) {
 // Start will run the processes
 func (m *Monitor) Start() {
 	go func() {
-		readerOutput := m.reader.Start()
-
 		motionInput := make(chan videosource.Image, m.bufferSize)
 		motionOutput := m.motion.Run(motionInput)
 
@@ -139,10 +152,26 @@ func (m *Monitor) Start() {
 		faceOutput := m.face.Run(faceInput)
 
 		wg := &sync.WaitGroup{}
-		wg.Add(3)
+		wg.Add(4)
+
+		faceOutputPtrChan := make(chan *videosource.ProcessedImage, m.bufferSize)
+
+		go convertToProcessImagePtrChan(faceOutput, faceOutputPtrChan, wg)
 		go motionToTensor(motionOutput, tensorInput, wg)
 		go tensorToFace(tensorOutput, faceInput, wg)
-		go m.processResults(faceOutput, wg)
+		if m.delayBufferDuration > 0 {
+			tickMs := 5
+			if m.reader.MaxOutputFps > 0 {
+				tickMs = (1000 / m.reader.MaxOutputFps) / 2
+			}
+			delayBuffer := delaybuffer.NewBuffer(faceOutputPtrChan, m.delayBufferDuration, time.Duration(tickMs)*time.Millisecond)
+			defer delayBuffer.Close()
+			go m.processResults(delayBuffer.Out, wg)
+		} else {
+			go m.processResults(faceOutputPtrChan, wg)
+		}
+
+		readerOutput := m.reader.Start()
 		readerToMotion(readerOutput, motionInput)
 
 		m.reader.Wait()
@@ -177,7 +206,15 @@ func tensorToFace(inChan <-chan videosource.ProcessedImage, outChan chan videoso
 	wg.Done()
 }
 
-func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+func convertToProcessImagePtrChan(inChan <-chan videosource.ProcessedImage, outChan chan *videosource.ProcessedImage, wg *sync.WaitGroup) {
+	for img := range inChan {
+		outChan <- &img
+	}
+	close(outChan)
+	wg.Done()
+}
+
+func (m *Monitor) processResults(inChan <-chan *videosource.ProcessedImage, wg *sync.WaitGroup) {
 	if m.continuous != nil {
 		m.continuous.Start()
 	}
@@ -188,15 +225,12 @@ func (m *Monitor) processResults(inChan <-chan videosource.ProcessedImage, wg *s
 		m.alert.Start()
 	}
 	getMonFrameStatsSub, _ := pubsubmutex.Subscribe[any](&m.pubsub, topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
-	defer getMonFrameStatsSub.Unsubscribe()
 	sourceStatsSub := m.reader.GetSourceStatsSub()
-	defer sourceStatsSub.Unsubscribe()
 	outputStatsSub := m.reader.GetOutputStatsSub()
-	defer outputStatsSub.Unsubscribe()
 	staleTicker := time.NewTicker(time.Second)
 	staleSec := 0
 	lastTotal := 0
-FaceLoop:
+ProcessLoop:
 	for {
 		select {
 		case _, ok := <-getMonFrameStatsSub.Ch:
@@ -218,8 +252,13 @@ FaceLoop:
 			m.frameStatsCombo.Out = *cur
 		case cur, ok := <-inChan:
 			if !ok {
-				cur.Cleanup()
-				break FaceLoop
+				if cur != nil {
+					cur.Cleanup()
+				}
+				break ProcessLoop
+			}
+			if cur == nil {
+				continue
 			}
 			if m.alert != nil {
 				m.alert.Push(cur.Ref())
@@ -248,6 +287,9 @@ FaceLoop:
 		}
 	}
 	staleTicker.Stop()
+	getMonFrameStatsSub.Unsubscribe()
+	sourceStatsSub.Unsubscribe()
+	outputStatsSub.Unsubscribe()
 	if m.alert != nil {
 		m.alert.Close()
 		m.alert.Wait()
