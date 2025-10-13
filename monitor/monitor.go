@@ -159,13 +159,13 @@ func (m *Monitor) Start() {
 		go convertToProcessImagePtrChan(faceOutput, faceOutputPtrChan, wg)
 		go motionToTensor(motionOutput, tensorInput, wg)
 		go tensorToFace(tensorOutput, faceInput, wg)
+		var delayBuffer *delaybuffer.Buffer[*videosource.ProcessedImage]
 		if m.delayBufferDuration > 0 {
 			tickMs := 5
 			if m.reader.MaxOutputFps > 0 {
 				tickMs = (1000 / m.reader.MaxOutputFps) / 2
 			}
-			delayBuffer := delaybuffer.NewBuffer(faceOutputPtrChan, m.delayBufferDuration, time.Duration(tickMs)*time.Millisecond)
-			defer delayBuffer.Close()
+			delayBuffer = delaybuffer.NewBuffer(faceOutputPtrChan, m.delayBufferDuration, time.Duration(tickMs)*time.Millisecond)
 			go m.processResults(delayBuffer.Out, wg)
 		} else {
 			go m.processResults(faceOutputPtrChan, wg)
@@ -176,6 +176,9 @@ func (m *Monitor) Start() {
 
 		m.reader.Wait()
 		wg.Wait()
+		if delayBuffer != nil {
+			delayBuffer.Close()
+		}
 		m.IsStale = true
 		log.Infoln("Done monitor", m.Name)
 		m.pubsub.Close()
