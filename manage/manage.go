@@ -181,9 +181,12 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	var video videosource.VideoSource
 	if monConf.Filename != "" {
 		video = videosource.NewFileSource(monConf.Filename, monConf.Filename)
-
 	} else if monConf.URL != "" {
-		video = videosource.NewIPCamSource(name, monConf.URL)
+		ipcamSource := videosource.NewIPCamSource(name, monConf.URL)
+		if monConf.CaptureTimeoutMilliSeconds > 0 {
+			ipcamSource.SetCaptureTimeoutMs(monConf.CaptureTimeoutMilliSeconds)
+		} 
+		video = ipcamSource
 	} else {
 		log.Errorln("No video source for", name)
 		return

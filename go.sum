@@ -44,14 +44,12 @@ github.com/jonoton/go-ringbuffer v1.6.0 h1:TsGZEfnwCLRwVZ9nEtnqhDPSgbk+TuoSI8WWM
 github.com/jonoton/go-ringbuffer v1.6.0/go.mod h1:FT9MtKbkAhqwoe8oT/fYND56TchFY3TnRDYS3LohIi0=
 github.com/jonoton/go-runtime v1.0.0 h1:ydVuHGcHcSsRG955QJZ8zTV0MoOLLxCXjtr0Lerp0TM=
 github.com/jonoton/go-runtime v1.0.0/go.mod h1:MchOdipJ65y8rjIBRcGTKWDde7rbwKfRUtPoYKc5yeI=
-github.com/jonoton/go-sharedmat v1.1.0 h1:eRT0AvH7Zo/M6ugI0gDF4sTNYNFNzmCU8ZycQjNvqMQ=
-github.com/jonoton/go-sharedmat v1.1.0/go.mod h1:7/DFGqLQS6Iu7uBPmCMq7erEXncsLgXXSI1/udM0DEs=
 github.com/jonoton/go-sharedmat v1.2.0 h1:3kLAqbQWEW69Qdoo8LxEfrO5W+fNTEnN5pwwKUg2mLk=
 github.com/jonoton/go-sharedmat v1.2.0/go.mod h1:7/DFGqLQS6Iu7uBPmCMq7erEXncsLgXXSI1/udM0DEs=
 github.com/jonoton/go-temporalbuffer v1.6.0 h1:QbBJA1REl/txtvsFYBkEnN22FoSmyW1YGU2EX0mLZIs=
 github.com/jonoton/go-temporalbuffer v1.6.0/go.mod h1:KBuuwUU8UulFqhTYRhZwP3m4vCLUpYH5K/VV9QP6nrM=
-github.com/jonoton/go-videosource v1.17.0 h1:iZAtDzXoXvEbDaGxPqSHn36duJx4FzZhNJo9ZxEsI4E=
-github.com/jonoton/go-videosource v1.17.0/go.mod h1:gfntr0Pqj356bIfnLjUM/zVh0ruso/B6b1BHsUiIApc=
+github.com/jonoton/go-videosource v1.18.0 h1:fgFzvncHRhVWKUhdFRT5ZA4h/5ts5h7cczXz1nP9r8E=
+github.com/jonoton/go-videosource v1.18.0/go.mod h1:gfntr0Pqj356bIfnLjUM/zVh0ruso/B6b1BHsUiIApc=
 github.com/jonoton/go-watcher v1.1.0 h1:WXpLWKrXu54IWNgh6AtEaZpk36Vc5s0yYedVwiNixRI=
 github.com/jonoton/go-watcher v1.1.0/go.mod h1:+KxmRsj1zSJLfUtgo5tnnlzLwoSvsU8SQK2hBlYvoGo=
 github.com/jonoton/go-websockets v1.0.0 h1:hYfgQl7p43ZSXoWEG6MBTu0dQ/RveVnUG08upWt87Ng=

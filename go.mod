@@ -21,7 +21,7 @@ require (
 	github.com/jonoton/go-ringbuffer v1.6.0
 	github.com/jonoton/go-runtime v1.0.0
 	github.com/jonoton/go-sharedmat v1.2.0
-	github.com/jonoton/go-videosource v1.17.0
+	github.com/jonoton/go-videosource v1.18.0
 	github.com/jonoton/go-watcher v1.1.0
 	github.com/jonoton/go-websockets v1.0.0
 	github.com/sirupsen/logrus v1.9.3
@@ -54,3 +54,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df // indirect
 )
+
+// replace github.com/jonoton/go-videosource v1.17.0 => /workspaces/go-videosource

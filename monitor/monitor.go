@@ -275,6 +275,10 @@ ProcessLoop:
 			pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*videosource.ProcessedImage]{Topic: topicMonitorImages, Data: cur.Ref()})
 			cur.Cleanup()
 		case <-staleTicker.C:
+			if m.reader.GetSourceType() == videosource.IPCamSourceType && m.reader.GetConnectionStatus() == videosource.Connecting {
+				// Ignoring stale check since still connecting monitor
+				continue
+			}
 			curTotal := m.frameStatsCombo.In.AcceptedTotal
 			if lastTotal == curTotal {
 				staleSec++

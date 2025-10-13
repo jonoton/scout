@@ -10,23 +10,24 @@ import (
 
 // Config contains the parameters for Monitor
 type Config struct {
-	Filename                string `yaml:"filename,omitempty"`
-	URL                     string `yaml:"url,omitempty"`
-	MaxSourceFps            int    `yaml:"maxSourceFps,omitempty"`
-	MaxOutputFps            int    `yaml:"maxOutputFps,omitempty"`
-	Quality                 int    `yaml:"quality,omitempty"`
-	StaleTimeout            int    `yaml:"staleTimeout,omitempty"`
-	StaleMaxRetry           int    `yaml:"staleMaxRetry,omitempty"`
-	BufferSeconds           int    `yaml:"bufferSeconds,omitempty"`
-	DelayBufferMilliSeconds int    `yaml:"delayBufferMilliSeconds,omitempty"`
-	MotionFilename          string `yaml:"motion,omitempty"`
-	TensorFilename          string `yaml:"tensor,omitempty"`
-	CaffeFilename           string `yaml:"caffe,omitempty"`
-	FaceFilename            string `yaml:"face,omitempty"`
-	NotifyRxFilename        string `yaml:"notifyRx,omitempty"`
-	AlertFilename           string `yaml:"alert,omitempty"`
-	RecordFilename          string `yaml:"record,omitempty"`
-	ContinuousFilename      string `yaml:"continuous,omitempty"`
+	Filename                   string `yaml:"filename,omitempty"`
+	URL                        string `yaml:"url,omitempty"`
+	MaxSourceFps               int    `yaml:"maxSourceFps,omitempty"`
+	MaxOutputFps               int    `yaml:"maxOutputFps,omitempty"`
+	Quality                    int    `yaml:"quality,omitempty"`
+	CaptureTimeoutMilliSeconds int    `yaml:"captureTimeoutMilliSeconds,omitempty"`
+	StaleTimeout               int    `yaml:"staleTimeout,omitempty"`
+	StaleMaxRetry              int    `yaml:"staleMaxRetry,omitempty"`
+	BufferSeconds              int    `yaml:"bufferSeconds,omitempty"`
+	DelayBufferMilliSeconds    int    `yaml:"delayBufferMilliSeconds,omitempty"`
+	MotionFilename             string `yaml:"motion,omitempty"`
+	TensorFilename             string `yaml:"tensor,omitempty"`
+	CaffeFilename              string `yaml:"caffe,omitempty"`
+	FaceFilename               string `yaml:"face,omitempty"`
+	NotifyRxFilename           string `yaml:"notifyRx,omitempty"`
+	AlertFilename              string `yaml:"alert,omitempty"`
+	RecordFilename             string `yaml:"record,omitempty"`
+	ContinuousFilename         string `yaml:"continuous,omitempty"`
 }
 
 // NewConfig creates a new Config

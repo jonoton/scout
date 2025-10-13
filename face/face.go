@@ -112,7 +112,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 		configFile := runtime.GetRuntimeDirectory(fileLocation) + f.configFile
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v for %s\n", modelFile, configFile, f.Name)
+			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, f.Name)
 			return
 		}
 
@@ -133,7 +133,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			targetName = "CPU"
 		}
 
-		log.Infof("Face %s using %s and %s for %s\n", targetName, modelFile, configFile, f.Name)
+		log.Infof("Face %s using %s and %s for %s", targetName, modelFile, configFile, f.Name)
 
 		var ratio float64
 		var mean gocv.Scalar

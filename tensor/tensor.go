@@ -143,7 +143,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		descFile := runtime.GetRuntimeDirectory(fileLocation) + t.descFile
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v for %s\n", modelFile, configFile, t.Name)
+			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, t.Name)
 			return
 		}
 
@@ -169,13 +169,13 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		if t.descFile != "" {
 			descs, err := readDescriptions(descFile)
 			if err != nil {
-				log.Printf("Error reading descriptions file: %v for %s\n", t.descFile, t.Name)
+				log.Printf("Error reading descriptions file: %v for %s", t.descFile, t.Name)
 				return
 			}
 			descriptions = descs
 		}
 
-		log.Infof("Tensor %s using %s and %s with %s for %s\n", targetName, modelFile, configFile, descFile, t.Name)
+		log.Infof("Tensor %s using %s and %s with %s for %s", targetName, modelFile, configFile, descFile, t.Name)
 
 		var ratio float64
 		var mean gocv.Scalar
