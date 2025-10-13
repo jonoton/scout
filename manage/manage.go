@@ -12,7 +12,7 @@ import (
 	"github.com/jonoton/scout/motion"
 	"github.com/jonoton/scout/tensor"
 
-	"github.com/radovskyb/watcher"
+	"github.com/jonoton/go-watcher"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jonoton/go-notify"
@@ -51,7 +51,7 @@ func NewManage() *Manage {
 		manageConf:       *NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
 		Notifier:         nil,
-		wtr:              watcher.New(),
+		wtr:              watcher.New(500 * time.Millisecond),
 		pubsub:           *pubsubmutex.NewPubSub(),
 		cancel:           make(chan bool),
 		done:             make(chan bool),
@@ -83,9 +83,7 @@ func (m *Manage) addMonitor(mon *monitor.Monitor) {
 	log.Infoln("Add monitor", mon.Name)
 	m.mons[mon.Name] = mon
 	for _, pathName := range mon.ConfigPaths {
-		go func(pathName string) {
-			m.wtr.Add(pathName)
-		}(pathName)
+		m.wtr.Watch(pathName)
 	}
 	mon.Start()
 }
@@ -323,7 +321,6 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 }
 
 func (m *Manage) run() {
-	m.monitorConfigChanges()
 	go func() {
 		defer close(m.done)
 		defer m.pubsub.Close()
@@ -392,7 +389,7 @@ func (m *Manage) run() {
 				m.pubMonitorAlertTimes()
 			case <-staleTicker.C:
 				lastStaleList = m.doCheckStaleMonitors(lastStaleList)
-			case event, ok := <-m.wtr.Event:
+			case event, ok := <-m.wtr.Events:
 				if !ok {
 					continue
 				}
@@ -460,9 +457,7 @@ func (m *Manage) removeMonitorWatchPaths(mon *monitor.Monitor) {
 	}
 	for pathName, unique := range uniquePaths {
 		if unique {
-			go func(pathName string) {
-				m.wtr.Remove(pathName)
-			}(pathName)
+			m.wtr.Remove(pathName)
 		}
 	}
 }
@@ -488,15 +483,6 @@ func (m *Manage) doMonitorConfigChanges(modPath string, inList []mon) (retryList
 		log.Infoln("Config restarted monitor", newMon.Name)
 	}
 	return
-}
-
-func (m *Manage) monitorConfigChanges() {
-	go func() {
-		if err := m.wtr.Start(time.Millisecond * 500); err != nil {
-			log.Errorln(err)
-			return
-		}
-	}()
 }
 
 func (m *Manage) associatedMonitors(modPath string) (result []*monitor.Monitor) {

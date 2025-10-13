@@ -50,6 +50,8 @@ github.com/jonoton/go-temporalbuffer v1.6.0 h1:QbBJA1REl/txtvsFYBkEnN22FoSmyW1YG
 github.com/jonoton/go-temporalbuffer v1.6.0/go.mod h1:KBuuwUU8UulFqhTYRhZwP3m4vCLUpYH5K/VV9QP6nrM=
 github.com/jonoton/go-videosource v1.17.0 h1:iZAtDzXoXvEbDaGxPqSHn36duJx4FzZhNJo9ZxEsI4E=
 github.com/jonoton/go-videosource v1.17.0/go.mod h1:gfntr0Pqj356bIfnLjUM/zVh0ruso/B6b1BHsUiIApc=
+github.com/jonoton/go-watcher v1.1.0 h1:WXpLWKrXu54IWNgh6AtEaZpk36Vc5s0yYedVwiNixRI=
+github.com/jonoton/go-watcher v1.1.0/go.mod h1:+KxmRsj1zSJLfUtgo5tnnlzLwoSvsU8SQK2hBlYvoGo=
 github.com/jonoton/go-websockets v1.0.0 h1:hYfgQl7p43ZSXoWEG6MBTu0dQ/RveVnUG08upWt87Ng=
 github.com/jonoton/go-websockets v1.0.0/go.mod h1:+V6VIv4DU0hXgwmM8ndy0Mxdm2zNIObD0hZ0Asg2s6g=
 github.com/klauspost/compress v1.12.2/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
@@ -73,8 +75,6 @@ github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJ
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/radovskyb/watcher v1.0.7 h1:AYePLih6dpmS32vlHfhCeli8127LzkIgwJGcwwe8tUE=
-github.com/radovskyb/watcher v1.0.7/go.mod h1:78okwvY5wPdzcb1UYnip1pvrZNIVEIh/Cm+ZuvsUYIg=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
