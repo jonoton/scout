@@ -23,7 +23,7 @@ require (
 	github.com/jonoton/go-sharedmat v1.2.0
 	github.com/jonoton/go-videosource v1.18.0
 	github.com/jonoton/go-watcher v1.1.0
-	github.com/jonoton/go-websockets v1.0.0
+	github.com/jonoton/go-websockets v1.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/valyala/bytebufferpool v1.0.0
 	gocv.io/x/gocv v0.37.0
