@@ -65,6 +65,7 @@ func NewHttp(manage *manage.Manage) *Http {
 
 func (h *Http) setup() {
 	logDir := runtime.GetRuntimeDirectory(".logs")
+	logrus.Infof("Login logs saved to: %s", logDir+"logins")
 	h.loginLogger.SetOutput(&lumberjack.Logger{
 		Filename:   logDir + "logins",
 		MaxSize:    1,
@@ -72,6 +73,7 @@ func (h *Http) setup() {
 		MaxAge:     28,
 		Compress:   false,
 	})
+	logrus.Infof("Access logs saved to: %s", logDir+"access")
 	h.accessLogger.SetOutput(&lumberjack.Logger{
 		Filename:   logDir + "access",
 		MaxSize:    1,

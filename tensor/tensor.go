@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"image"
 	"os"
+	"path/filepath"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -15,7 +16,32 @@ import (
 	"github.com/jonoton/go-videosource"
 )
 
-const fileLocation = "data/tensor"
+const fileLocationData = "data/tensor"
+const fileLocationDotData = ".data/tensor"
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func getModelPath(filename string) string {
+	if filepath.IsAbs(filename) {
+		return filename
+	}
+	pathData := runtime.GetRuntimeDirectory(fileLocationData) + filename
+	if fileExists(pathData) {
+		return pathData
+	}
+	pathDotData := runtime.GetRuntimeDirectory(fileLocationDotData) + filename
+	if fileExists(pathDotData) {
+		return pathDotData
+	}
+	// Fallback to old behavior if neither exists, though it will likely fail
+	return pathData
+}
 
 // Tensor detects objects within images
 type Tensor struct {
@@ -138,9 +164,12 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 				log.Errorln("Recovered from panic in tensor for", t.Name)
 			}
 		}()
-		modelFile := runtime.GetRuntimeDirectory(fileLocation) + t.modelFile
-		configFile := runtime.GetRuntimeDirectory(fileLocation) + t.configFile
-		descFile := runtime.GetRuntimeDirectory(fileLocation) + t.descFile
+		modelFile := getModelPath(t.modelFile)
+		configFile := getModelPath(t.configFile)
+		descFile := ""
+		if t.descFile != "" {
+			descFile = getModelPath(t.descFile)
+		}
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
 			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, t.Name)

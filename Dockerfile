@@ -1,6 +1,8 @@
 # Dockerfile
 # Build:
 #   docker buildx build --platform linux/amd64,linux/arm64 -t scout:latest .
+# Run in foreground and remove after:
+#   docker run -it --rm -p 8080:8080 -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs -v HOST_DATA_PATH:/scout/data scout:latest
 
 # golang amd64
 FROM ubuntu:20.04 AS golang-amd64-stage
@@ -56,16 +58,59 @@ COPY . .
 RUN go get -d -v ./... && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install -v ./...
 
 # scout
-FROM scout-builder-stage AS scout
+FROM ubuntu:20.04 AS scout
+LABEL maintainer="jonotoninnovation"
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV TZ="America/New_York"
+
+RUN apt update && apt install -y \
+    tzdata \
+    ca-certificates \
+    libgtk2.0-0 \
+    libavcodec58 \
+    libavformat58 \
+    libswscale5 \
+    libtbb2 \
+    libjpeg8 \
+    libpng16-16 \
+    libtiff5 \
+    libdc1394-22 \
+    libharfbuzz0b \
+    libfreetype6 \
+    libavutil56 \
+    libv4l-0 \
+    libswresample3 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer1.0-0 \
+    libxvidcore4 \
+    libx264-155 \
+    libgtk-3-0 \
+    libopenexr24 \
+    libwebp6 \
+    libatlas3-base \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=scout-builder-stage /go/bin/scout /scout/scout
+COPY --from=scout-builder-stage /usr/local/lib/ /usr/local/lib/
+COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/public /scout/http/public
+COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/templates /scout/http/templates
+COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/data /scout/.data
+RUN ldconfig
+
 ARG UNAME=user
 ARG UID=1000
 ARG GID=1000
 RUN groupadd -g $GID -o $UNAME
 RUN useradd -m -u $UID -g $GID -o -s /bin/bash $UNAME
-RUN mkdir /scout && mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
+RUN mkdir -p /scout/data && mkdir -p /scout/.config && mkdir -p /scout/.logs
 RUN chown -R $UID:$GID /scout
-RUN chown -R $UID:$GID /go
-RUN ln -s /scout/.config /go/src/github.com/jonoton/scout/.config && ln -s /scout/.logs /go/src/github.com/jonoton/scout/.logs
+
 USER $UNAME
+ENV PATH=$PATH:/scout
 ENV OPENCV_FFMPEG_LOGLEVEL=fatal
-CMD ["/go/bin/scout"]
+EXPOSE 8080
+
+VOLUME ["/scout/.config", "/scout/.logs", "/scout/data"]
+
+WORKDIR /scout
+CMD ["/scout/scout"]

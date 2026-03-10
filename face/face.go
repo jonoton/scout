@@ -2,6 +2,8 @@ package face
 
 import (
 	"image"
+	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,7 +13,32 @@ import (
 	"gocv.io/x/gocv"
 )
 
-const fileLocation = "data/face"
+const fileLocationData = "data/face"
+const fileLocationDotData = ".data/face"
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func getModelPath(filename string) string {
+	if filepath.IsAbs(filename) {
+		return filename
+	}
+	pathData := runtime.GetRuntimeDirectory(fileLocationData) + filename
+	if fileExists(pathData) {
+		return pathData
+	}
+	pathDotData := runtime.GetRuntimeDirectory(fileLocationDotData) + filename
+	if fileExists(pathDotData) {
+		return pathDotData
+	}
+	// Fallback to old behavior if neither exists, though it will likely fail
+	return pathData
+}
 
 // Face detects faces within images
 type Face struct {
@@ -108,8 +135,8 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			}
 		}()
 		defer close(r)
-		modelFile := runtime.GetRuntimeDirectory(fileLocation) + f.modelFile
-		configFile := runtime.GetRuntimeDirectory(fileLocation) + f.configFile
+		modelFile := getModelPath(f.modelFile)
+		configFile := getModelPath(f.configFile)
 		net := gocv.ReadNet(modelFile, configFile)
 		if net.Empty() {
 			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, f.Name)
