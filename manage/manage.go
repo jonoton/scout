@@ -46,9 +46,15 @@ type Manage struct {
 
 // NewManage creates a new Manage
 func NewManage() *Manage {
+	cfgPath := runtime.GetRuntimeDirectory(".config") + ConfigFilename
+	conf := NewConfig(cfgPath)
+	if conf == nil {
+		log.Fatalf("Required config file %s not found. Please ensure it exists and is valid.", cfgPath)
+	}
+
 	m := &Manage{
 		mons:             make(monitor.Map),
-		manageConf:       *NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
+		manageConf:       *conf,
 		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
 		Notifier:         nil,
 		wtr:              watcher.New(500 * time.Millisecond),
@@ -175,7 +181,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	monConfigPath := runtimeConfigDir + configPath
 	monConf := monitor.NewConfig(monConfigPath)
 	if monConf == nil {
-		log.Errorln("Could not setup", name)
+		log.Errorf("Could not setup %s. monitor.NewConfig returned nil for %s", name, monConfigPath)
 		return
 	}
 	var video videosource.VideoSource
@@ -185,7 +191,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		ipcamSource := videosource.NewIPCamSource(name, monConf.URL)
 		if monConf.CaptureTimeoutMilliSeconds > 0 {
 			ipcamSource.SetCaptureTimeoutMs(monConf.CaptureTimeoutMilliSeconds)
-		} 
+		}
 		video = ipcamSource
 	} else {
 		log.Errorln("No video source for", name)
@@ -205,21 +211,35 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	mon.ConfigPaths = append(mon.ConfigPaths, monConfigPath)
 	if monConf.RecordFilename != "" {
 		recordConfigPath := runtimeConfigDir + monConf.RecordFilename
-		mon.SetRecord(m.manageConf.Data, monitor.NewRecordConfig(recordConfigPath))
+		recordConf := monitor.NewRecordConfig(recordConfigPath)
+		if recordConf == nil {
+			log.Warnf("Optional config file %s not found.", recordConfigPath)
+		}
+		mon.SetRecord(m.manageConf.Data, recordConf)
 		mon.ConfigPaths = append(mon.ConfigPaths, recordConfigPath)
 	}
 	if monConf.ContinuousFilename != "" {
 		continuousConfigPath := runtimeConfigDir + monConf.ContinuousFilename
-		mon.SetContinuous(m.manageConf.Data, monitor.NewContinuousConfig(continuousConfigPath))
+		continuousConf := monitor.NewContinuousConfig(continuousConfigPath)
+		if continuousConf == nil {
+			log.Warnf("Optional config file %s not found.", continuousConfigPath)
+		}
+		mon.SetContinuous(m.manageConf.Data, continuousConf)
 		mon.ConfigPaths = append(mon.ConfigPaths, continuousConfigPath)
 	}
 	if monConf.AlertFilename != "" {
 		alertPath := runtimeConfigDir + monConf.AlertFilename
 		alertSettings := monitor.NewAlertConfig(alertPath)
+		if alertSettings == nil {
+			log.Warnf("Optional config file %s not found.", alertPath)
+		}
 		mon.ConfigPaths = append(mon.ConfigPaths, alertPath)
 		if monConf.NotifyRxFilename != "" {
 			notifyRxPath := runtimeConfigDir + monConf.NotifyRxFilename
 			notifyRxConf := notify.NewRxConfig(notifyRxPath)
+			if notifyRxConf == nil {
+				log.Warnf("Optional config file %s not found.", notifyRxPath)
+			}
 			mon.ConfigPaths = append(mon.ConfigPaths, notifyRxPath)
 			mon.SetAlert(m.Notifier, notifyRxConf, m.manageConf.Data, alertSettings)
 		} else {
@@ -228,17 +248,29 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	}
 	if monConf.MotionFilename != "" {
 		motionPath := runtimeConfigDir + monConf.MotionFilename
-		mon.SetMotion(motion.NewConfig(motionPath))
+		motionConf := motion.NewConfig(motionPath)
+		if motionConf == nil {
+			log.Warnf("Optional config file %s not found.", motionPath)
+		}
+		mon.SetMotion(motionConf)
 		mon.ConfigPaths = append(mon.ConfigPaths, motionPath)
 	}
 	if monConf.TensorFilename != "" {
 		tensorPath := runtimeConfigDir + monConf.TensorFilename
-		mon.SetTensor(tensor.NewConfig(tensorPath))
+		tensorConf := tensor.NewConfig(tensorPath)
+		if tensorConf == nil {
+			log.Warnf("Optional config file %s not found.", tensorPath)
+		}
+		mon.SetTensor(tensorConf)
 		mon.ConfigPaths = append(mon.ConfigPaths, tensorPath)
 	}
 	if monConf.FaceFilename != "" {
 		facePath := runtimeConfigDir + monConf.FaceFilename
-		mon.SetFace(face.NewConfig(facePath))
+		faceConf := face.NewConfig(facePath)
+		if faceConf == nil {
+			log.Warnf("Optional config file %s not found.", facePath)
+		}
+		mon.SetFace(faceConf)
 		mon.ConfigPaths = append(mon.ConfigPaths, facePath)
 	}
 	mon.SetStaleConfig(monConf.StaleTimeout, monConf.StaleMaxRetry)

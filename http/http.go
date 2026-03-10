@@ -44,8 +44,14 @@ type Http struct {
 
 // NewHttp returns a new Http
 func NewHttp(manage *manage.Manage) *Http {
+	cfgPath := runtime.GetRuntimeDirectory(".config") + ConfigFilename
+	conf := NewConfig(cfgPath)
+	if conf == nil {
+		logrus.Warnf("Optional HTTP config file %s not found. Proceeding with defaults.", cfgPath)
+	}
+
 	h := &Http{
-		httpConfig:          NewConfig(runtime.GetRuntimeDirectory(".config") + ConfigFilename),
+		httpConfig:          conf,
 		fiber:               fiber.New(),
 		manage:              manage,
 		loginLogger:         &log.Logger{},
