@@ -13,6 +13,7 @@ import (
 	jwtware "github.com/gofiber/jwt/v2"
 	jwt "github.com/golang-jwt/jwt/v5"
 
+	"github.com/google/uuid"
 	"github.com/jonoton/go-notify"
 	log "github.com/sirupsen/logrus"
 )
@@ -117,6 +118,8 @@ func (h *Http) createToken(user string, timeNow time.Time) (string, error) {
 	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
 	claims["user"] = user
+	claims["iat"] = timeNow.Unix()
+	claims["jti"] = uuid.New().String()
 	claims["exp"] = timeNow.Add(time.Hour * 24 * 7).Unix()
 	if h.httpConfig != nil && h.httpConfig.SignInExpireDays > 0 {
 		claims["exp"] = timeNow.Add(time.Hour * 24 * time.Duration(h.httpConfig.SignInExpireDays)).Unix()
@@ -175,7 +178,7 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 					}
 					h.twoFactorMu.Unlock()
 					if found && sharedSecret == userCheck.secret {
-						t, err := h.createToken(user, timeNow)
+						t, err := h.createToken(vUser, timeNow)
 						if err != nil {
 							h.loginLogger.Printf("%s,error,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
 							return c.SendStatus(fiber.StatusInternalServerError)
@@ -228,7 +231,7 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 				}
 			} else {
 				// Basic Auth
-				t, err := h.createToken(user, timeNow)
+				t, err := h.createToken(vUser, timeNow)
 				if err != nil {
 					h.loginLogger.Printf("%s,error,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
 					return c.SendStatus(fiber.StatusInternalServerError)
