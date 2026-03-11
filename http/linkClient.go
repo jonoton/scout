@@ -300,9 +300,6 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 	if jpegQuality > 0 {
 		queryArgs = append(queryArgs, fmt.Sprintf("quality=%d", jpegQuality))
 	}
-	if len(l.token) > 0 {
-		queryArgs = append(queryArgs, fmt.Sprintf("token=%s", l.token))
-	}
 	for index, curArg := range queryArgs {
 		if index == 0 {
 			rawUrl = rawUrl + "?"
@@ -320,7 +317,11 @@ func (l *linkClient) forwardWebsocket(monName string, width int, jpegQuality int
 	}
 	return websocket.New(func(c *websocket.Conn) {
 		dialer := gorillaWebsocket.DefaultDialer
-		connBackend, _, err := dialer.Dial(u.String(), http.Header{})
+		headers := http.Header{}
+		if len(l.token) > 0 {
+			headers.Set("Authorization", "Bearer "+l.token)
+		}
+		connBackend, _, err := dialer.Dial(u.String(), headers)
 		if err != nil {
 			log.Warnln("Link Websocket connect error", u.Scheme, monName)
 			return

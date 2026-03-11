@@ -32,6 +32,7 @@ type link struct {
 type Config struct {
 	Port                int        `yaml:"port,omitempty"`
 	LimitPerSecond      int        `yaml:"limitPerSecond,omitempty"`
+	LoginLimitPerSecond int        `yaml:"loginLimitPerSecond,omitempty"`
 	Users               []UserAuth `yaml:"users,omitempty"`
 	SignInExpireDays    int        `yaml:"signInExpireDays,omitempty"`
 	Links               []link     `yaml:"links,omitempty"`

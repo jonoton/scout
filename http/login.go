@@ -14,6 +14,7 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/jonoton/go-notify"
+	log "github.com/sirupsen/logrus"
 )
 
 func getSHA256Hash(text string) string {
@@ -24,7 +25,10 @@ func getSHA256Hash(text string) string {
 func generateSecret() string {
 	length := 6
 	random := make([]byte, length)
-	rand.Read(random)
+	if _, err := rand.Read(random); err != nil {
+		log.Errorf("Failed to generate random secret: %v", err)
+		return ""
+	}
 	secret := fmt.Sprintf("%x", random)[:length]
 	return secret
 }
@@ -68,9 +72,13 @@ type twoFactorAttempt struct {
 }
 
 func newTwoFactorAttempt() *twoFactorAttempt {
+	secret := generateSecret()
+	if secret == "" {
+		return nil
+	}
 	t := &twoFactorAttempt{
 		time:   time.Now(),
-		secret: generateSecret(),
+		secret: secret,
 	}
 	return t
 }
@@ -160,8 +168,13 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 			if hasTwoFactor, rxConfig, numFactors := h.userHasTwoFactor(vUser); hasTwoFactor {
 				if hasSharedSecret {
 					// Secret Provided
-					if userCheck, found := h.twoFactorCheck[vUser]; found && sharedSecret == userCheck.secret {
+					h.twoFactorMu.Lock()
+					userCheck, found := h.twoFactorCheck[vUser]
+					if found && sharedSecret == userCheck.secret {
 						delete(h.twoFactorCheck, vUser)
+					}
+					h.twoFactorMu.Unlock()
+					if found && sharedSecret == userCheck.secret {
 						t, err := h.createToken(user, timeNow)
 						if err != nil {
 							h.loginLogger.Printf("%s,error,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
@@ -172,7 +185,9 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 						return c.JSON(fiber.Map{"c": t})
 					} else {
 						// Fail Two Factor
+						h.twoFactorMu.Lock()
 						delete(h.twoFactorCheck, vUser)
+						h.twoFactorMu.Unlock()
 						h.loginLogger.Printf("%s,bad secret,%s,%s,%s\r\n", getFormattedKitchenTimestamp(timeNow), vUser, c.IP(), c.IPs())
 						return c.SendStatus(fiber.StatusUnauthorized)
 					}
@@ -181,18 +196,28 @@ func (h *Http) loginHandler(c *fiber.Ctx) error {
 					if hasFactorIndex {
 						// Provided Two Factor Index
 						// Send secret
-						attempt := *newTwoFactorAttempt()
-						h.twoFactorCheck[vUser] = attempt
-						h.sendSecret(factorIndex, rxConfig, attempt)
+						attempt := newTwoFactorAttempt()
+						if attempt == nil {
+							return c.SendStatus(fiber.StatusInternalServerError)
+						}
+						h.twoFactorMu.Lock()
+						h.twoFactorCheck[vUser] = *attempt
+						h.twoFactorMu.Unlock()
+						h.sendSecret(factorIndex, rxConfig, *attempt)
 						return c.JSON(fiber.Map{"t": h.twoFactorTimeoutSec})
 					} else {
 						// No Index Provided
 						if numFactors == 1 {
 							// Only One So Send
 							// Send secret
-							attempt := *newTwoFactorAttempt()
-							h.twoFactorCheck[vUser] = attempt
-							h.sendSecret(0, rxConfig, attempt)
+							attempt := newTwoFactorAttempt()
+							if attempt == nil {
+								return c.SendStatus(fiber.StatusInternalServerError)
+							}
+							h.twoFactorMu.Lock()
+							h.twoFactorCheck[vUser] = *attempt
+							h.twoFactorMu.Unlock()
+							h.sendSecret(0, rxConfig, *attempt)
 							return c.JSON(fiber.Map{"t": h.twoFactorTimeoutSec})
 						} else {
 							// Send Two Factor Options

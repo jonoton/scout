@@ -128,7 +128,7 @@ function setupPasscodeModal(t) {
 }
 
 function acceptLogin(c) {
-  Cookies.set("token", c);
+  Cookies.set("token", c, { secure: true, sameSite: "Strict" });
   $("#logout-button").removeClass("d-none");
   $("#login-button").addClass("d-none");
 }

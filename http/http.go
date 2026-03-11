@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	fiber "github.com/gofiber/fiber/v2"
@@ -37,6 +38,7 @@ type Http struct {
 	loginNeeded         bool
 	loginSigningKey     string
 	twoFactorCheck      map[string]twoFactorAttempt
+	twoFactorMu         sync.Mutex
 	twoFactorTimeoutSec int
 	secTick             *time.Ticker
 	done                chan bool
@@ -129,16 +131,27 @@ func (h *Http) setup() {
 	})
 
 	if h.loginNeeded {
+		loginLimit := 10
+		if h.httpConfig != nil && h.httpConfig.LoginLimitPerSecond > 0 {
+			loginLimit = h.httpConfig.LoginLimitPerSecond
+		}
+		loginLimiterCfg := limiter.Config{
+			Expiration: 1 * time.Second,
+			Max:        loginLimit,
+		}
+		h.fiber.Use("/login", limiter.New(loginLimiterCfg))
 		h.fiber.Post("/login", h.loginHandler)
 		go func() {
 			for range h.secTick.C {
 				// check expired two factors
+				h.twoFactorMu.Lock()
 				for k, v := range h.twoFactorCheck {
 					delta := time.Since(v.time)
 					if delta > time.Second*time.Duration(h.twoFactorTimeoutSec) {
 						delete(h.twoFactorCheck, k)
 					}
 				}
+				h.twoFactorMu.Unlock()
 			}
 		}()
 	}
@@ -151,7 +164,9 @@ func (h *Http) setup() {
 		quality := c.Query("quality")
 		c.Locals("jpegQuality", quality)
 		token := c.Query("token")
-		c.Request().Header.Add("Authorization", "Bearer "+token)
+		if token != "" {
+			c.Request().Header.Add("Authorization", "Bearer "+token)
+		}
 		return c.Next()
 	})
 
