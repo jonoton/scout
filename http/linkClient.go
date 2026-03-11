@@ -28,11 +28,15 @@ type linkClient struct {
 }
 
 func newLinkClient(name string, url string, user string, password string) *linkClient {
+	passHash := password
+	if !IsSHA256Hash(password) {
+		passHash = getSHA256Hash(password)
+	}
 	l := &linkClient{
 		name:         name,
 		url:          url,
 		user:         user,
-		passHash:     getSHA256Hash(password),
+		passHash:     passHash,
 		token:        "",
 		monitorNames: make([]string, 0),
 	}

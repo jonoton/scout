@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonoton/go-notify"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func getSHA256Hash(text string) string {
@@ -89,8 +90,20 @@ func (h *Http) validUser(user string, pass string) (bool, string) {
 		return false, ""
 	}
 	for _, cur := range h.httpConfig.Users {
-		if getSHA256Hash(cur.User) == user && getSHA256Hash(cur.Password) == pass {
-			return true, cur.User
+		if getSHA256Hash(cur.User) == user {
+			if IsBcryptHash(cur.Password) {
+				// Use bcrypt to compare the client's SHA256 hash with the stored hash
+				err := bcrypt.CompareHashAndPassword([]byte(cur.Password), []byte(pass))
+				if err == nil {
+					return true, cur.User
+				}
+			} else {
+				// Fallback to legacy double-SHA256 check
+				if getSHA256Hash(cur.Password) == pass {
+					log.Warnf("User '%s' is using an insecure plaintext password in http.yaml. Use --secure-http-passwords to secure it.", cur.User)
+					return true, cur.User
+				}
+			}
 		}
 	}
 	return false, ""

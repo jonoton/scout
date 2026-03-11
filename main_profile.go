@@ -31,10 +31,6 @@ import (
 )
 
 func doMain() {
-	if len(os.Args) > 1 {
-		log.Printf("How to run:\n\t%s NO ARGS\n", os.Args[0])
-		return
-	}
 	ctlc := make(chan os.Signal, 1)
 	signal.Notify(ctlc, os.Interrupt, syscall.SIGTERM)
 
