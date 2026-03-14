@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/scout/http"
 	log "github.com/sirupsen/logrus"
 )
+
+var Version string
 
 func init() {
 	formatter := &log.TextFormatter{}
@@ -34,15 +37,41 @@ func handleArgs() bool {
 			}
 			return true
 		}
-		log.Printf("How to run:\n\t%s\n\t%s --secure-http-passwords\n", os.Args[0], os.Args[0])
+		if os.Args[1] == "--version" {
+			if Version != "" {
+				fmt.Println(Version)
+			}
+			return true
+		}
+		log.Printf("How to run:\n\t%s\n\t%s --version\n\t%s --secure-http-passwords\n", os.Args[0], os.Args[0], os.Args[0])
 		return true
 	}
 	return false
+}
+
+func printBanner() {
+	banner := `
+  ⢀⣠⣴⣶⣴⣤⡀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠀⠀
+  ⠐⢿⣿⣿⣿⣬⣏⣷⣤⡀⠀⠀⠀⢠⣾⣿⣷⣄⠀⠀
+  ⠀⠀⠙⢿⣿⣿⣿⣫⣹⣷⣵⠀⠀⢠⣿⣿⣿⣿⠀⠀
+  ⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣛⣿⡆⣸⣿⣿⣿⡿⠀⠀      ⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿ ⣿⠀⣿ ⣿⣿⣿
+  ⠀⠀⠀⠀⠀⠈⢿⣿⣿⡷⣸⣻⣷⢿⣿⣿⣿⠁⠀⠀      ⣿⣀⣀ ⣿⠀⠀ ⣿⠀⣿ ⣿⠀⣿ ⠀⣿⠀
+  ⠀⠀⠀⠀⠀⠀⠈⢿⣿⣿⣻⣿⣯⣹⡿⣿⡗⣀⠀⠀      ⣀⣀⣿ ⣿⠀⠀ ⣿⠀⣿ ⣿⠀⣿ ⠀⣿⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⢯⣴⣿⣿⠟⠉⠀⠀      ⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿ ⠀⣿⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⣀⣌⣽⣾⣾⣿⠿⠃⠀⠀⠀⠀
+  ⠀⠀⠀⠀⢶⣶⣿⣿⣿⣿⣿⣿⠉⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠙⠛⠛⠟⠛⠛⠃⠀⠀⠀⠀⠀⠀⠀⠀
+`
+	fmt.Println(banner)
+	if Version != "" {
+		fmt.Printf("version: %s\n\n", Version)
+	}
 }
 
 func main() {
 	if handleArgs() {
 		return
 	}
+	printBanner()
 	doMain()
 }

@@ -53,9 +53,10 @@ RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && go install -v .
 FROM --platform=$BUILDPLATFORM gocv-stage AS scout-builder-stage
 ARG TARGETOS=linux
 ARG TARGETARCH
+ARG VERSION_ARG=""
 WORKDIR /go/src/github.com/jonoton/scout
 COPY . .
-RUN go get -d -v ./... && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install -v ./...
+RUN go get -d -v ./... && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install -v -ldflags "-X main.Version=${VERSION_ARG}" ./...
 
 # scout
 FROM ubuntu:20.04 AS scout
