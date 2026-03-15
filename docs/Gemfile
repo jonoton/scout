@@ -1,0 +1,29 @@
+source "https://rubygems.org"
+
+# Monkey-patch for Ruby 3.2+ / 4.x compatibility with legacy Liquid
+[Object, String, Symbol, NilClass, TrueClass, FalseClass, Numeric].each do |klass|
+  klass.class_eval do
+    def tainted?; false; end
+    def taint; self; end
+    def untaint; self; end
+  end
+end
+
+gem "github-pages", group: :jekyll_plugins
+gem "just-the-docs"
+gem "csv"
+gem "webrick"
+gem "bigdecimal"
+gem "logger"
+
+# Fix for pathutil IO.read incompatibility in Ruby 4.x
+module PathutilCompatibility
+  def read(*args, **kwargs)
+    if args[1].is_a?(Hash) && kwargs.empty?
+      super(args[0], **args[1])
+    else
+      super
+    end
+  end
+end
+IO.singleton_class.prepend(PathutilCompatibility)

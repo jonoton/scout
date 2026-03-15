@@ -1,0 +1,20 @@
+title: Scout
+description: A high-performance computer vision tool for monitoring and reporting.
+remote_theme: just-the-docs/just-the-docs
+
+# Color scheme (optional)
+color_scheme: dark
+
+# Search configuration
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  tokenizer_separator: /[\s\-/]+/
+  rel_url: true
+
+# Navigation
+nav_sort: [index, INSTALL, BUILD, PROFILING]
+aux_links:
+  "Scout on GitHub":
+    - "https://github.com/jonoton/scout"

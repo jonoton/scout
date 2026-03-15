@@ -7,3 +7,8 @@ __debug_bin*
 access
 logins
 scout
+
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/Gemfile.lock
