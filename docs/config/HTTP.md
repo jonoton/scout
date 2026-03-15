@@ -32,8 +32,43 @@ The `http.yaml` file configures the web server, security settings, and linking b
 | Field | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `user` | string | **Yes** | - | Username. |
-| `password` | string | **Yes** | - | Password (plain text will be automatically hashed on first run). |
-| `twoFactor` | object | No | - | Configuration for receiving 2FA codes (Email/SMS). |
+| `password` | string | **Yes** | - | Password. |
+| `twoFactor` | object | No | - | Configuration for receiving 2FA codes. |
+
+> 🔒 **Security Tip: Securing Passwords**
+> By default, passwords in `http.yaml` are stored in plaintext so they are easy to set up. You can secure them (hash them) by running Scout with the following argument:
+> ```bash
+> ./scout --secure-http-passwords
+> ```
+> This will replace all plaintext passwords in `http.yaml` with secure bcrypt hashes.
+
+#### Two-Factor Configuration (`twoFactor`)
+
+If `twoFactor` is configured, users will be prompted for a 6-digit passcode after providing their password.
+
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `email` | list | No | - | List of email addresses to send codes to. |
+| `sms` | object | No | - | SMS configuration grouped by carrier. |
+
+**Supported SMS Carriers:**
+*   `verizon`
+*   `att`
+*   `tmobile`
+
+#### Authentication Example
+
+```yaml
+users:
+  - user: "admin"
+    password: "secure_password"
+    twoFactor:
+      email:
+        - "admin@example.com"
+      sms:
+        att:
+          - "555-0199"
+```
 
 ### Server Links (Optional)
 
@@ -46,3 +81,6 @@ The `http.yaml` file configures the web server, security settings, and linking b
 | `url` | string | **Yes** | - | The base URL of the remote Scout server (e.g., `http://192.168.1.10:8080`). |
 | `user` | string | No | - | Username for the remote server. |
 | `password` | string | No | - | Password for the remote server. |
+
+> 🔒 **Security Tip: Securing Link Passwords**
+> Similar to user passwords, link passwords can be secured using the `--secure-http-passwords` argument. When run, it will convert link passwords to secure hashes.
