@@ -13,20 +13,20 @@ Scout requires a dedicated computer in order to run the server. There are multip
 
 There are two primary ways to setup the Scout server:
 
-* **[Docker](server/DOCKER) (Recommended)**: The easiest and most reliable way to run Scout.
-* **[From Source](../DEVELOPMENT)**: For users who want to build Scout themselves.
+* **[Docker](server/DOCKER.md) (Recommended)**: The easiest and most reliable way to run Scout.
+* **[From Source](DEVELOPMENT.md)**: For users who want to build Scout themselves.
 
 ## Mobile Client Setup
 
 To monitor your cameras on the go, setup the mobile clients:
 
-* **[Android](mobile/ANDROID)**
-* **[iOS](mobile/IOS)**
+* **[Android](mobile/ANDROID.md)**
+* **[iOS](mobile/IOS.md)**
 
 ## Configuration
 
-After installation, you will need to **[Configure Scout](CONFIGURE)** to work with your cameras and network.
+After installation, you will need to **[Configure Scout](CONFIGURE.md)** to work with your cameras and network.
 
 ## Recipes
 
-Check out **[Recipes](RECIPES)** for coordinating Scout with other services (like reverse proxies).
+Check out **[Recipes](RECIPES.md)** for coordinating Scout with other services (like reverse proxies).

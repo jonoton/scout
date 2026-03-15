@@ -18,11 +18,11 @@ Scout looks for the `.config` directory in the following order:
 
 For a complete reference of all available options, please see the following guides:
 
-*   **[Manage Config (`manage.yaml`)](config/MANAGE)**: Data storage and monitor lists.
-*   **[Web Server Config (`http.yaml`)](config/HTTP)**: Ports, security, and remote server links.
-*   **[Monitor Config (`cam.yaml`)](config/MONITOR)**: Specific camera settings and source URLs.
-*   **[Detection Pipeline](config/DETECTION)**: Motion, Object, and Face detection settings.
-*   **[Recording & Alerts](config/RECORDING_ALERTS)**: Recording rules and notification settings.
+*   **[Manage Config (`manage.yaml`)](config/MANAGE.md)**: Data storage and monitor lists.
+*   **[Web Server Config (`http.yaml`)](config/HTTP.md)**: Ports, security, and remote server links.
+*   **[Monitor Config (`cam.yaml`)](config/MONITOR.md)**: Specific camera settings and source URLs.
+*   **[Detection Pipeline](config/DETECTION.md)**: Motion, Object, and Face detection settings.
+*   **[Recording & Alerts](config/RECORDING_ALERTS.md)**: Recording rules and notification settings.
 
 ## Configuration Examples
 

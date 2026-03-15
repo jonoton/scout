@@ -45,5 +45,5 @@ If you prefer to build the image yourself:
 
 ## Next Steps
 
-1.  **[Configure Scout](../CONFIGURE)**: Edit the files in your mapping `.config` directory.
+1.  **[Configure Scout](../CONFIGURE.md)**: Edit the files in your mapping `.config` directory.
 2.  **[Verify Setup](../CONFIGURE#verify-via-web-client)**: Open your browser to `http://localhost:8080`.

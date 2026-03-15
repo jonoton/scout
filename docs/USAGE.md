@@ -20,4 +20,4 @@ Open your browser to the server's address (e.g., `http://localhost:8080`).
 
 ### Mobile Clients
 
-Use the **[Android](mobile/ANDROID)** or **[iOS](mobile/IOS)** apps to monitor your cameras on the go. For setup instructions, see the respective guides.
+Use the **[Android](mobile/ANDROID.md)** or **[iOS](mobile/IOS.md)** apps to monitor your cameras on the go. For setup instructions, see the respective guides.
