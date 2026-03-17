@@ -17,7 +17,7 @@ Scout uses a multi-stage detection pipeline: Motion -> Object -> Face.
 
 ## Motion Detection (Optional, `motion.yaml`)
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `skip` | bool | No | `false` | Completely disable motion detection. |
 | `padding` | int | No | `0` | Add padding (pixels) around detected motion areas. |
@@ -26,6 +26,8 @@ Scout uses a multi-stage detection pipeline: Motion -> Object -> Face.
 | `maxPercentage` | int | No | `75` | Max area (%) change for motion. |
 | `thresholdPercent` | int | No | `40` | Sensitivity threshold for pixel changes. |
 | `noiseReduction` | int | No | `10` | Filter out small pixel fluctuations. |
+| `maxMotions` | int | No | `20` | Max number of distinct motion areas for detection. |
+| `overloadPercent` | int | No | `90` | If motion areas exceed this (%) of frame, it is considered an overload and ignored. |
 | `highlightColor` | string | No | `purple` | Color of the bounding box. |
 | `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
 
@@ -33,25 +35,37 @@ Scout uses a multi-stage detection pipeline: Motion -> Object -> Face.
 
 Uses TensorFlow/SSD models to identify specific objects like "person" or "car".
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `skip` | bool | No | `false` | Disable object detection. |
 | `forceCpu` | bool | No | `false` | Force CPU processing even if GPU is available. |
 | `modelFile` | string | **Yes** | `frozen_inference_graph.pb` | Path to the `.pb` model file. |
 | `configFile` | string | No | `ssd_mobilenet_v1...` | Path to the `.pbtxt` or similar config file. |
 | `descFile` | string | No | `coco.names` | Path to the labels/names file. |
+| `scaleWidth` | int | No | `320` | Scale frame width for faster processing. |
 | `minConfidencePercentage` | int | No | `50` | Minimum confidence (1-100) to consider a match. |
+| `minMotionFrames` | int | No | `1` | Min consecutive frames of motion before object detection triggers. |
+| `minPercentage` | int | No | `-1` | Min area (%) change for an object to be valid. |
+| `maxPercentage` | int | No | `0` | Max area (%) change for an object to be valid. |
+| `minOverlapPercentage` | int | No | `75` | Min overlap (%) with a motion area to be valid. |
+| `sameOverlapPercentage` | int | No | `85` | Overlap (%) to consider two detections as the same object. |
 | `allowedList` | list | No | - | List of objects to trigger on (e.g., `person`, `car`). |
+| `padding` | int | No | `0` | Add padding (pixels) around detected object. |
 | `highlightColor` | string | No | `blue` | Color of the bounding box. |
 | `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
 
 ## Face Detection (Optional, `face.yaml`)
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `skip` | bool | No | `false` | Disable face detection. |
 | `modelFile` | string | **Yes** | `res10_300x300...` | Path to the caffe model or weights. |
 | `configFile` | string | No | `deploy.prototxt` | Path to the `.prototxt` config file. |
 | `minConfidencePercentage` | int | No | `50` | Minimum confidence for face detection. |
+| `maxPercentage` | int | No | `50` | Max area (%) a face can occupy in the frame. |
+| `minOverlapPercentage` | int | No | `75` | Min overlap (%) with an object detection to be valid. |
+| `scaleWidth` | int | No | `320` | Scale width for face detection. |
+| `forceCpu` | bool | No | `false` | Force CPU processing even if GPU is available. |
+| `padding` | int | No | `0` | Add padding (pixels) around detected face. |
 | `highlightColor` | string | No | `green` | Color of the bounding box. |
 | `highlightThickness` | int | No | `3` | Thickness of the bounding box. |

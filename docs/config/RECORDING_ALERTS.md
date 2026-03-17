@@ -17,7 +17,7 @@ Triggered by object or person detection.
 > 💡 **Note on Requirements**
 > While recording and alert modules are optional, once enabled in the [Monitor Config](MONITOR), all fields marked as **Yes** (if any) become required.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `recordObjects` | bool | No | `false` | If true, records when any allowed object is seen. |
 | `maxPreSec` | int | No | `0` | Seconds of video to include *before* the trigger. |
@@ -27,11 +27,12 @@ Triggered by object or person detection.
 | `deleteAfterGB` | int | No | `0` | Auto-prune if directory exceeds this (GB). |
 | `codec` | string | No | `mp4v` | Video codec (4 characters). |
 | `fileType` | string | No | `mp4` | Video file extension. |
+| `bufferSeconds` | int | No | `0` | Number of seconds of pre-trigger video to buffer. |
 | `portableOnly` | bool | No | `false` | If true, only saves a lightweight version. |
 
 ## Continuous Recording (Optional, `continuous.yaml`)
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `timeoutSec` | int | No | `0` | Seconds to wait after segment ends. |
 | `maxSec` | int | No | `0` | Duration of each video segment. |
@@ -39,12 +40,14 @@ Triggered by object or person detection.
 | `deleteAfterGB` | int | No | `0` | Disk usage limit for continuous recordings. |
 | `codec` | string | No | `mp4v` | Video codec (4 characters). |
 | `fileType` | string | No | `mp4` | Video file extension. |
+| `bufferSeconds` | int | No | `0` | Number of seconds to buffer for continuous segments. |
+| `portableOnly` | bool | No | `false` | If true, only saves a lightweight version for continuous. |
 
 ## Alert Rules (Optional, `alert.yaml`)
 
-Defines how and when notifications are sent.
+Defines how and when notifications are sent. Notification recipients are configured separately in [Notification Settings](NOTIFICATIONS).
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `intervalMinutes` | int | No | `0` | Don't send more than one alert every X minutes. |
 | `maxImagesPerInterval` | int | No | `0` | Limit snapshots sent per alert window. |

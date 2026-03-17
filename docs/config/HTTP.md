@@ -12,7 +12,7 @@ nav_order: 2
 
 The `http.yaml` file configures the web server, security settings, and linking between multiple Scout servers.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `port` | int | No | `8080` | The port the web server will listen on. |
 | `limitPerSecond` | int | No | `100` | Rate limit for general API requests. |
@@ -29,7 +29,7 @@ The `http.yaml` file configures the web server, security settings, and linking b
 > 💡 **Note on Requirements**
 > If you add a user to the `users` list, the `user` and `password` fields below become **required**.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `user` | string | **Yes** | - | Username. |
 | `password` | string | **Yes** | - | Password. |
@@ -46,7 +46,7 @@ The `http.yaml` file configures the web server, security settings, and linking b
 
 If `twoFactor` is configured, users will be prompted for a 6-digit passcode after providing their password.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `email` | list | No | - | List of email addresses to send codes to. |
 | `sms` | object | No | - | SMS configuration grouped by carrier. |
@@ -55,6 +55,7 @@ If `twoFactor` is configured, users will be prompted for a 6-digit passcode afte
 *   `verizon`
 *   `att`
 *   `tmobile`
+*   `sprint`
 
 #### Authentication Example
 
@@ -75,7 +76,7 @@ users:
 > 💡 **Note on Requirements**
 > If you add a server link to the `links` list, the `url` field below becomes **required**.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | string | No | - | Friendly name for the linked server. |
 | `url` | string | **Yes** | - | The base URL of the remote Scout server (e.g., `http://192.168.1.10:8080`). |

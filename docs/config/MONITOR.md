@@ -15,7 +15,7 @@ Each monitor (camera) has its own configuration file defining its source and spe
 > ❗ **Important: Source Required**
 > You **must** provide either a `filename` or a `url` for each monitor. One of these two fields is required to provide a video source for Scout to process.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `filename` | string | No* | - | Path to a local video file (for testing/simulated feeds). |
 | `url` | string | No* | - | RTSP/HTTP URL for an IP camera stream. |
@@ -25,12 +25,12 @@ Each monitor (camera) has its own configuration file defining its source and spe
 | `captureTimeoutMilliSeconds` | int | No | `0` | Timeout for frame capture. |
 | `staleTimeout` | int | No | `20` | Seconds before camera is considered "stale". |
 | `staleMaxRetry` | int | No | `10` | Max restart attempts for a stale camera. |
-| `bufferSeconds` | int | No | `0` | Seconds to buffer for pre-alert recording. |
+| `bufferSeconds` | int | No | `0` | Seconds of frame buffering between processing stages to smooth out spikes and prevent processing bottlenecks. |
 | `delayBufferMilliSeconds` | int | No | `0` | Delay processing by this amount. |
 | `motion` | string | No | - | Path to [Motion Config](DETECTION#motion-detection-optional-motionyaml) (Recommended: `motion.yaml`). |
 | `tensor` | string | No | - | Path to [Object Detection Config](DETECTION#object-detection-optional-tensoryaml) (Recommended: `tensor.yaml`). |
 | `face` | string | No | - | Path to [Face Detection Config](DETECTION#face-detection-optional-faceyaml) (Recommended: `face.yaml`). |
-| `notifyRx` | string | No | - | Path to notification receiver config (Recommended: `notify-rx.yaml`). |
+| `notifyRx` | string | No | - | Path to [Notification Settings](NOTIFICATIONS#recipient-list-notify-rxyaml) (Recommended: `notify-rx.yaml`). |
 | `alert` | string | No | - | Path to [Alert Rules Config](RECORDING_ALERTS#alert-rules-optional-alertyaml) (Recommended: `alert.yaml`). |
 | `record` | string | No | - | Path to [Event Recording Config](RECORDING_ALERTS#event-recording-optional-recordyaml) (Recommended: `record.yaml`). |
 | `continuous` | string | No | - | Path to [Continuous Recording Config](RECORDING_ALERTS#continuous-recording-optional-continuousyaml) (Recommended: `continuous.yaml`). |

@@ -22,7 +22,6 @@ type Config struct {
 	DelayBufferMilliSeconds    int    `yaml:"delayBufferMilliSeconds,omitempty"`
 	MotionFilename             string `yaml:"motion,omitempty"`
 	TensorFilename             string `yaml:"tensor,omitempty"`
-	CaffeFilename              string `yaml:"caffe,omitempty"`
 	FaceFilename               string `yaml:"face,omitempty"`
 	NotifyRxFilename           string `yaml:"notifyRx,omitempty"`
 	AlertFilename              string `yaml:"alert,omitempty"`

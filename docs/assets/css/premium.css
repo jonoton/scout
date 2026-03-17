@@ -1,0 +1,659 @@
+/* 
+  Premium Theme for Scout Documentation
+  Modern, high-performance aesthetics with glassmorphism and vibrant accents.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --primary-color: #3b82f6;
+  --primary-accent: #6366f1;
+  --bg-color: #0f172a;
+  --secondary-bg: rgba(30, 41, 59, 0.7);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+/* Glassmorphism for Sidebar and Header */
+.side-bar {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--glass-border);
+  z-index: 100;
+}
+
+.main-header {
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  position: sticky !important;
+  top: 0;
+  z-index: 1000 !important;
+  /* Bring header and search to the very front */
+}
+
+/* Ensure sidebar has a fixed width on desktop */
+@media screen and (min-width: 66rem) {
+  .side-bar {
+    width: 260px !important;
+  }
+}
+
+/* Navigation Links */
+.nav-list-link {
+  color: var(--text-muted) !important;
+  transition: all 0.2s ease;
+}
+
+.nav-list-link:hover,
+.nav-list-link.active {
+  color: var(--primary-color) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Hero Section */
+.main:has(.hero-section) {
+  background: radial-gradient(circle at 50% 200px, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+}
+
+.hero-section {
+  padding: 80px 0;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #fff 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 30px;
+}
+
+/* Badges/Buttons */
+.btn-premium {
+  display: inline-block;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-accent) 100%);
+  color: white !important;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
+}
+
+/* Code Blocks (Merged and Improved) */
+.highlight {
+  background-color: #0d1117 !important;
+  /* Slightly darker for better contrast */
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  overflow-x: auto;
+}
+
+code {
+  font-family: var(--font-mono);
+  background-color: rgba(51, 65, 85, 0.4) !important;
+  color: #e2e8f0 !important;
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
+  font-size: 0.85em;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.highlight code {
+  background-color: transparent !important;
+  padding: 0;
+  border: none;
+  color: #e6edf3 !important;
+  line-height: 1.5;
+}
+
+/* Syntax Highlighting (Rouge) */
+.highlight .c {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Comment */
+.highlight .k {
+  color: #ff7b72;
+  font-weight: 600;
+}
+
+/* Keyword */
+.highlight .o {
+  color: #ff7b72;
+}
+
+/* Operator */
+.highlight .p {
+  color: #d2a8ff;
+}
+
+/* Punctuation */
+.highlight .cm {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Comment.Multiline */
+.highlight .cp {
+  color: #8b949e;
+}
+
+/* Comment.Preproc */
+.highlight .c1 {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Comment.Single */
+.highlight .cs {
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Comment.Special */
+.highlight .kc {
+  color: #79c0ff;
+}
+
+/* Keyword.Constant */
+.highlight .kd {
+  color: #79c0ff;
+}
+
+/* Keyword.Declaration */
+.highlight .kn {
+  color: #ff7b72;
+}
+
+/* Keyword.Namespace */
+.highlight .kp {
+  color: #79c0ff;
+}
+
+/* Keyword.Pseudo */
+.highlight .kr {
+  color: #79c0ff;
+}
+
+/* Keyword.Reserved */
+.highlight .kt {
+  color: #79c0ff;
+}
+
+/* Keyword.Type */
+.highlight .m {
+  color: #d2a8ff;
+}
+
+/* Literal.Number */
+.highlight .s {
+  color: #a5d6ff;
+}
+
+/* Literal.String */
+.highlight .na {
+  color: #7ee787;
+}
+
+/* Name.Attribute */
+.highlight .nb {
+  color: #79c0ff;
+}
+
+/* Name.Builtin */
+.highlight .nc {
+  color: #ffa657;
+  font-weight: 600;
+}
+
+/* Name.Class */
+.highlight .no {
+  color: #79c0ff;
+}
+
+/* Name.Constant */
+.highlight .nd {
+  color: #d2a8ff;
+  font-weight: 600;
+}
+
+/* Name.Decorator */
+.highlight .ni {
+  color: #ffa657;
+}
+
+/* Name.Entity */
+.highlight .ne {
+  color: #ffa657;
+}
+
+/* Name.Exception */
+.highlight .nf {
+  color: #d2a8ff;
+  font-weight: 600;
+}
+
+/* Name.Function */
+.highlight .nl {
+  color: #79c0ff;
+}
+
+/* Name.Label */
+.highlight .nn {
+  color: #ffa657;
+}
+
+/* Name.Namespace */
+.highlight .nt {
+  color: #7ee787;
+}
+
+/* Name.Tag */
+.highlight .nv {
+  color: #79c0ff;
+}
+
+/* Name.Variable */
+.highlight .ow {
+  color: #ff7b72;
+}
+
+/* Operator.Word */
+.highlight .w {
+  color: #8b949e;
+}
+
+/* Text.Whitespace */
+.highlight .mf {
+  color: #d2a8ff;
+}
+
+/* Literal.Number.Float */
+.highlight .mh {
+  color: #d2a8ff;
+}
+
+/* Literal.Number.Hex */
+.highlight .mi {
+  color: #d2a8ff;
+}
+
+/* Literal.Number.Integer */
+.highlight .mo {
+  color: #d2a8ff;
+}
+
+/* Literal.Number.Oct */
+.highlight .sb {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Backtick */
+.highlight .sc {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Char */
+.highlight .sd {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Doc */
+.highlight .s2 {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Double */
+.highlight .se {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Escape */
+.highlight .sh {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Heredoc */
+.highlight .si {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Interpol */
+.highlight .sx {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Other */
+.highlight .sr {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Regex */
+.highlight .s1 {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Single */
+.highlight .ss {
+  color: #a5d6ff;
+}
+
+/* Literal.String.Symbol */
+.highlight .bp {
+  color: #79c0ff;
+}
+
+/* Name.Builtin.Pseudo */
+.highlight .vc {
+  color: #79c0ff;
+}
+
+/* Name.Variable.Class */
+.highlight .vg {
+  color: #79c0ff;
+}
+
+/* Name.Variable.Global */
+.highlight .vi {
+  color: #79c0ff;
+}
+
+/* Name.Variable.Instance */
+.highlight .il {
+  color: #d2a8ff;
+}
+
+/* Literal.Number.Integer.Long */
+
+/* Tables */
+.main-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin: 2.5rem 0;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  table-layout: auto !important;
+  display: table !important;
+}
+
+.main-content th {
+  background-color: #1e293b;
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 2px solid var(--border-color);
+  white-space: normal !important;
+  /* Allow header text to wrap */
+  vertical-align: bottom;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.main-content td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  vertical-align: top;
+  color: #e2e8f0;
+}
+
+tr:nth-child(odd) td {
+  background-color: #0f172a !important;
+  /* Deep Navy */
+}
+
+tr:nth-child(even) td {
+  background-color: #1e293b !important;
+  /* Dark Slate Blue */
+}
+
+tr:hover td {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Technical columns in tables (Field and Type) */
+.main-content td:first-child code {
+  font-family: var(--font-mono);
+  color: #60a5fa !important;
+  background-color: rgba(37, 99, 235, 0.15) !important;
+  font-weight: 600;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* 
+   Table Column Optimization 
+   Ensure technical columns don't wrap, while Description does.
+*/
+
+/* Field (1), Type (2), Required (3), Default (4) columns: No wrap and minimal width */
+.main-content table th:nth-child(-n+4),
+.main-content table td:nth-child(-n+4),
+.main-content table td:nth-child(-n+4) code {
+  white-space: nowrap !important;
+  width: 1px !important;
+  /* Use 1px to force absolute minimum */
+  min-width: 0 !important;
+  /* Override base theme 7.5rem min-width */
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Center Required and Default columns */
+.main-content table th:nth-child(3),
+.main-content table td:nth-child(3),
+.main-content table th:nth-child(4),
+.main-content table td:nth-child(4) {
+  text-align: center;
+}
+
+/* Description column: Allow wrap and take ALL remaining space */
+.main-content table th:nth-child(5),
+.main-content table td:nth-child(5) {
+  white-space: normal !important;
+  width: 100% !important;
+  /* Force this column to absorb all extra table width */
+  min-width: 100px;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Global Table Responsiveness */
+.main-content {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.main-content table {
+  min-width: 400px;
+  /* Ensure table is wide enough to trigger scroll */
+}
+
+@media screen and (max-width: 1024px) {
+  .main-content {
+    padding-bottom: 2rem;
+    /* Space for scrollbar */
+  }
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Alerts / Callouts */
+.alert {
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  border-left: 4px solid;
+}
+
+.alert-info {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-left-color: var(--primary-color);
+}
+
+/* Search Area Styling */
+.search-input {
+  background-color: #1e293b !important;
+  /* Slate-800 */
+  color: #f8fafc !important;
+  /* Slate-50 */
+  border: 1px solid #334155 !important;
+  /* Slate-700 */
+  border-radius: 8px !important;
+  padding: 8px 12px 8px 60px !important;
+  /* Precise padding to clear the SVG icon */
+  transition: all 0.2s ease !important;
+}
+
+.search-label {
+  z-index: 2001 !important;
+  /* Above input and results */
+}
+
+.search-icon {
+  fill: var(--text-muted) !important;
+}
+
+.search-input:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
+}
+
+#search-results {
+  background-color: #0f172a !important;
+  /* Slate-900 */
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden !important;
+  z-index: 2000 !important;
+  /* Ensure it's above everything else */
+}
+
+.search-result {
+  display: block !important;
+  padding: 12px 16px !important;
+  /* Increased padding for better selectability */
+  border-bottom: 1px solid var(--border-color) !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.search-result:last-child {
+  border-bottom: none !important;
+}
+
+.search-result:hover,
+.search-result.active {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  transform: translateX(4px);
+  /* Subtle nudge on hover */
+}
+
+.search-result-title {
+  color: var(--primary-color) !important;
+  font-weight: 600 !important;
+}
+
+.search-result-preview {
+  color: var(--text-muted) !important;
+  font-size: 0.85rem !important;
+}
+
+/* Ensure results stay above the search overlay */
+.search-overlay {
+  z-index: 900 !important;
+  /* Below header/results */
+}
+
+@media screen and (min-width: 66rem) {
+  .main {
+    max-width: 1400px !important;
+    margin-left: 260px !important;
+    /* Match sidebar width */
+    margin-right: auto !important;
+    position: relative;
+    z-index: 1;
+  }
+
+  .main-content-wrap {
+    max-width: 1400px !important;
+    margin-left: 0 !important;
+    /* Relative to .main */
+  }
+
+  /* Ensure the wrapper doesn't center the whole thing on wide screens */
+  .main-content {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+}
+
+/* Ensure table wrapper doesn't break layout */
+.table-wrapper {
+  margin-bottom: 2rem;
+}

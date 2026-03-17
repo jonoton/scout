@@ -23,6 +23,7 @@ For a complete reference of all available options, please see the following guid
 *   **[Monitor Config (`cam.yaml`)](config/MONITOR.md)**: Specific camera settings and source URLs.
 *   **[Detection Pipeline](config/DETECTION.md)**: Motion, Object, and Face detection settings.
 *   **[Recording & Alerts](config/RECORDING_ALERTS.md)**: Recording rules and notification settings.
+*   **[Notification Settings](config/NOTIFICATIONS.md)**: SMTP sender and recipient list configurations.
 
 ## Configuration Examples
 

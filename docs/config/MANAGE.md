@@ -12,14 +12,14 @@ nav_order: 1
 
 The `manage.yaml` file is the master configuration that tells Scout where to store data and which monitors to load.
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `data` | string | No | `./data` | The root directory where all alerts, recordings, and logs will be saved. |
+| `data` | string | No | `./data` | The root directory where all alerts, recordings, and logs will be saved. (Relative to the Scout executable by default). |
 | `monitors` | list | **Yes** | - | A list of monitor configurations. |
 
 ### Monitor Entry (Required)
 
-| Field | Type | Required | Default | Description |
+| Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | string | **Yes** | - | A unique name for the monitor (e.g., `front_door`). |
 | `config` | string | **Yes** | - | Path to the specific [Monitor Configuration](MONITOR) file (e.g., `cam1.yaml`) relative to `.config/`. |
