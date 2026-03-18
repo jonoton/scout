@@ -589,7 +589,9 @@ tr:last-child td {
   border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 100px) !important;
+  /* Fix: On mobile, parent container height is restricted, so we use viewport height */
   z-index: 2000 !important;
   /* Ensure it's above everything else */
 }
