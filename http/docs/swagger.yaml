@@ -1,0 +1,317 @@
+definitions:
+  http.monInfoResp:
+    properties:
+      Name:
+        type: string
+      ReaderInFps:
+        type: integer
+      ReaderOutFps:
+        type: integer
+    type: object
+  http.nameListResp:
+    properties:
+      NameList:
+        items:
+          type: string
+        type: array
+    type: object
+info:
+  contact: {}
+  description: This is the API for Scout, a video monitoring system.
+  title: Scout API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Serve the index.html template for the Scout dashboard.
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML content
+          schema:
+            type: string
+      summary: Access Dashboard
+      tags:
+      - UI
+  /alerts/files/{name}:
+    get:
+      description: Retrieve a specific alert JPG file.
+      parameters:
+      - description: Filename
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Alert image
+          schema:
+            type: file
+      security:
+      - ApiKeyAuth: []
+      summary: Get alert file
+      tags:
+      - Alerts
+  /alerts/latest:
+    get:
+      description: Get the latest alert timestamps for Object, Person, and Face detections
+        across all monitors.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Latest alert times by monitor (RFC3339 format)
+          schema:
+            additionalProperties:
+              additionalProperties:
+                type: string
+              type: object
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Latest Alerts
+      tags:
+      - Alerts
+  /alerts/list:
+    get:
+      description: Get a list of alert JPG files, sorted descending by time.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of alert filenames
+          schema:
+            items:
+              type: string
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: List alerts
+      tags:
+      - Alerts
+  /continuous/files/{name}:
+    get:
+      description: Retrieve a specific continuous recording file.
+      parameters:
+      - description: Filename
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Continuous recording file
+          schema:
+            type: file
+      security:
+      - ApiKeyAuth: []
+      summary: Get continuous file
+      tags:
+      - Continuous
+  /continuous/list:
+    get:
+      description: Get a list of continuous recordings, sorted descending by time.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of continuous filenames
+          schema:
+            items:
+              type: string
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: List continuous recordings
+      tags:
+      - Continuous
+  /heartbeat:
+    get:
+      description: Check if the Scout server is responsive.
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: System Heartbeat
+      tags:
+      - System
+  /info/{name}:
+    get:
+      description: Get detailed information (FPS, etc.) for a specific monitor by
+        name.
+      parameters:
+      - description: Monitor Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Monitor information
+          schema:
+            $ref: '#/definitions/http.monInfoResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Get Monitor Info
+      tags:
+      - Info
+  /info/list:
+    get:
+      description: Get a list of all available monitor names, including those from
+        linked Scout instances.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of monitor names
+          schema:
+            $ref: '#/definitions/http.nameListResp'
+      security:
+      - ApiKeyAuth: []
+      summary: List Monitors
+      tags:
+      - Info
+  /live/{name}:
+    get:
+      description: Real-time video stream via websocket.
+      parameters:
+      - description: Monitor Name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Width
+        in: query
+        name: width
+        type: integer
+      - description: JPEG Quality
+        in: query
+        name: quality
+        type: integer
+      - description: Auth Token
+        in: query
+        name: token
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Live monitor websocket
+      tags:
+      - Monitor
+  /login:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Authenticate user and return a JWT token or two-factor options.
+      parameters:
+      - description: Username
+        in: formData
+        name: a
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: b
+        required: true
+        type: string
+      - description: Two-factor option index
+        in: formData
+        name: "y"
+        type: integer
+      - description: Two-factor secret
+        in: formData
+        name: z
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success (returns JWT token 'c', timeout 't', or options 'o')
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Login to the system
+      tags:
+      - Auth
+  /memory:
+    get:
+      description: Get current memory usage statistics for the application and system.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Memory usage info in MB
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get Memory Usage
+      tags:
+      - System
+  /recordings/files/{name}:
+    get:
+      description: Retrieve a specific motion recording file.
+      parameters:
+      - description: Filename
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Recording file
+          schema:
+            type: file
+      security:
+      - ApiKeyAuth: []
+      summary: Get recording file
+      tags:
+      - Recordings
+  /recordings/list:
+    get:
+      description: Get a list of motion recordings, sorted descending by time.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of recording filenames
+          schema:
+            items:
+              type: string
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: List recordings
+      tags:
+      - Recordings
+securityDefinitions:
+  ApiKeyAuth:
+    description: Type "Bearer " followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

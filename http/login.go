@@ -167,6 +167,20 @@ func (h *Http) sendSecret(index int, rxConfig *notify.RxConfig, attempt twoFacto
 	}
 }
 
+// loginHandler handles user authentication
+// @Summary Login to the system
+// @Description Authenticate user and return a JWT token or two-factor options.
+// @Tags Auth
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param a formData string true "Username"
+// @Param b formData string true "Password"
+// @Param y formData int false "Two-factor option index"
+// @Param z formData string false "Two-factor secret"
+// @Success 200 {object} map[string]interface{} "Success (returns JWT token 'c', timeout 't', or options 'o')"
+// @Failure 401 {string} string "Unauthorized"
+// @Failure 500 {string} string "Internal Server Error"
+// @Router /login [post]
 func (h *Http) loginHandler(c *fiber.Ctx) error {
 	user := c.FormValue("a")
 	pass := c.FormValue("b")

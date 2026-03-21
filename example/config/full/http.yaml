@@ -22,3 +22,4 @@ linkRetry: 2
 twoFactorTimeoutSec: 60
 loginSigningKey: "change_or_leave_blank_for_autogen_each_start"
 loginLimitPerSecond: 10
+enableSwagger: false

@@ -95,6 +95,8 @@ COPY --from=scout-builder-stage /go/bin/scout /scout/scout
 COPY --from=scout-builder-stage /usr/local/lib/ /usr/local/lib/
 COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/public /scout/http/public
 COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/templates /scout/http/templates
+COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/docs/*.json /scout/http/docs/
+COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/http/docs/*.yaml /scout/http/docs/
 COPY --from=scout-builder-stage /go/src/github.com/jonoton/scout/data /scout/.data
 RUN ldconfig
 

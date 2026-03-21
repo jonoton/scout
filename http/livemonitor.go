@@ -16,6 +16,17 @@ import (
 	"github.com/jonoton/go-websockets"
 )
 
+// liveMonitor handles real-time video streaming via websocket
+// @Summary Live monitor websocket
+// @Description Real-time video stream via websocket.
+// @Tags Monitor
+// @Security ApiKeyAuth
+// @Param name path string true "Monitor Name"
+// @Param width query int false "Width"
+// @Param quality query int false "JPEG Quality"
+// @Param token query string false "Auth Token"
+// @Success 101 {string} string "Switching Protocols"
+// @Router /live/{name} [get]
 func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 	return websocket.New(func(c *websocket.Conn) {
 		localsMonName := c.Locals("monitorName")

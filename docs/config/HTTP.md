@@ -23,6 +23,7 @@ The `http.yaml` file configures the web server, security settings, and linking b
 | `linkRetry` | int | No | `2` | Number of retries when connecting to linked servers. |
 | `twoFactorTimeoutSec` | int | No | `60` | Timeout for receiving 2FA codes. |
 | `loginSigningKey` | string | No | (Auto) | Random key used to sign tokens. Generated on every start if blank. |
+| `enableSwagger` | bool | No | `false` | Whether to enable the Swagger UI at `/swagger`. |
 
 ### User Authentication (Optional)
 

@@ -16,12 +16,25 @@
 			]
 		}
 	},
+	"features": {
+		"ghcr.io/devcontainers/features/ruby:1": {
+			"version": "3.3"
+		}
+	},
+	"containerEnv": {
+		"GOROOT": "",
+		"GEM_HOME": "/usr/local/rvm/gems/default",
+		"GEM_PATH": "/usr/local/rvm/gems/default"
+	},
 	"remoteEnv": {
-		"GOROOT": ""
+		"GOROOT": "",
+		"PATH": "/usr/local/rvm/rubies/default/bin:/usr/local/rvm/bin:${containerEnv:PATH}"
 	},
 	"runArgs": [
 		"--network=host"
-	]
+	],
+	"postCreateCommand": "bash .devcontainer/postCreate.sh",
+	"postStartCommand": "bash .devcontainer/startup.sh"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

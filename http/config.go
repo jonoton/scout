@@ -40,6 +40,7 @@ type Config struct {
 	LinkRetry           int        `yaml:"linkRetry,omitempty"`
 	TwoFactorTimeoutSec int        `yaml:"twoFactorTimeoutSec,omitempty"`
 	LoginSigningKey     string     `yaml:"loginSigningKey,omitempty"`
+	EnableSwagger       bool       `yaml:"enableSwagger,omitempty"`
 }
 
 // NewConfig creates a new Config
