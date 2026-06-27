@@ -13,6 +13,7 @@ import (
 	"github.com/jonoton/go-dir"
 	pubsubmutex "github.com/jonoton/go-pubsubmutex"
 	"github.com/jonoton/go-videosource"
+	"github.com/jonoton/scout/sortutils"
 )
 
 const topicRecordImages = "topic-record-images"
@@ -135,7 +136,7 @@ func (r *Record) deleteWhenFull() {
 	dirSize, _ := dir.Size(r.saveDirectory, dir.RegexBeginsWith(r.name))
 	if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) > r.RecordConf.DeleteAfterGB {
 		files, _ := dir.List(r.saveDirectory, dir.RegexBeginsWith(r.name))
-		sort.Sort(dir.AscendingTime(files))
+		sort.Sort(sortutils.AscendingTime(files))
 		for _, fileInfo := range files {
 			if int(math.Ceil(dir.BytesToGigaBytes(dirSize))) <= r.RecordConf.DeleteAfterGB {
 				break
