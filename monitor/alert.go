@@ -123,12 +123,12 @@ func (a *Alert) addUpdateBuffer(img *videosource.ProcessedImage) {
 	a.ringBuffer.Add(img)
 	// pop all to sort by content and re-add
 	allBuffered := a.ptrSliceToSlice(a.ringBuffer.GetAll())
-	sort.Sort(videosource.ProcessedImageByObjLen(allBuffered))
-	sort.Sort(videosource.ProcessedImageByObjPercent(allBuffered))
-	sort.Sort(videosource.ProcessedImageByFaceLen(allBuffered))
-	sort.Sort(videosource.ProcessedImageByFacePercent(allBuffered))
-	for _, img := range allBuffered {
-		a.ringBuffer.Add(&img)
+	sort.Stable(videosource.ProcessedImageByObjLen(allBuffered))
+	sort.Stable(videosource.ProcessedImageByObjPercent(allBuffered))
+	sort.Stable(videosource.ProcessedImageByFaceLen(allBuffered))
+	sort.Stable(videosource.ProcessedImageByFacePercent(allBuffered))
+	for i := len(allBuffered) - 1; i >= 0; i-- {
+		a.ringBuffer.Add(&allBuffered[i])
 	}
 }
 
