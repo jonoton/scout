@@ -50,9 +50,22 @@ Uses TensorFlow/SSD models to identify specific objects like "person" or "car".
 | `minOverlapPercentage` | int | No | `75` | Min overlap (%) with a motion area to be valid. |
 | `sameOverlapPercentage` | int | No | `85` | Overlap (%) to consider two detections as the same object. |
 | `allowedList` | list | No | - | List of objects to trigger on (e.g., `person`, `car`). |
+| `priorityList` | list | No | `[{person, 50}]` | List of priority items with custom minimum confidence thresholds. Used to resolve conflicts when multiple different overlapping objects are detected. Earlier items in the list outrank later ones. |
 | `padding` | int | No | `0` | Add padding (pixels) around detected object. |
 | `highlightColor` | string | No | `blue` | Color of the bounding box. |
 | `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
+
+### Priority List Format
+
+The `priorityList` allows you to specify which object classes take precedence when overlapping detections occur (e.g., a "person" bounding box overlapping a "chair" bounding box). You can configure a specific minimum confidence threshold for each priority class:
+
+```yaml
+priorityList:
+  - description: person
+    minConfidencePercentage: 70
+  - description: car
+    minConfidencePercentage: 60
+```
 
 ## Face Detection (Optional, `face.yaml`)
 

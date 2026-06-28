@@ -16,5 +16,10 @@ allowedList:
     - car
     - truck
     - boat
+priorityList:
+    - description: person
+      minConfidencePercentage: 50
+    - description: car
+      minConfidencePercentage: 60
 highlightColor: blue
 highlightThickness: 3
