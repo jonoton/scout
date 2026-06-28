@@ -23,9 +23,18 @@ type Config struct {
 	MaxPercentage           int      `yaml:"maxPercentage,omitempty"`
 	MinOverlapPercentage    int      `yaml:"minOverlapPercentage,omitempty"`
 	SameOverlapPercentage   int      `yaml:"sameOverlapPercentage,omitempty"`
-	AllowedList             []string `yaml:"allowedList,omitempty"`
-	HighlightColor          string   `yaml:"highlightColor,omitempty"`
-	HighlightThickness      int      `yaml:"highlightThickness,omitempty"`
+	AllowedList            []string       `yaml:"allowedList,omitempty"`
+	PriorityList           []PriorityItem `yaml:"priorityList,omitempty"`
+	HighlightColor         string         `yaml:"highlightColor,omitempty"`
+	HighlightThickness     int            `yaml:"highlightThickness,omitempty"`
+}
+
+// PriorityItem defines a detection description that takes priority
+// over other descriptions when deduplicating overlapping detections.
+// Items earlier in the priority list outrank later ones.
+type PriorityItem struct {
+	Description            string `yaml:"description"`
+	MinConfidencePercentage int    `yaml:"minConfidencePercentage"`
 }
 
 // NewConfig creates a new Config

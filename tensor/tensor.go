@@ -21,7 +21,7 @@ const fileLocationDotData = ".data/tensor"
 
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
+	if err != nil {
 		return false
 	}
 	return !info.IsDir()
@@ -31,11 +31,11 @@ func getModelPath(filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
 	}
-	pathData := runtime.GetRuntimeDirectory(fileLocationData) + filename
+	pathData := filepath.Join(runtime.GetRuntimeDirectory(fileLocationData), filename)
 	if fileExists(pathData) {
 		return pathData
 	}
-	pathDotData := runtime.GetRuntimeDirectory(fileLocationDotData) + filename
+	pathDotData := filepath.Join(runtime.GetRuntimeDirectory(fileLocationDotData), filename)
 	if fileExists(pathDotData) {
 		return pathDotData
 	}
@@ -62,6 +62,7 @@ type Tensor struct {
 	minOverlapPercentage    int
 	sameOverlapPercentage   int
 	allowedList             []string
+	priorityList            []PriorityItem
 	highlightColor          string
 	highlightThickness      int
 }
@@ -93,6 +94,7 @@ func NewTensor(name string) *Tensor {
 		minOverlapPercentage:    75,
 		sameOverlapPercentage:   85,
 		allowedList:             make([]string, 0),
+		priorityList:            []PriorityItem{{Description: "person", MinConfidencePercentage: 50}},
 		highlightColor:          "blue",
 		highlightThickness:      3,
 	}
@@ -120,7 +122,7 @@ func (t *Tensor) SetConfig(config *Config) {
 		if config.DescFile != "" {
 			t.descFile = config.DescFile
 		}
-		if config.ScaleWidth < 0 || 0 < config.ScaleWidth {
+		if config.ScaleWidth > 0 {
 			t.scaleWidth = config.ScaleWidth
 		}
 		if config.MinConfidencePercentage > 0 {
@@ -143,6 +145,9 @@ func (t *Tensor) SetConfig(config *Config) {
 		}
 		if len(config.AllowedList) > 0 {
 			t.allowedList = config.AllowedList
+		}
+		if len(config.PriorityList) > 0 {
+			t.priorityList = config.PriorityList
 		}
 		if config.HighlightColor != "" {
 			t.highlightColor = config.HighlightColor
@@ -171,8 +176,9 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 			descFile = getModelPath(t.descFile)
 		}
 		net := gocv.ReadNet(modelFile, configFile)
+		defer net.Close()
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, t.Name)
+			log.Errorf("Error reading network model from : %v %v for %s", modelFile, configFile, t.Name)
 			return
 		}
 
@@ -198,7 +204,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		if t.descFile != "" {
 			descs, err := readDescriptions(descFile)
 			if err != nil {
-				log.Printf("Error reading descriptions file: %v for %s", t.descFile, t.Name)
+				log.Errorf("Error reading descriptions file: %v for %s", t.descFile, t.Name)
 				return
 			}
 			descriptions = descs
@@ -271,8 +277,8 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					if len(t.allowedList) == 0 {
 						descInclusive = true
 					}
-					for _, cur := range t.allowedList {
-						if desc == cur {
+					for _, allowed := range t.allowedList {
+						if desc == allowed {
 							descInclusive = true
 							break
 						}
@@ -301,14 +307,17 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 					confidencePercent := int(confidence * 100)
 					for oIndex, curObj := range result.Objects {
 						objRect := curObj.Rect
-						if fPercent, oPercent := videosource.RectOverlap(finalRect, objRect); fPercent >= t.sameOverlapPercentage && oPercent >= t.sameOverlapPercentage {
+						if fPercent, oPercent := videosource.RectOverlap(finalRect, objRect); (strings.EqualFold(desc, curObj.Description) && (fPercent >= t.sameOverlapPercentage || oPercent >= t.sameOverlapPercentage)) ||
+						(!strings.EqualFold(desc, curObj.Description) && fPercent >= t.sameOverlapPercentage && oPercent >= t.sameOverlapPercentage) {
 							newObj = false
+							descPri, descMinConf := t.priorityInfo(desc)
+							curPri, _ := t.priorityInfo(curObj.Description)
 							if (curObj.Percentage < confidencePercent) ||
-								(strings.ToLower(desc) == "person" && strings.ToLower(curObj.Description) != "person") {
+								(descPri >= 0 && (curPri < 0 || descPri < curPri) && confidencePercent >= descMinConf) {
 								// replace object with better
 								curObj.Cleanup()
 								objectInfo := videosource.NewObjectInfo(finalRect, *videosource.NewColorThickness(t.highlightColor, t.highlightThickness))
-								objectInfo.Description = strings.Title(strings.ToLower(desc))
+								objectInfo.Description = toTitle(desc)
 								objectInfo.Percentage = confidencePercent
 								result.Objects[oIndex] = *objectInfo
 								break
@@ -319,7 +328,7 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 						continue
 					}
 					objectInfo := videosource.NewObjectInfo(finalRect, *videosource.NewColorThickness(t.highlightColor, t.highlightThickness))
-					objectInfo.Description = strings.Title(strings.ToLower(desc))
+					objectInfo.Description = toTitle(desc)
 					objectInfo.Percentage = confidencePercent
 					result.Objects = append(result.Objects, *objectInfo)
 				}
@@ -330,9 +339,34 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 
 			r <- result
 		}
-		net.Close()
+
 	}()
 	return r
+}
+
+// priorityInfo returns the index of the description in the priority list
+// (lower index = higher priority) and its minimum confidence threshold.
+// Returns -1, 0 if not found.
+func (t *Tensor) priorityInfo(desc string) (index int, minConfidence int) {
+	for i, p := range t.priorityList {
+		if strings.EqualFold(desc, p.Description) {
+			return i, p.MinConfidencePercentage
+		}
+	}
+	return -1, 0
+}
+
+// toTitle converts a string to title case (first letter of each word capitalized).
+// Replaces the deprecated strings.Title.
+func toTitle(s string) string {
+	s = strings.ToLower(s)
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // readDescriptions reads the descriptions from a file
@@ -342,12 +376,12 @@ func readDescriptions(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	var lines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-	file.Close()
 	return lines, scanner.Err()
 }

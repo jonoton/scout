@@ -183,8 +183,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			}
 			scaleRatio := float64(origWidth) / float64(scaleWidth)
 			scaledImg := cur.Original.ScaleToWidth(scaleWidth)
-			tmpMat := scaledImg.SharedMat.Mat
-			matType := tmpMat.Type()
+			tmpMat := scaledImg.SharedMat.Mat.Clone()
 			// need to convert for blob usage
 			tmpMat.ConvertTo(&tmpMat, gocv.MatTypeCV32F)
 			// convert image Mat to 300x300 blob that the object detector can analyze
@@ -193,7 +192,6 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			net.SetInput(blob, "")
 			// run a forward pass thru the network
 			prob := net.Forward("")
-			tmpMat.ConvertTo(&tmpMat, matType)
 
 			minConfidence := float32(f.minConfidencePercentage) / float32(100)
 			maximumArea := cur.Original.Height() * cur.Original.Width() * f.maxPercentage / 100
@@ -254,6 +252,7 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			scaledImg.Cleanup()
 			prob.Close()
 			blob.Close()
+			tmpMat.Close()
 
 			r <- result
 		}

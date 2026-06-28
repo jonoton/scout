@@ -92,6 +92,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			}
 		}()
 		mog2 := gocv.NewBackgroundSubtractorMOG2()
+		defer mog2.Close()
 		for cur := range input {
 			result := *videosource.NewProcessedImage(cur)
 			if m.Skip {
@@ -142,7 +143,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			for index := 0; index < contours.Size(); index++ {
 				c := contours.At(index)
 				area := gocv.ContourArea(c)
-				if numMotions > m.maxMotions || area >= overloadArea {
+				if numMotions >= m.maxMotions || area >= overloadArea {
 					numMotions = 0
 					for _, motion := range result.Motions {
 						motion.Cleanup()
@@ -153,7 +154,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				if area < minimumArea || area > maximumArea {
 					continue
 				}
-				rect := videosource.CorrectRectangle(cur, gocv.BoundingRect(c))
+				rect := videosource.CorrectRectangle(scaledImg, gocv.BoundingRect(c))
 				rectWidth := rect.Dx()
 				rectHeight := rect.Dy()
 				if rectWidth < minimumWidth || rectWidth > maximumWidth {
@@ -174,7 +175,7 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 
 			r <- result
 		}
-		mog2.Close()
+
 	}()
 	return r
 }
