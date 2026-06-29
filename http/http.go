@@ -30,7 +30,6 @@ import (
 	"github.com/jonoton/go-memory"
 	"github.com/jonoton/go-runtime"
 	"github.com/jonoton/scout/manage"
-	"github.com/jonoton/scout/sortutils"
 	logrus "github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
@@ -419,7 +418,7 @@ func (h *Http) alertsListHandler(c *fiber.Ctx) error {
 	data := make([]string, 0)
 	files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/alerts"),
 		dir.RegexEndsWith(".jpg"), time.Now(), time.Duration(5)*time.Second)
-	sort.Sort(sortutils.DescendingTime(files))
+	sort.Sort(dir.DescendingTime(files))
 	for _, fileInfo := range files {
 		data = append(data, fileInfo.Name())
 	}
@@ -432,7 +431,7 @@ func (h *Http) alertsListHandler(c *fiber.Ctx) error {
 		}
 	}
 	if needSort {
-		sort.Sort(sortutils.DescendingTimeName(data))
+		sort.Sort(dir.DescendingTimeName(data))
 	}
 	return c.JSON(data)
 }
@@ -472,7 +471,7 @@ func (h *Http) recordingsListHandler(c *fiber.Ctx) error {
 	data := make([]string, 0)
 	files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/recordings"),
 		dir.RegexEndsWithBeforeExt("Portable"), time.Now(), time.Duration(5)*time.Second)
-	sort.Sort(sortutils.DescendingTime(files))
+	sort.Sort(dir.DescendingTime(files))
 	for _, fileInfo := range files {
 		data = append(data, fileInfo.Name())
 	}
@@ -485,7 +484,7 @@ func (h *Http) recordingsListHandler(c *fiber.Ctx) error {
 		}
 	}
 	if needSort {
-		sort.Sort(sortutils.DescendingTimeName(data))
+		sort.Sort(dir.DescendingTimeName(data))
 	}
 	return c.JSON(data)
 }
@@ -525,7 +524,7 @@ func (h *Http) continuousListHandler(c *fiber.Ctx) error {
 	data := make([]string, 0)
 	files, _ := dir.Expired(filepath.Clean(h.manage.GetDataDirectory()+"/continuous"),
 		dir.RegexEndsWithBeforeExt("Portable"), time.Now(), time.Duration(5)*time.Second)
-	sort.Sort(sortutils.DescendingTime(files))
+	sort.Sort(dir.DescendingTime(files))
 	for _, fileInfo := range files {
 		data = append(data, fileInfo.Name())
 	}
@@ -538,7 +537,7 @@ func (h *Http) continuousListHandler(c *fiber.Ctx) error {
 		}
 	}
 	if needSort {
-		sort.Sort(sortutils.DescendingTimeName(data))
+		sort.Sort(dir.DescendingTimeName(data))
 	}
 	return c.JSON(data)
 }

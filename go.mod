@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jonoton/go-cuda v1.0.0
 	github.com/jonoton/go-delaybuffer v1.0.0
-	github.com/jonoton/go-dir v1.0.0
+	github.com/jonoton/go-dir v1.1.0
 	github.com/jonoton/go-gzip v1.0.0
 	github.com/jonoton/go-memory v1.0.0
 	github.com/jonoton/go-notify v1.0.0

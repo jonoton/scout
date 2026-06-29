@@ -51,8 +51,8 @@ github.com/jonoton/go-cuda v1.0.0 h1:uKZrcO43Vmg/Dtd/4OJqgFLDs+GfcPtyWQ4UbP88L6A
 github.com/jonoton/go-cuda v1.0.0/go.mod h1:N+2IUJkMZQdm3MigGJq0cajyGy60++TdMYWn00aD9yA=
 github.com/jonoton/go-delaybuffer v1.0.0 h1:2TOe3CqRbBoQbWNnkRUnmgG6oSe00KRgUHcH6mL5ptE=
 github.com/jonoton/go-delaybuffer v1.0.0/go.mod h1:06rj/EPEeDH5KVYdbSUYoonbK3HPu/Wi69L5u6RUgJk=
-github.com/jonoton/go-dir v1.0.0 h1:zvWK1fstdspTelZvA2EgcxMBTTA2gmVdxO/xA167T9s=
-github.com/jonoton/go-dir v1.0.0/go.mod h1:1J6JOBqbiXnET3NqlHmv0YO6zdFmb5yp1vWXNUCMBwE=
+github.com/jonoton/go-dir v1.1.0 h1:/Pg/f6fMEtXpd86FEM/zAVgfpcEN4CiuTXXhORlAQSo=
+github.com/jonoton/go-dir v1.1.0/go.mod h1:1J6JOBqbiXnET3NqlHmv0YO6zdFmb5yp1vWXNUCMBwE=
 github.com/jonoton/go-framebuffer v1.1.0 h1:MDojsBHfWF1TM/WYK8P38M2ld6IAFo5lqnQ//5J5pLY=
 github.com/jonoton/go-framebuffer v1.1.0/go.mod h1:3RHwusRh/BTa2Yhc9LCZSXFRIKZ7YgwBx1EE1pafN00=
 github.com/jonoton/go-gzip v1.0.0 h1:cUVpvM6uzxFM7rEGI+K3JfXictlP6WcKglwPEYuUyN4=
