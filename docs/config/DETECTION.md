@@ -30,6 +30,14 @@ Scout uses a multi-stage detection pipeline: Motion -> Object -> Face.
 | `overloadPercent` | int | No | `90` | If motion areas exceed this (%) of frame, it is considered an overload and ignored. |
 | `highlightColor` | string | No | `purple` | Color of the bounding box. |
 | `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
+| `backgroundHistory` | int | No | `500` | History length (in frames) for the background subtractor. |
+| `backgroundThreshold` | int | No | `16` | Variance threshold for background pixel-to-model matching. |
+| `detectShadows` | bool | No | `true` | Enable shadow detection in background subtraction. |
+| `closingSize` | int | No | `3` | Kernel size (pixels) for morphological closing (closes gaps). |
+| `minMotionFrames` | int | No | `1` | Number of consecutive frames motion must be detected in a region to be valid. |
+| `mergeOverlapPercent` | int | No | `20` | Minimum overlap (%) of the smaller bounding box to merge overlapping motion regions. |
+| `mergeDistance` | int | No | `10` | Maximum pixel gap distance to merge nearby non-overlapping motion regions. |
+| `gridSize` | int | No | `16` | Pixel grid cell size used for tracking motion regions across frames. |
 
 ## Object Detection (Optional, `tensor.yaml`)
 

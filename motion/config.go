@@ -21,12 +21,22 @@ type Config struct {
 	NoiseReduction     int    `yaml:"noiseReduction,omitempty"`
 	HighlightColor     string `yaml:"highlightColor,omitempty"`
 	HighlightThickness int    `yaml:"highlightThickness,omitempty"`
+	BackgroundHistory   int    `yaml:"backgroundHistory,omitempty"`
+	BackgroundThreshold int    `yaml:"backgroundThreshold,omitempty"`
+	DetectShadows       *bool  `yaml:"detectShadows,omitempty"`
+	ClosingSize         int    `yaml:"closingSize,omitempty"`
+	MinMotionFrames    int    `yaml:"minMotionFrames,omitempty"`
+	MergeOverlapPercent int    `yaml:"mergeOverlapPercent,omitempty"`
+	GridSize            int    `yaml:"gridSize,omitempty"`
+	MergeDistance       int    `yaml:"mergeDistance,omitempty"`
 }
 
 // NewConfig creates a new Config
 func NewConfig(configPath string) *Config {
 	c := &Config{
-		MinimumPercentage: -1,
+		MinimumPercentage:   -1,
+		MergeOverlapPercent: -1,
+		MergeDistance:       -1,
 	}
 	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {

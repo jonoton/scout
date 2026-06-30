@@ -9,3 +9,11 @@ thresholdPercent: 40
 noiseReduction: 10
 highlightColor: purple
 highlightThickness: 3
+backgroundHistory: 500
+backgroundThreshold: 16
+detectShadows: true
+closingSize: 3
+minMotionFrames: 1
+mergeOverlapPercent: 20
+mergeDistance: 10
+gridSize: 16
