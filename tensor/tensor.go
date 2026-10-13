@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -29,7 +30,10 @@ func fileExists(filename string) bool {
 
 func getModelPath(filename string) string {
 	if filepath.IsAbs(filename) {
-		return filename
+		if fileExists(filename) {
+			return filename
+		}
+		return ""
 	}
 	pathData := filepath.Join(runtime.GetRuntimeDirectory(fileLocationData), filename)
 	if fileExists(pathData) {
@@ -39,8 +43,7 @@ func getModelPath(filename string) string {
 	if fileExists(pathDotData) {
 		return pathDotData
 	}
-	// Fallback to old behavior if neither exists, though it will likely fail
-	return pathData
+	return ""
 }
 
 // Tensor detects objects within images
@@ -65,6 +68,11 @@ type Tensor struct {
 	priorityList            []PriorityItem
 	highlightColor          string
 	highlightThickness      int
+	cancel                  chan struct{}
+	cancelOnce              sync.Once
+	done                    chan struct{}
+	started                 bool
+	startMu                 sync.Mutex
 }
 
 // NewTensor creates a new Tensor
@@ -97,6 +105,8 @@ func NewTensor(name string) *Tensor {
 		priorityList:            []PriorityItem{{Description: "person", MinConfidencePercentage: 50}},
 		highlightColor:          "blue",
 		highlightThickness:      3,
+		cancel:                  make(chan struct{}),
+		done:                    make(chan struct{}),
 	}
 	return t
 }
@@ -158,10 +168,28 @@ func (t *Tensor) SetConfig(config *Config) {
 	}
 }
 
+// Close stops the tensor detection and waits for it to exit
+func (t *Tensor) Close() {
+	t.cancelOnce.Do(func() {
+		close(t.cancel)
+	})
+	t.startMu.Lock()
+	started := t.started
+	t.startMu.Unlock()
+	if started {
+		<-t.done
+	}
+}
+
 // Run starts the tensor detection process
 func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource.ProcessedImage {
+	t.startMu.Lock()
+	t.started = true
+	t.startMu.Unlock()
+
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer close(t.done)
 		defer close(r)
 		defer func() {
 			// recover from panic if one occurred
@@ -169,8 +197,18 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 				log.Errorln("Recovered from panic in tensor for", t.Name)
 			}
 		}()
+		select {
+		case <-t.cancel:
+			return
+		default:
+		}
+
 		modelFile := getModelPath(t.modelFile)
 		configFile := getModelPath(t.configFile)
+		if modelFile == "" || configFile == "" {
+			log.Errorf("Model or config file not found for %s", t.Name)
+			return
+		}
 		descFile := ""
 		if t.descFile != "" {
 			descFile = getModelPath(t.descFile)
@@ -221,16 +259,37 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		swapRGB = true
 
 		motionFrames := 0
-		for cur := range input {
+		for {
+			var cur videosource.ProcessedImage
+			var ok bool
+			select {
+			case <-t.cancel:
+				return
+			case cur, ok = <-input:
+				if !ok {
+					return
+				}
+			}
+
 			result := cur
 			if t.Skip || !cur.HasMotion() {
 				motionFrames = 0
-				r <- result
+				select {
+				case <-t.cancel:
+					result.Cleanup()
+					return
+				case r <- result:
+				}
 				continue
 			}
 			motionFrames++
 			if motionFrames < t.minMotionFrames {
-				r <- result
+				select {
+				case <-t.cancel:
+					result.Cleanup()
+					return
+				case r <- result:
+				}
 				continue
 			}
 
@@ -337,7 +396,12 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 			prob.Close()
 			blob.Close()
 
-			r <- result
+			select {
+			case <-t.cancel:
+				result.Cleanup()
+				return
+			case r <- result:
+			}
 		}
 
 	}()

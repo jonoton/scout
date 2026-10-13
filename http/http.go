@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
+	websocket "github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 	"github.com/jonoton/go-dir"
 	"github.com/jonoton/go-memory"
@@ -54,6 +56,23 @@ type Http struct {
 	twoFactorTimeoutSec int
 	secTick             *time.Ticker
 	done                chan bool
+}
+
+func getHttpDirectory() string {
+	d := runtime.GetRuntimeDirectory("http")
+	if d == "" {
+		if _, err := os.Stat("http"); err == nil {
+			d = "http/"
+		} else if _, err := os.Stat("templates"); err == nil {
+			d = "./"
+		} else if _, err := os.Stat("../http"); err == nil {
+			d = "../http/"
+		}
+	}
+	if d != "" && !strings.HasSuffix(d, "/") {
+		d += "/"
+	}
+	return d
 }
 
 // NewHttp returns a new Http
@@ -132,15 +151,23 @@ func (h *Http) setup() {
 
 	h.fiber.Use(limiter.New(cfg))
 
-	h.fiber.Use(compress.New(compress.Config{Level: compress.LevelDefault}))
+	h.fiber.Use(compress.New(compress.Config{
+		Next: func(c *fiber.Ctx) bool {
+			return websocket.IsWebSocketUpgrade(c)
+		},
+		Level: compress.LevelDefault,
+	}))
 
-	h.fiber.Static("/", runtime.GetRuntimeDirectory("http")+"/public")
+	h.fiber.Static("/", getHttpDirectory()+"public")
 
 	if h.httpConfig != nil && h.httpConfig.EnableSwagger {
 		h.fiber.Get("/swagger/*", swagger.HandlerDefault)
 	}
 
 	h.fiber.Get("/", h.indexHandler)
+
+	h.fiber.Get("/auth/status", h.authStatusHandler)
+	h.fiber.Get("/login", h.authStatusHandler)
 
 	if h.loginNeeded {
 		loginLimit := 10
@@ -244,8 +271,13 @@ func (h *Http) setup() {
 
 	h.fiber.Use("/alerts/files/:name", h.alertsFilesHandler)
 
+	dataDir := ""
+	if h.manage != nil {
+		dataDir = h.manage.GetDataDirectory()
+	}
+
 	h.fiber.Static("/alerts/files",
-		filepath.Clean(h.manage.GetDataDirectory()+"/alerts"),
+		filepath.Clean(dataDir+"/alerts"),
 		fiber.Static{
 			Compress:  true,
 			ByteRange: true,
@@ -261,7 +293,7 @@ func (h *Http) setup() {
 	h.fiber.Use("/recordings/files/:name", h.recordingsFilesHandler)
 
 	h.fiber.Static("/recordings/files",
-		filepath.Clean(h.manage.GetDataDirectory()+"/recordings"),
+		filepath.Clean(dataDir+"/recordings"),
 		fiber.Static{
 			Compress:  true,
 			ByteRange: true,
@@ -277,7 +309,7 @@ func (h *Http) setup() {
 	h.fiber.Use("/continuous/files/:name", h.continuousFilesHandler)
 
 	h.fiber.Static("/continuous/files",
-		filepath.Clean(h.manage.GetDataDirectory()+"/continuous"),
+		filepath.Clean(dataDir+"/continuous"),
 		fiber.Static{
 			Compress:  true,
 			ByteRange: true,
@@ -301,10 +333,27 @@ func (h *Http) setup() {
 func (h *Http) indexHandler(c *fiber.Ctx) error {
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
-	tmpl := template.Must(template.ParseFiles(runtime.GetRuntimeDirectory("http") + "templates/index.html"))
+	tmpl := template.Must(template.ParseFiles(getHttpDirectory() + "templates/index.html"))
 	tmpl.Execute(buf, nil)
 	c.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
 	return c.Send(buf.Bytes())
+}
+
+type authStatusResp struct {
+	Required bool `json:"required"`
+}
+
+// authStatusHandler checks if authentication is required
+// @Summary Check Authentication Status
+// @Description Check whether user authentication is required by the Scout server.
+// @Tags Auth
+// @Produce json
+// @Success 200 {object} authStatusResp "Authentication status"
+// @Router /auth/status [get]
+func (h *Http) authStatusHandler(c *fiber.Ctx) error {
+	return c.JSON(authStatusResp{
+		Required: h.loginNeeded,
+	})
 }
 
 // heartbeatHandler handles the heartbeat endpoint

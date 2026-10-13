@@ -8,6 +8,8 @@ staleTimeout: 20
 staleMaxRetry: 10
 bufferSeconds: 4
 captureTimeoutMilliSeconds: 10000
+captureOptions: "rtsp_transport;tcp|err_detect;explode"
+captureMaxFailureTolerance: 10
 delayBufferMilliSeconds: 0
 motion: motion.yaml
 tensor: tensor.yaml

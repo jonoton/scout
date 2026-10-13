@@ -3,7 +3,10 @@
 package manage
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +36,7 @@ const topicCurrentMonitorAlertTimes = "topic-current-monitor-alert-times"
 
 // Manage contains all the monitors and manages them
 type Manage struct {
+	configDir        string
 	mons             monitor.Map
 	manageConf       Config
 	notifySenderConf *notify.SenderConfig
@@ -44,18 +48,35 @@ type Manage struct {
 	done             chan bool
 }
 
+func getConfigDirectory() string {
+	d := runtime.GetRuntimeDirectory(".config")
+	if d == "" {
+		if _, err := os.Stat(".config"); err == nil {
+			d = ".config/"
+		} else if _, err := os.Stat("../.config"); err == nil {
+			d = "../.config/"
+		}
+	}
+	if d != "" && !strings.HasSuffix(d, "/") {
+		d += "/"
+	}
+	return d
+}
+
 // NewManage creates a new Manage
 func NewManage() *Manage {
-	cfgPath := runtime.GetRuntimeDirectory(".config") + ConfigFilename
+	configDir := getConfigDirectory()
+	cfgPath := configDir + ConfigFilename
 	conf := NewConfig(cfgPath)
 	if conf == nil {
 		log.Fatalf("Required config file %s not found. Please ensure it exists and is valid.", cfgPath)
 	}
 
 	m := &Manage{
+		configDir:        configDir,
 		mons:             make(monitor.Map),
 		manageConf:       *conf,
-		notifySenderConf: notify.NewSenderConfig(runtime.GetRuntimeDirectory(".config") + notify.SenderConfigFilename),
+		notifySenderConf: notify.NewSenderConfig(configDir + notify.SenderConfigFilename),
 		Notifier:         nil,
 		wtr:              watcher.New(500 * time.Millisecond),
 		pubsub:           *pubsubmutex.NewPubSub(),
@@ -177,8 +198,18 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	if configPath == "" {
 		return
 	}
-	runtimeConfigDir := runtime.GetRuntimeDirectory(".config")
-	monConfigPath := runtimeConfigDir + configPath
+	runtimeConfigDir := m.configDir
+	if runtimeConfigDir == "" {
+		runtimeConfigDir = getConfigDirectory()
+	}
+	resolvePath := func(path string) string {
+		if path == "" || filepath.IsAbs(path) {
+			return path
+		}
+		return runtimeConfigDir + path
+	}
+
+	monConfigPath := resolvePath(configPath)
 	monConf := monitor.NewConfig(monConfigPath)
 	if monConf == nil {
 		log.Errorf("Could not setup %s. monitor.NewConfig returned nil for %s", name, monConfigPath)
@@ -189,8 +220,16 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		video = videosource.NewFileSource(monConf.Filename, monConf.Filename)
 	} else if monConf.URL != "" {
 		ipcamSource := videosource.NewIPCamSource(name, monConf.URL)
-		if monConf.CaptureTimeoutMilliSeconds > 0 {
-			ipcamSource.SetCaptureTimeoutMs(monConf.CaptureTimeoutMilliSeconds)
+		captureTimeoutMs := monConf.CaptureTimeoutMilliSeconds
+		if captureTimeoutMs <= 0 {
+			captureTimeoutMs = 3000
+		}
+		ipcamSource.SetCaptureTimeoutMs(captureTimeoutMs)
+		if monConf.CaptureOptions != "" {
+			ipcamSource.SetCaptureOptions(monConf.CaptureOptions)
+		}
+		if monConf.CaptureMaxFailureTolerance > 0 {
+			ipcamSource.SetMaxFailureTolerance(monConf.CaptureMaxFailureTolerance)
 		}
 		video = ipcamSource
 	} else {
@@ -210,7 +249,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 	mon = monitor.NewMonitor(name, videoReader)
 	mon.ConfigPaths = append(mon.ConfigPaths, monConfigPath)
 	if monConf.RecordFilename != "" {
-		recordConfigPath := runtimeConfigDir + monConf.RecordFilename
+		recordConfigPath := resolvePath(monConf.RecordFilename)
 		recordConf := monitor.NewRecordConfig(recordConfigPath)
 		if recordConf == nil {
 			log.Warnf("Optional config file %s not found.", recordConfigPath)
@@ -219,7 +258,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, recordConfigPath)
 	}
 	if monConf.ContinuousFilename != "" {
-		continuousConfigPath := runtimeConfigDir + monConf.ContinuousFilename
+		continuousConfigPath := resolvePath(monConf.ContinuousFilename)
 		continuousConf := monitor.NewContinuousConfig(continuousConfigPath)
 		if continuousConf == nil {
 			log.Warnf("Optional config file %s not found.", continuousConfigPath)
@@ -228,14 +267,14 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, continuousConfigPath)
 	}
 	if monConf.AlertFilename != "" {
-		alertPath := runtimeConfigDir + monConf.AlertFilename
+		alertPath := resolvePath(monConf.AlertFilename)
 		alertSettings := monitor.NewAlertConfig(alertPath)
 		if alertSettings == nil {
 			log.Warnf("Optional config file %s not found.", alertPath)
 		}
 		mon.ConfigPaths = append(mon.ConfigPaths, alertPath)
 		if monConf.NotifyRxFilename != "" {
-			notifyRxPath := runtimeConfigDir + monConf.NotifyRxFilename
+			notifyRxPath := resolvePath(monConf.NotifyRxFilename)
 			notifyRxConf := notify.NewRxConfig(notifyRxPath)
 			if notifyRxConf == nil {
 				log.Warnf("Optional config file %s not found.", notifyRxPath)
@@ -247,7 +286,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		}
 	}
 	if monConf.MotionFilename != "" {
-		motionPath := runtimeConfigDir + monConf.MotionFilename
+		motionPath := resolvePath(monConf.MotionFilename)
 		motionConf := motion.NewConfig(motionPath)
 		if motionConf == nil {
 			log.Warnf("Optional config file %s not found.", motionPath)
@@ -256,7 +295,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, motionPath)
 	}
 	if monConf.TensorFilename != "" {
-		tensorPath := runtimeConfigDir + monConf.TensorFilename
+		tensorPath := resolvePath(monConf.TensorFilename)
 		tensorConf := tensor.NewConfig(tensorPath)
 		if tensorConf == nil {
 			log.Warnf("Optional config file %s not found.", tensorPath)
@@ -265,7 +304,7 @@ func (m *Manage) setupMonitor(name string, configPath string) (mon *monitor.Moni
 		mon.ConfigPaths = append(mon.ConfigPaths, tensorPath)
 	}
 	if monConf.FaceFilename != "" {
-		facePath := runtimeConfigDir + monConf.FaceFilename
+		facePath := resolvePath(monConf.FaceFilename)
 		faceConf := face.NewConfig(facePath)
 		if faceConf == nil {
 			log.Warnf("Optional config file %s not found.", facePath)
@@ -319,8 +358,8 @@ func (m *Manage) subscribe(subMon subscribeMonitor) (result *pubsubmutex.Subscri
 	return
 }
 
-func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleList []*monitor.Monitor) {
-	staleList = make([]*monitor.Monitor, 0)
+func (m *Manage) doCheckStaleMonitors() {
+	staleList := make([]*monitor.Monitor, 0)
 	for _, cur := range m.mons {
 		if cur.IsStale {
 			staleList = append(staleList, cur)
@@ -328,8 +367,11 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 		}
 	}
 	for _, stale := range staleList {
-		m.removeMonitor(stale, true)
-		if stale.StaleRetry == 0 {
+		if !m.removeMonitor(stale, true) {
+			log.Errorf("Stale monitor %s could not be stopped; will not start replacement", stale.Name)
+			continue
+		}
+		if stale.StaleMaxRetry > 0 && stale.StaleRetry <= 0 {
 			log.Errorln("Stale monitor DONE retrying for", stale.Name)
 			continue
 		}
@@ -339,13 +381,11 @@ func (m *Manage) doCheckStaleMonitors(lastStaleList []*monitor.Monitor) (staleLi
 				log.Errorln("Stale setup monitor FAILED for", stale.Name)
 				continue
 			}
-			for _, lastStale := range lastStaleList {
-				if lastStale.Name == newMon.Name {
-					newMon.StaleRetry = stale.StaleRetry - 1
-					log.Warningln("Stale retry decremented monitor", newMon.Name)
-					if newMon.StaleRetry == 0 {
-						log.Errorln("Stale last retry for", newMon.Name)
-					}
+			if stale.StaleMaxRetry > 0 {
+				newMon.StaleRetry = stale.StaleRetry - 1
+				log.Warningln("Stale retry decremented monitor", newMon.Name, "remaining retries:", newMon.StaleRetry)
+				if newMon.StaleRetry == 0 {
+					log.Errorln("Stale last retry for", newMon.Name)
 				}
 			}
 			m.addMonitor(newMon)
@@ -379,7 +419,6 @@ func (m *Manage) run() {
 
 		staleTicker := time.NewTicker(time.Second)
 		defer staleTicker.Stop()
-		lastStaleList := make([]*monitor.Monitor, 0)
 		retryList := make([]mon, 0)
 	Loop:
 		for {
@@ -423,7 +462,7 @@ func (m *Manage) run() {
 				}
 				m.pubMonitorAlertTimes()
 			case <-staleTicker.C:
-				lastStaleList = m.doCheckStaleMonitors(lastStaleList)
+				m.doCheckStaleMonitors()
 			case event, ok := <-m.wtr.Events:
 				if !ok {
 					continue
@@ -451,8 +490,8 @@ func (m *Manage) RemoveMonitor(mon *monitor.Monitor) {
 	pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*monitor.Monitor]{Topic: topicRemoveMon, Data: mon})
 }
 
-func (m *Manage) stopMon(mon *monitor.Monitor) {
-	stopTimeoutSec := 2
+func (m *Manage) stopMon(mon *monitor.Monitor) bool {
+	stopTimeoutSec := 15
 	done := make(chan bool)
 	go func() {
 		defer close(done)
@@ -462,18 +501,25 @@ func (m *Manage) stopMon(mon *monitor.Monitor) {
 	select {
 	case <-done:
 		log.Infoln("Stopped monitor", mon.Name)
+		return true
 	case <-time.After(time.Duration(stopTimeoutSec) * time.Second):
-		log.Infoln("Timeout waiting to stop monitor", mon.Name)
+		log.Warningln("Timeout waiting to stop monitor", mon.Name)
+		return false
 	}
 }
 
-func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) {
+func (m *Manage) removeMonitor(mon *monitor.Monitor, removeWatchPaths bool) bool {
 	log.Infoln("Remove monitor", mon.Name)
-	m.stopMon(mon)
+	stopped := m.stopMon(mon)
+	if !stopped {
+		log.Errorf("Failed to stop monitor %s within timeout; avoiding replacement", mon.Name)
+		return false
+	}
 	if removeWatchPaths {
 		m.removeMonitorWatchPaths(mon)
 	}
 	delete(m.mons, mon.Name)
+	return true
 }
 func (m *Manage) removeMonitorWatchPaths(mon *monitor.Monitor) {
 	uniquePaths := make(map[string]bool)
@@ -502,7 +548,10 @@ func (m *Manage) doMonitorConfigChanges(modPath string, inList []mon) (retryList
 	aMons := m.associatedMonitors(modPath)
 	tryList := inList
 	for _, cur := range aMons {
-		m.removeMonitor(cur, false)
+		if !m.removeMonitor(cur, false) {
+			log.Errorf("Config changed monitor %s could not be stopped; will not restart yet", cur.Name)
+			continue
+		}
 		if found, conf := m.getMonitorConf(cur.Name); found {
 			tryList = append(tryList, conf)
 		}

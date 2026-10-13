@@ -2,6 +2,7 @@ package motion
 
 import (
 	"image"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -31,6 +32,11 @@ type Motion struct {
 	mergeOverlapPercent int
 	gridSize            int
 	mergeDistance       int
+	cancel              chan struct{}
+	cancelOnce          sync.Once
+	done                chan struct{}
+	started             bool
+	startMu             sync.Mutex
 }
 
 // NewMotion creates a new Motion
@@ -55,6 +61,8 @@ func NewMotion(name string) *Motion {
 		mergeOverlapPercent: 20,
 		gridSize:            16,
 		mergeDistance:       10,
+		cancel:              make(chan struct{}),
+		done:                make(chan struct{}),
 	}
 	return m
 }
@@ -123,10 +131,28 @@ func (m *Motion) SetConfig(config *Config) {
 	}
 }
 
+// Close stops the motion detection and waits for it to exit
+func (m *Motion) Close() {
+	m.cancelOnce.Do(func() {
+		close(m.cancel)
+	})
+	m.startMu.Lock()
+	started := m.started
+	m.startMu.Unlock()
+	if started {
+		<-m.done
+	}
+}
+
 // Run starts the motion detection process
 func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.ProcessedImage {
+	m.startMu.Lock()
+	m.started = true
+	m.startMu.Unlock()
+
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer close(m.done)
 		defer close(r)
 		defer func() {
 			// recover from panic if one occurred
@@ -134,6 +160,12 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				log.Errorln("Recovered from panic in motion for", m.Name)
 			}
 		}()
+		select {
+		case <-m.cancel:
+			return
+		default:
+		}
+
 		mog2 := gocv.NewBackgroundSubtractorMOG2WithParams(m.backgroundHistory, float64(m.backgroundThreshold), m.detectShadows)
 		defer mog2.Close()
 
@@ -144,10 +176,26 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			gridSize = 16
 		}
 
-		for cur := range input {
+		for {
+			var cur videosource.Image
+			var ok bool
+			select {
+			case <-m.cancel:
+				return
+			case cur, ok = <-input:
+				if !ok {
+					return
+				}
+			}
+
 			result := *videosource.NewProcessedImage(cur)
 			if m.Skip {
-				r <- result
+				select {
+				case <-m.cancel:
+					result.Cleanup()
+					return
+				case r <- result:
+				}
 				continue
 			}
 
@@ -212,7 +260,12 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 				result.Motions = make([]videosource.MotionInfo, 0)
 				scaledImg.Cleanup()
 				blurMat.Close()
-				r <- result
+				select {
+				case <-m.cancel:
+					result.Cleanup()
+					return
+				case r <- result:
+				}
 				continue
 			}
 
@@ -303,7 +356,12 @@ func (m *Motion) Run(input <-chan videosource.Image) <-chan videosource.Processe
 			scaledImg.Cleanup()
 			blurMat.Close()
 
-			r <- result
+			select {
+			case <-m.cancel:
+				result.Cleanup()
+				return
+			case r <- result:
+			}
 		}
 
 	}()

@@ -78,15 +78,21 @@ View App in Amazon Appstore https://www.amazon.com/gp/mas/dl/android?p=com.jonot
 iOS
 View App in iOS Store https://apps.apple.com/us/app/scout-full/id1658406270
 
-# Web Client Limited Features
-
-Verify setup visually
-
-  - RAM usage
-  - Frame Rate displayed
+# Web Client Features
 
 Live view of monitors
 
-  - Quick view of all monitors
+  - Customizable grid layout (Auto, 1, 2, 3, or 4 columns)
+  - Stream controls (Pause / Resume, Fullscreen, and Card Visibility)
+  - Real-time stream resolution (320p to 1080p) and JPEG quality settings
+
+Visual performance diagnostics
+
+  - Real-time RAM usage
+  - Frame rate displayed per monitor (Input & Output FPS)
+
+Authentication
+
+  - User login and two-factor passcode verification (if enabled)
 */
 package main

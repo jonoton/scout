@@ -48,12 +48,12 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		monitorName := localsMonName.(string)
 
 		width, err := strconv.Atoi(localsWidth.(string))
-		if err != nil {
-			width = 0
+		if err != nil || width <= 0 || width > 3840 {
+			width = 640
 		}
 		jpegQuality, err := strconv.Atoi(localsJpegQuality.(string))
-		if err != nil {
-			jpegQuality = 60
+		if err != nil || jpegQuality <= 0 || jpegQuality > 100 {
+			jpegQuality = 50
 		}
 
 		imagesSub := h.manage.Subscribe(monitorName, 500, 1)
@@ -73,16 +73,19 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 		go func() {
 			defer sourceCancel()
 			timeoutTick := time.NewTicker(time.Second * 4)
+			defer timeoutTick.Stop()
 			rx := 0
 			var unsubOnce sync.Once
 			unsubFunc := func() {
 				imagesSub.Unsubscribe()
 			}
+			defer unsubOnce.Do(unsubFunc)
 		SourceLoop:
 			for {
 				select {
 				case <-socketCtx.Done():
 					unsubOnce.Do(unsubFunc)
+					break SourceLoop
 				case msg, ok := <-imagesSub.Ch:
 					if !ok {
 						if msg.Data != nil {
@@ -95,6 +98,11 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 						continue
 					}
 					img := msg.Data
+					if socketCtx.Err() != nil {
+						img.Cleanup()
+						unsubOnce.Do(unsubFunc)
+						break SourceLoop
+					}
 					rx++
 					ringBuffer.Add(img)
 				case <-timeoutTick.C:
@@ -105,7 +113,6 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					rx = 0
 				}
 			}
-			timeoutTick.Stop()
 		}()
 
 		receive := func(msgType int, data []byte) {
@@ -131,17 +138,17 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 					c.Close()
 					break SendLoop
 				case img, ok := <-ringBufferChan:
-					if !writeOut(c, img, width, jpegQuality) {
+					if !ok || img == nil {
 						break SendLoop
 					}
-					if !ok {
-						img.Cleanup()
+					if !writeOut(c, img, width, jpegQuality) {
 						break SendLoop
 					}
 				}
 			}
 		}
 		cleanup := func() {
+			<-sourceCtx.Done()
 			ringBuffer.Stop()
 			for img := range ringBufferChan {
 				img.Cleanup()

@@ -44,6 +44,11 @@ type Monitor struct {
 	alert               *Alert
 	pubsub              pubsubmutex.PubSub
 	done                chan bool
+	cancel              chan struct{}
+	stopOnce            sync.Once
+	doneOnce            sync.Once
+	startedMu           sync.Mutex
+	started             bool
 }
 
 // Map is a map of names to Monitor
@@ -72,6 +77,7 @@ func NewMonitor(name string, reader *videosource.VideoReader) *Monitor {
 		pubsub:              *pubsubmutex.NewPubSub(),
 		alert:               nil,
 		done:                make(chan bool),
+		cancel:              make(chan struct{}),
 	}
 	pubsubmutex.RegisterTopic[*videosource.ProcessedImage](&m.pubsub, topicMonitorImages)
 	pubsubmutex.RegisterTopic[any](&m.pubsub, topicGetMonitorFrameStats)
@@ -141,6 +147,9 @@ func (m *Monitor) SetFace(config *face.Config) {
 
 // Start will run the processes
 func (m *Monitor) Start() {
+	m.startedMu.Lock()
+	m.started = true
+	m.startedMu.Unlock()
 	go func() {
 		motionInput := make(chan videosource.Image, m.bufferSize)
 		motionOutput := m.motion.Run(motionInput)
@@ -156,9 +165,9 @@ func (m *Monitor) Start() {
 
 		faceOutputPtrChan := make(chan *videosource.ProcessedImage, m.bufferSize)
 
-		go convertToProcessImagePtrChan(faceOutput, faceOutputPtrChan, wg)
-		go motionToTensor(motionOutput, tensorInput, wg)
-		go tensorToFace(tensorOutput, faceInput, wg)
+		go convertToProcessImagePtrChan(m.cancel, faceOutput, faceOutputPtrChan, wg)
+		go motionToTensor(m.cancel, motionOutput, tensorInput, wg)
+		go tensorToFace(m.cancel, tensorOutput, faceInput, wg)
 		var delayBuffer *delaybuffer.Buffer[*videosource.ProcessedImage]
 		if m.delayBufferDuration > 0 {
 			tickMs := 5
@@ -172,7 +181,7 @@ func (m *Monitor) Start() {
 		}
 
 		readerOutput := m.reader.Start()
-		readerToMotion(readerOutput, motionInput)
+		readerToMotion(m.cancel, readerOutput, motionInput)
 
 		m.reader.Wait()
 		wg.Wait()
@@ -182,39 +191,99 @@ func (m *Monitor) Start() {
 		m.IsStale = true
 		log.Infoln("Done monitor", m.Name)
 		m.pubsub.Close()
-		close(m.done)
+		m.doneOnce.Do(func() {
+			close(m.done)
+		})
 	}()
 }
 
-func readerToMotion(inChan <-chan videosource.Image, outChan chan videosource.Image) {
-	for img := range inChan {
-		outChan <- img
+func readerToMotion(cancel <-chan struct{}, inChan <-chan videosource.Image, outChan chan videosource.Image) {
+	defer close(outChan)
+	for {
+		select {
+		case <-cancel:
+			for img := range inChan {
+				img.Cleanup()
+			}
+			return
+		case img, ok := <-inChan:
+			if !ok {
+				return
+			}
+			select {
+			case <-cancel:
+				img.Cleanup()
+				for img := range inChan {
+					img.Cleanup()
+				}
+				return
+			case outChan <- img:
+			}
+		}
 	}
-	close(outChan)
 }
 
-func motionToTensor(inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
-	for img := range inChan {
-		outChan <- img
+func motionToTensor(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer close(outChan)
+	for {
+		select {
+		case <-cancel:
+			return
+		case img, ok := <-inChan:
+			if !ok {
+				return
+			}
+			select {
+			case <-cancel:
+				img.Cleanup()
+				return
+			case outChan <- img:
+			}
+		}
 	}
-	close(outChan)
-	wg.Done()
 }
 
-func tensorToFace(inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
-	for img := range inChan {
-		outChan <- img
+func tensorToFace(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer close(outChan)
+	for {
+		select {
+		case <-cancel:
+			return
+		case img, ok := <-inChan:
+			if !ok {
+				return
+			}
+			select {
+			case <-cancel:
+				img.Cleanup()
+				return
+			case outChan <- img:
+			}
+		}
 	}
-	close(outChan)
-	wg.Done()
 }
 
-func convertToProcessImagePtrChan(inChan <-chan videosource.ProcessedImage, outChan chan *videosource.ProcessedImage, wg *sync.WaitGroup) {
-	for img := range inChan {
-		outChan <- &img
+func convertToProcessImagePtrChan(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan *videosource.ProcessedImage, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer close(outChan)
+	for {
+		select {
+		case <-cancel:
+			return
+		case img, ok := <-inChan:
+			if !ok {
+				return
+			}
+			select {
+			case <-cancel:
+				img.Cleanup()
+				return
+			case outChan <- &img:
+			}
+		}
 	}
-	close(outChan)
-	wg.Done()
 }
 
 func (m *Monitor) processResults(inChan <-chan *videosource.ProcessedImage, wg *sync.WaitGroup) {
@@ -274,6 +343,20 @@ ProcessLoop:
 			}
 			pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*videosource.ProcessedImage]{Topic: topicMonitorImages, Data: cur.Ref()})
 			cur.Cleanup()
+		case <-m.cancel:
+			for {
+				select {
+				case cur, ok := <-inChan:
+					if !ok {
+						break ProcessLoop
+					}
+					if cur != nil {
+						cur.Cleanup()
+					}
+				default:
+					break ProcessLoop
+				}
+			}
 		case <-staleTicker.C:
 			if m.reader.GetSourceType() == videosource.IPCamSourceType && m.reader.GetConnectionStatus() == videosource.Connecting {
 				// Ignoring stale check since still connecting monitor
@@ -314,7 +397,29 @@ ProcessLoop:
 
 // Stop will stop the processes
 func (m *Monitor) Stop() {
-	m.reader.Stop()
+	m.stopOnce.Do(func() {
+		close(m.cancel)
+		if m.reader != nil {
+			m.reader.Stop()
+		}
+		if m.motion != nil {
+			m.motion.Close()
+		}
+		if m.tensor != nil {
+			m.tensor.Close()
+		}
+		if m.face != nil {
+			m.face.Close()
+		}
+		m.startedMu.Lock()
+		started := m.started
+		m.startedMu.Unlock()
+		if !started {
+			m.doneOnce.Do(func() {
+				close(m.done)
+			})
+		}
+	})
 }
 
 // Wait until done

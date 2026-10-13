@@ -3,6 +3,7 @@ package motion
 import (
 	"image"
 	"testing"
+	"time"
 )
 
 func TestMergeRectangles(t *testing.T) {
@@ -182,5 +183,40 @@ func TestSetConfigDefaults(t *testing.T) {
 	}
 	if m.mergeDistance != 0 {
 		t.Errorf("expected mergeDistance to be overridden to 0, got %d", m.mergeDistance)
+	}
+}
+
+func TestMotionCloseNotStarted(t *testing.T) {
+	m := NewMotion("test-unstarted")
+
+	done := make(chan bool)
+	go func() {
+		m.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(2 * time.Second):
+		t.Fatal("Motion.Close() timed out when not started")
+	}
+}
+
+func TestMotionCloseMultipleTimes(t *testing.T) {
+	m := NewMotion("test-multi-close")
+
+	done := make(chan bool)
+	go func() {
+		m.Close()
+		m.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(2 * time.Second):
+		t.Fatal("Motion.Close() timed out on multiple calls")
 	}
 }

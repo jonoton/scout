@@ -125,6 +125,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/status": {
+            "get": {
+                "description": "Check whether user authentication is required by the Scout server.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Check Authentication Status",
+                "responses": {
+                    "200": {
+                        "description": "Authentication status",
+                        "schema": {
+                            "$ref": "#/definitions/http.authStatusResp"
+                        }
+                    }
+                }
+            }
+        },
         "/continuous/files/{name}": {
             "get": {
                 "security": [
@@ -473,6 +493,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "http.authStatusResp": {
+            "type": "object",
+            "properties": {
+                "required": {
+                    "type": "boolean"
+                }
+            }
+        },
         "http.monInfoResp": {
             "type": "object",
             "properties": {

@@ -52,12 +52,3 @@ Scout is a standalone open source software solution for DIY video security that 
 [![iOS Scout](https://img.shields.io/badge/iOS-Scout-blue)](https://apps.apple.com/us/app/scout-full/id1658406270)
 [![Amazon Scout](https://img.shields.io/badge/Amazon-Scout-blue)](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout)
 
-
-
-<div style="text-align: center; margin-top: 60px; padding: 40px; border-top: 1px solid var(--border-color);">
-  <p>Support the project:</p>
-  <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=RLF3ZHK79YL3W&currency_code=USD&source=url">
-    <img src="https://img.shields.io/badge/Gift!-PayPal-green.svg" alt="Donate">
-  </a>
-</div>
-

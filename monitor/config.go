@@ -16,6 +16,8 @@ type Config struct {
 	MaxOutputFps               int    `yaml:"maxOutputFps,omitempty"`
 	Quality                    int    `yaml:"quality,omitempty"`
 	CaptureTimeoutMilliSeconds int    `yaml:"captureTimeoutMilliSeconds,omitempty"`
+	CaptureOptions             string `yaml:"captureOptions,omitempty"`
+	CaptureMaxFailureTolerance int    `yaml:"captureMaxFailureTolerance,omitempty"`
 	StaleTimeout               int    `yaml:"staleTimeout,omitempty"`
 	StaleMaxRetry              int    `yaml:"staleMaxRetry,omitempty"`
 	BufferSeconds              int    `yaml:"bufferSeconds,omitempty"`
@@ -31,7 +33,9 @@ type Config struct {
 
 // NewConfig creates a new Config
 func NewConfig(configPath string) *Config {
-	c := &Config{}
+	c := &Config{
+		CaptureTimeoutMilliSeconds: 3000,
+	}
 	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
@@ -41,6 +45,9 @@ func NewConfig(configPath string) *Config {
 	if err != nil {
 		log.Printf("Unmarshal: %v", err)
 		return nil
+	}
+	if c.CaptureTimeoutMilliSeconds <= 0 {
+		c.CaptureTimeoutMilliSeconds = 3000
 	}
 	return c
 }

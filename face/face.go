@@ -4,6 +4,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -26,18 +27,20 @@ func fileExists(filename string) bool {
 
 func getModelPath(filename string) string {
 	if filepath.IsAbs(filename) {
-		return filename
+		if fileExists(filename) {
+			return filename
+		}
+		return ""
 	}
-	pathData := runtime.GetRuntimeDirectory(fileLocationData) + filename
+	pathData := filepath.Join(runtime.GetRuntimeDirectory(fileLocationData), filename)
 	if fileExists(pathData) {
 		return pathData
 	}
-	pathDotData := runtime.GetRuntimeDirectory(fileLocationDotData) + filename
+	pathDotData := filepath.Join(runtime.GetRuntimeDirectory(fileLocationDotData), filename)
 	if fileExists(pathDotData) {
 		return pathDotData
 	}
-	// Fallback to old behavior if neither exists, though it will likely fail
-	return pathData
+	return ""
 }
 
 // Face detects faces within images
@@ -56,6 +59,11 @@ type Face struct {
 	minOverlapPercentage    int
 	highlightColor          string
 	highlightThickness      int
+	cancel                  chan struct{}
+	cancelOnce              sync.Once
+	done                    chan struct{}
+	started                 bool
+	startMu                 sync.Mutex
 }
 
 // NewFace creates a new Face
@@ -81,6 +89,8 @@ func NewFace(name string) *Face {
 		minOverlapPercentage:    75,
 		highlightColor:          "green",
 		highlightThickness:      3,
+		cancel:                  make(chan struct{}),
+		done:                    make(chan struct{}),
 	}
 	return f
 }
@@ -124,22 +134,51 @@ func (f *Face) SetConfig(config *Config) {
 	}
 }
 
+// Close stops the face detection and waits for it to exit
+func (f *Face) Close() {
+	f.cancelOnce.Do(func() {
+		close(f.cancel)
+	})
+	f.startMu.Lock()
+	started := f.started
+	f.startMu.Unlock()
+	if started {
+		<-f.done
+	}
+}
+
 // Run starts the face detection process
 func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.ProcessedImage {
+	f.startMu.Lock()
+	f.started = true
+	f.startMu.Unlock()
+
 	r := make(chan videosource.ProcessedImage)
 	go func() {
+		defer close(f.done)
+		defer close(r)
 		defer func() {
 			// recover from panic if one occurred
 			if recover() != nil {
 				log.Errorln("Recovered from panic in face for", f.Name)
 			}
 		}()
-		defer close(r)
+		select {
+		case <-f.cancel:
+			return
+		default:
+		}
+
 		modelFile := getModelPath(f.modelFile)
 		configFile := getModelPath(f.configFile)
+		if modelFile == "" || configFile == "" {
+			log.Errorf("Model or config file not found for %s", f.Name)
+			return
+		}
 		net := gocv.ReadNet(modelFile, configFile)
+		defer net.Close()
 		if net.Empty() {
-			log.Printf("Error reading network model from : %v %v for %s", modelFile, configFile, f.Name)
+			log.Errorf("Error reading network model from : %v %v for %s", modelFile, configFile, f.Name)
 			return
 		}
 
@@ -170,10 +209,26 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 		mean = gocv.NewScalar(104, 177, 123, 0)
 		swapRGB = false
 
-		for cur := range input {
+		for {
+			var cur videosource.ProcessedImage
+			var ok bool
+			select {
+			case <-f.cancel:
+				return
+			case cur, ok = <-input:
+				if !ok {
+					return
+				}
+			}
+
 			result := cur
 			if f.Skip || !cur.HasObject() {
-				r <- result
+				select {
+				case <-f.cancel:
+					result.Cleanup()
+					return
+				case r <- result:
+				}
 				continue
 			}
 			origWidth := cur.Original.Width()
@@ -254,9 +309,13 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 			blob.Close()
 			tmpMat.Close()
 
-			r <- result
+			select {
+			case <-f.cancel:
+				result.Cleanup()
+				return
+			case r <- result:
+			}
 		}
-		net.Close()
 	}()
 	return r
 }

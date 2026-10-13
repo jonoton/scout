@@ -1,4 +1,9 @@
 definitions:
+  http.authStatusResp:
+    properties:
+      required:
+        type: boolean
+    type: object
   http.monInfoResp:
     properties:
       Name:
@@ -90,6 +95,19 @@ paths:
       summary: List alerts
       tags:
       - Alerts
+  /auth/status:
+    get:
+      description: Check whether user authentication is required by the Scout server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication status
+          schema:
+            $ref: '#/definitions/http.authStatusResp'
+      summary: Check Authentication Status
+      tags:
+      - Auth
   /continuous/files/{name}:
     get:
       description: Retrieve a specific continuous recording file.

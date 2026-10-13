@@ -12,16 +12,12 @@
 [![iOS Scout](https://img.shields.io/badge/iOS-Scout-blue)](https://apps.apple.com/us/app/scout-full/id1658406270)
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/jonoton/scout.svg)](https://pkg.go.dev/github.com/jonoton/scout)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jonoton/scout?)](https://goreportcard.com/report/github.com/jonoton/scout)
 [![Docker pulls](https://img.shields.io/docker/pulls/jonotoninnovation/scout.svg)](https://hub.docker.com/r/jonotoninnovation/scout)
 
 Scout is a standalone open source software solution for DIY video security.
 
 [![Website Scout](https://img.shields.io/badge/Website-Scout-blue)](https://www.jonoton-innovation.com/scout)
 
-[![Gift!](https://img.shields.io/badge/Gift!-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=RLF3ZHK79YL3W&currency_code=USD&source=url)
-
-<img alt="Scout Android Slides" src="https://drive.google.com/uc?id=1bWH_bMtNfMIdkfRDy_bsV0PEl-DNh3KS" height="200px" style="margin:1px;" /> <img alt="Scout Web Browser Slides" src="https://drive.google.com/uc?id=1W_s4NQRkpzj-4FYlbcTaXXfYHe9eYysx" height="200px" style="margin:1px;" />
 
 ## Features
 * No monthly fees!
@@ -66,9 +62,13 @@ Scout is a standalone open source software solution for DIY video security.
   * Continuous recordings Fullscreen with Progressive loading
   * Share or Download continuous recordings
 
-## Web Client Limited Features
-* Verify setup visually
-  * RAM usage
-  * Frame Rate displayed
+## Web Client Features
 * Live view of monitors
-  * Quick view of all monitors
+  * Customizable grid layout (Auto, 1, 2, 3, or 4 columns)
+  * Stream controls (Pause / Resume, Fullscreen, and Card Visibility)
+  * Real-time stream resolution (320p to 1080p) and JPEG quality settings
+* Visual performance diagnostics
+  * Real-time RAM usage
+  * Frame rate displayed per monitor (Input & Output FPS)
+* Authentication
+  * User login and two-factor passcode verification (if enabled)

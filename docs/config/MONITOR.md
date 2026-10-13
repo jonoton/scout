@@ -22,7 +22,9 @@ Each monitor (camera) has its own configuration file defining its source and spe
 | `maxSourceFps` | int | No | `0` | Limit the frame rate coming from the source. |
 | `maxOutputFps` | int | No | `0` | Limit the frame rate processed by detection. |
 | `quality` | int | No | `0` | JPEG quality (1-100) for snapshots and live view. |
-| `captureTimeoutMilliSeconds` | int | No | `0` | Timeout for frame capture. |
+| `captureTimeoutMilliSeconds` | int | No | `3000` | Timeout in milliseconds for frame capture (defaults to 3000 ms if unset or <= 0). |
+| `captureOptions` | string | No | - | Pipe-delimited FFmpeg capture options passed to OpenCV (e.g. `rtsp_transport;tcp\|err_detect;explode`). |
+| `captureMaxFailureTolerance` | int | No | `10` | Number of consecutive failed frame reads before disconnecting the stream. |
 | `staleTimeout` | int | No | `20` | Seconds before camera is considered "stale". |
 | `staleMaxRetry` | int | No | `10` | Max restart attempts for a stale camera. |
 | `bufferSeconds` | int | No | `0` | Seconds of frame buffering between processing stages to smooth out spikes and prevent processing bottlenecks. |

@@ -22,4 +22,4 @@ The `manage.yaml` file is the master configuration that tells Scout where to sto
 | Field | Type | Req. | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | string | **Yes** | - | A unique name for the monitor (e.g., `front_door`). |
-| `config` | string | **Yes** | - | Path to the specific [Monitor Configuration](MONITOR) file (e.g., `cam1.yaml`) relative to `.config/`. |
+| `config` | string | **Yes** | - | Path to the specific [Monitor Configuration](MONITOR) file (e.g., `cam1.yaml` relative to `.config/`, or an absolute path). |

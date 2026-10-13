@@ -1,12 +1,46 @@
-$(document).ready(function () {
-  let token = Cookies.get("token");
-  if (token === undefined) {
-    $("#logout-button").addClass("d-none");
-    $("#login-button").removeClass("d-none");
-  } else {
-    $("#logout-button").removeClass("d-none");
-    $("#login-button").addClass("d-none");
+let authRequired = false;
+
+function checkAuthStatus() {
+  $.ajax({
+    type: "GET",
+    url: "auth/status",
+    timeout: 3000,
+    success: function (data) {
+      authRequired = data && data.required === true;
+      updateAuthButtons();
+    },
+    error: function () {
+      let token = Cookies.get("token");
+      if (token) {
+        authRequired = true;
+      }
+      updateAuthButtons();
+    }
+  });
+}
+
+function updateAuthButtons() {
+  let loginBtn = $("#login-button");
+  let logoutBtn = $("#logout-button");
+
+  if (!authRequired) {
+    loginBtn.addClass("d-none");
+    logoutBtn.addClass("d-none");
+    return;
   }
+
+  let token = Cookies.get("token");
+  if (token) {
+    loginBtn.addClass("d-none");
+    logoutBtn.removeClass("d-none");
+  } else {
+    loginBtn.removeClass("d-none");
+    logoutBtn.addClass("d-none");
+  }
+}
+
+$(document).ready(function () {
+  checkAuthStatus();
 
   $("#login_user").keypress(function (e) {
     if (e.which == 13) {
@@ -129,12 +163,11 @@ function setupPasscodeModal(t) {
 
 function acceptLogin(c) {
   Cookies.set("token", c, { secure: true, sameSite: "Strict" });
-  $("#logout-button").removeClass("d-none");
-  $("#login-button").addClass("d-none");
+  authRequired = true;
+  updateAuthButtons();
 }
 
 function logout() {
   Cookies.remove("token");
-  $("#logout-button").addClass("d-none");
-  $("#login-button").removeClass("d-none");
+  updateAuthButtons();
 }

@@ -72,6 +72,16 @@ users:
           - "555-0199"
 ```
 
+#### Checking Authentication Status
+Clients and integrations can check whether user authentication is enforced:
+* `GET /auth/status` (or `GET /login`)
+
+Example response:
+```json
+{"required": true}
+```
+If no users are configured in `http.yaml`, `"required"` will be `false`.
+
 ### Server Links (Optional)
 
 > 💡 **Note on Requirements**
