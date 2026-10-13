@@ -183,7 +183,21 @@ func (m *Monitor) Start() {
 		readerOutput := m.reader.Start()
 		readerToMotion(m.cancel, readerOutput, motionInput)
 
-		m.reader.Wait()
+		readerDone := make(chan struct{})
+		go func() {
+			m.reader.Wait()
+			close(readerDone)
+		}()
+		select {
+		case <-readerDone:
+		case <-m.cancel:
+			select {
+			case <-readerDone:
+			case <-time.After(2 * time.Second):
+				log.Warnf("Timeout waiting for video reader %s", m.Name)
+			}
+		}
+
 		wg.Wait()
 		if delayBuffer != nil {
 			delayBuffer.Close()
@@ -198,6 +212,37 @@ func (m *Monitor) Start() {
 }
 
 func readerToMotion(cancel <-chan struct{}, inChan <-chan videosource.Image, outChan chan videosource.Image) {
+	defer close(outChan)
+	for {
+		select {
+		case <-cancel:
+			go func() {
+				for img := range inChan {
+					img.Cleanup()
+				}
+			}()
+			return
+		case img, ok := <-inChan:
+			if !ok {
+				return
+			}
+			select {
+			case <-cancel:
+				img.Cleanup()
+				go func() {
+					for img := range inChan {
+						img.Cleanup()
+					}
+				}()
+				return
+			case outChan <- img:
+			}
+		}
+	}
+}
+
+func motionToTensor(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
+	defer wg.Done()
 	defer close(outChan)
 	for {
 		select {
@@ -223,33 +268,15 @@ func readerToMotion(cancel <-chan struct{}, inChan <-chan videosource.Image, out
 	}
 }
 
-func motionToTensor(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
-	defer wg.Done()
-	defer close(outChan)
-	for {
-		select {
-		case <-cancel:
-			return
-		case img, ok := <-inChan:
-			if !ok {
-				return
-			}
-			select {
-			case <-cancel:
-				img.Cleanup()
-				return
-			case outChan <- img:
-			}
-		}
-	}
-}
-
 func tensorToFace(cancel <-chan struct{}, inChan <-chan videosource.ProcessedImage, outChan chan videosource.ProcessedImage, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer close(outChan)
 	for {
 		select {
 		case <-cancel:
+			for img := range inChan {
+				img.Cleanup()
+			}
 			return
 		case img, ok := <-inChan:
 			if !ok {
@@ -258,6 +285,9 @@ func tensorToFace(cancel <-chan struct{}, inChan <-chan videosource.ProcessedIma
 			select {
 			case <-cancel:
 				img.Cleanup()
+				for img := range inChan {
+					img.Cleanup()
+				}
 				return
 			case outChan <- img:
 			}
@@ -271,6 +301,9 @@ func convertToProcessImagePtrChan(cancel <-chan struct{}, inChan <-chan videosou
 	for {
 		select {
 		case <-cancel:
+			for img := range inChan {
+				img.Cleanup()
+			}
 			return
 		case img, ok := <-inChan:
 			if !ok {
@@ -279,6 +312,9 @@ func convertToProcessImagePtrChan(cancel <-chan struct{}, inChan <-chan videosou
 			select {
 			case <-cancel:
 				img.Cleanup()
+				for img := range inChan {
+					img.Cleanup()
+				}
 				return
 			case outChan <- &img:
 			}
@@ -299,25 +335,37 @@ func (m *Monitor) processResults(inChan <-chan *videosource.ProcessedImage, wg *
 	getMonFrameStatsSub, _ := pubsubmutex.Subscribe[any](&m.pubsub, topicGetMonitorFrameStats, m.pubsub.GetUniqueSubscriberID(), 10)
 	sourceStatsSub := m.reader.GetSourceStatsSub()
 	outputStatsSub := m.reader.GetOutputStatsSub()
+	getMonFrameStatsCh := getMonFrameStatsSub.Ch
+	sourceStatsCh := sourceStatsSub.Ch
+	outputStatsCh := outputStatsSub.Ch
 	staleTicker := time.NewTicker(time.Second)
 	staleSec := 0
 	lastTotal := 0
 ProcessLoop:
 	for {
 		select {
-		case _, ok := <-getMonFrameStatsSub.Ch:
+		case _, ok := <-getMonFrameStatsCh:
 			if !ok {
+				getMonFrameStatsCh = nil
 				continue
 			}
 			m.pubMonitorFrameStats()
-		case msg, ok := <-sourceStatsSub.Ch:
-			if !ok || msg.Data == nil {
+		case msg, ok := <-sourceStatsCh:
+			if !ok {
+				sourceStatsCh = nil
+				continue
+			}
+			if msg.Data == nil {
 				continue
 			}
 			cur := msg.Data
 			m.frameStatsCombo.In = *cur
-		case msg, ok := <-outputStatsSub.Ch:
-			if !ok || msg.Data == nil {
+		case msg, ok := <-outputStatsCh:
+			if !ok {
+				outputStatsCh = nil
+				continue
+			}
+			if msg.Data == nil {
 				continue
 			}
 			cur := msg.Data
@@ -326,6 +374,13 @@ ProcessLoop:
 			if !ok {
 				if cur != nil {
 					cur.Cleanup()
+				}
+				inChan = nil
+				if m.reader != nil && (m.reader.GetSourceType() == videosource.IPCamSourceType || m.frameStatsCombo.In.AcceptedTotal == 0) {
+					if staleSec >= m.staleTimeout {
+						m.IsStale = true
+					}
+					continue
 				}
 				break ProcessLoop
 			}
@@ -344,21 +399,16 @@ ProcessLoop:
 			pubsubmutex.Publish(&m.pubsub, pubsubmutex.Message[*videosource.ProcessedImage]{Topic: topicMonitorImages, Data: cur.Ref()})
 			cur.Cleanup()
 		case <-m.cancel:
-			for {
-				select {
-				case cur, ok := <-inChan:
-					if !ok {
-						break ProcessLoop
-					}
+			if inChan != nil {
+				for cur := range inChan {
 					if cur != nil {
 						cur.Cleanup()
 					}
-				default:
-					break ProcessLoop
 				}
 			}
+			break ProcessLoop
 		case <-staleTicker.C:
-			if m.reader.GetSourceType() == videosource.IPCamSourceType && m.reader.GetConnectionStatus() == videosource.Connecting {
+			if m.reader != nil && m.reader.GetSourceType() == videosource.IPCamSourceType && m.reader.GetConnectionStatus() == videosource.Connecting {
 				// Ignoring stale check since still connecting monitor
 				continue
 			}
@@ -372,6 +422,9 @@ ProcessLoop:
 			}
 			lastTotal = curTotal
 			if staleSec >= m.staleTimeout {
+				if inChan != nil && m.reader != nil {
+					m.reader.Stop()
+				}
 				m.IsStale = true
 			}
 		}
@@ -382,14 +435,20 @@ ProcessLoop:
 	outputStatsSub.Unsubscribe()
 	if m.alert != nil {
 		m.alert.Close()
-		m.alert.Wait()
 	}
 	if m.record != nil {
 		m.record.Close()
-		m.record.Wait()
 	}
 	if m.continuous != nil {
 		m.continuous.Close()
+	}
+	if m.alert != nil {
+		m.alert.Wait()
+	}
+	if m.record != nil {
+		m.record.Wait()
+	}
+	if m.continuous != nil {
 		m.continuous.Wait()
 	}
 	wg.Done()

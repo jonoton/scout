@@ -56,7 +56,7 @@ func (h *Http) liveMonitor() func(*fiber.Ctx) error {
 			jpegQuality = 50
 		}
 
-		imagesSub := h.manage.Subscribe(monitorName, 500, 1)
+		imagesSub := h.manage.Subscribe(monitorName, 2000, 1)
 		if imagesSub == nil {
 			log.Errorln("Failed to subscribe to monitor", monitorName)
 			return

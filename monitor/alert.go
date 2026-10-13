@@ -87,8 +87,9 @@ func (a *Alert) Start() {
 		for {
 			select {
 			case <-a.cancel:
-				a.prune()
-				a.doAlerts()
+				if a.doAlerts() {
+					a.prune()
+				}
 				break Loop
 			case <-a.hourTick.C:
 				a.hourSent = 0
@@ -145,8 +146,11 @@ func (a *Alert) prune() {
 	a.deleteWhenFull()
 }
 
-func (a *Alert) doAlerts() {
+func (a *Alert) doAlerts() bool {
 	poppedList := a.ptrSliceToSlice(a.ringBuffer.GetAll())
+	if len(poppedList) == 0 {
+		return false
+	}
 	sort.Sort(videosource.ProcessedImageByCreatedTime(poppedList))
 	nowTime := time.Now()
 	nowTimeStr := getFormattedKitchenTimestamp(nowTime)
@@ -154,6 +158,7 @@ func (a *Alert) doAlerts() {
 	a.setLastAlerts(poppedList)
 	imageInfos := a.saveAlerts(poppedList)
 	a.sendAlerts(imageInfos, nowTimeStr)
+	return true
 }
 
 func (a *Alert) deleteOldAlerts() {

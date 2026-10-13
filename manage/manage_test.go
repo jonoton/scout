@@ -87,7 +87,10 @@ staleTimeout: 10
 	if !ok {
 		t.Fatalf("Expected test-cam to be restarted")
 	}
-	defer newMon.Stop()
+	defer func() {
+		newMon.Stop()
+		newMon.Wait()
+	}()
 
 	if newMon.StaleRetry != 2 {
 		t.Errorf("Expected StaleRetry to be decremented from 3 to 2, got %d", newMon.StaleRetry)

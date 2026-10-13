@@ -192,6 +192,19 @@ func (t *Tensor) Run(input <-chan videosource.ProcessedImage) <-chan videosource
 		defer close(t.done)
 		defer close(r)
 		defer func() {
+			for {
+				select {
+				case cur, ok := <-input:
+					if !ok {
+						return
+					}
+					cur.Cleanup()
+				default:
+					return
+				}
+			}
+		}()
+		defer func() {
 			// recover from panic if one occurred
 			if recover() != nil {
 				log.Errorln("Recovered from panic in tensor for", t.Name)

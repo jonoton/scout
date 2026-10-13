@@ -75,6 +75,7 @@ func (r *Record) Start() {
 		r.writer.Start()
 		imageSub, _ := pubsubmutex.Subscribe[*videosource.ProcessedImage](&r.pubsub,
 			topicRecordImages, r.pubsub.GetUniqueSubscriberID(), r.bufferSize)
+		processed := false
 	Loop:
 		for {
 			select {
@@ -92,6 +93,7 @@ func (r *Record) Start() {
 					continue
 				}
 				img := msg.Data
+				processed = true
 				r.process(*img)
 			case <-r.cancel:
 				break Loop
@@ -99,7 +101,9 @@ func (r *Record) Start() {
 		}
 		imageSub.Unsubscribe()
 		r.hourTick.Stop()
-		r.prune()
+		if processed {
+			r.prune()
+		}
 		r.writer.Close()
 		r.writer.Wait()
 		r.pubsub.Close()

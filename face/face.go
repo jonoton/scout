@@ -158,6 +158,19 @@ func (f *Face) Run(input <-chan videosource.ProcessedImage) <-chan videosource.P
 		defer close(f.done)
 		defer close(r)
 		defer func() {
+			for {
+				select {
+				case cur, ok := <-input:
+					if !ok {
+						return
+					}
+					cur.Cleanup()
+				default:
+					return
+				}
+			}
+		}()
+		defer func() {
 			// recover from panic if one occurred
 			if recover() != nil {
 				log.Errorln("Recovered from panic in face for", f.Name)
