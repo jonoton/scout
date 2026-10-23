@@ -30,7 +30,7 @@ Building from source allows you to run the latest development version and custom
 3.  **Build GoCV**:
     Scout depends on GoCV. You may need to install the GoCV dependencies on your system:
     ```bash
-    cd $(go env GOPATH)/pkg/mod/gocv.io/x/gocv@v0.37.0
+    cd $(go env GOPATH)/pkg/mod/gocv.io/x/gocv@v0.43.0
     sudo make install # or install_cuda for GPU support
     cd -
     ```

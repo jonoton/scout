@@ -97,7 +97,7 @@ func TestAuthStatusEndpoints(t *testing.T) {
 		hNoAuth.secTick.Stop()
 	}()
 
-	reqAuthStatus, _ := http.NewRequest("GET", "/auth/status", nil)
+	reqAuthStatus, _ := http.NewRequest("GET", "http://localhost/auth/status", nil)
 	resp, err := hNoAuth.fiber.Test(reqAuthStatus)
 	if err != nil {
 		t.Fatalf("Failed /auth/status test request: %v", err)
@@ -116,7 +116,7 @@ func TestAuthStatusEndpoints(t *testing.T) {
 	}
 
 	// Test GET /login endpoint
-	reqLogin, _ := http.NewRequest("GET", "/login", nil)
+	reqLogin, _ := http.NewRequest("GET", "http://localhost/login", nil)
 	respLogin, err := hNoAuth.fiber.Test(reqLogin)
 	if err != nil {
 		t.Fatalf("Failed GET /login test request: %v", err)

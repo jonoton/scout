@@ -5,14 +5,14 @@
 #   docker run -it --rm -p 8080:8080 -v HOST_CONFIG_PATH:/scout/.config -v HOST_LOGS_PATH:/scout/.logs -v HOST_DATA_PATH:/scout/data scout:latest
 
 # golang amd64
-FROM ubuntu:20.04 AS golang-amd64-stage
+FROM ubuntu:24.04 AS golang-amd64-stage
 LABEL maintainer="jonotoninnovation"
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV TZ="America/New_York"
 RUN apt update && apt install -y sudo git wget curl build-essential cmake gcc g++ pkg-config unzip tzdata
 RUN apt purge -y golang
 RUN mkdir /Downloads
-RUN wget -c https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -O - | tar -xz -C /Downloads
+RUN wget -c https://go.dev/dl/go1.27.3.linux-amd64.tar.gz -O - | tar -xz -C /Downloads
 ENV GOROOT="/Downloads/go"
 ENV PATH=$PATH:$GOROOT/bin
 RUN which go && go version
@@ -22,14 +22,14 @@ RUN mkdir -p "$GOPATH/src"
 WORKDIR /go/src
 
 # golang arm64
-FROM ubuntu:20.04 AS golang-arm64-stage
+FROM ubuntu:24.04 AS golang-arm64-stage
 LABEL maintainer="jonotoninnovation"
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV TZ="America/New_York"
 RUN apt update && apt install -y sudo git wget curl build-essential cmake gcc g++ pkg-config unzip tzdata
 RUN apt purge -y golang
 RUN mkdir /Downloads
-RUN wget -c https://go.dev/dl/go1.23.5.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
+RUN wget -c https://go.dev/dl/go1.27.3.linux-arm64.tar.gz -O - | tar -xz -C /Downloads
 ENV GOROOT="/Downloads/go"
 ENV PATH=$PATH:$GOROOT/bin
 RUN which go && go version
@@ -44,10 +44,10 @@ RUN export WANT_GENERAL_DEBS="sudo git wget curl build-essential cmake gcc g++ p
     export WANT_OPENCV_DEBS="unzip wget build-essential cmake curl git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-dev libharfbuzz-dev libfreetype-dev" &&\
     export WANT_OPENCV_DEBS_EXTRA="libavutil-dev libv4l-dev libswresample-dev libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev libxvidcore-dev libx264-dev libgtk-3-dev libopenexr-dev libwebp-dev libatlas-base-dev gfortran" && \
     apt update && apt install -y $WANT_GENERAL_DEBS $WANT_OPENCV_DEBS $WANT_OPENCV_DEBS_EXTRA
-RUN mkdir -p $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0
-RUN git clone --depth 1 --branch v0.37.0 https://github.com/hybridgroup/gocv.git $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && make install
-RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.37.0 && go install -v .
+RUN mkdir -p $GOPATH/pkg/mod/gocv.io/x/gocv@v0.43.0
+RUN git clone --depth 1 --branch v0.43.0 https://github.com/hybridgroup/gocv.git $GOPATH/pkg/mod/gocv.io/x/gocv@v0.43.0
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.43.0 && make install
+RUN cd $GOPATH/pkg/mod/gocv.io/x/gocv@v0.43.0 && go install -v .
 
 # scout builder
 FROM --platform=$BUILDPLATFORM gocv-stage AS scout-builder-stage
@@ -59,7 +59,7 @@ COPY . .
 RUN go get -d -v ./... && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install -v -ldflags "-X main.Version=${VERSION_ARG}" ./...
 
 # scout
-FROM ubuntu:20.04 AS scout
+FROM ubuntu:24.04 AS scout
 LABEL maintainer="jonotoninnovation"
 ENV DEBIAN_FRONTEND="noninteractive"
 ENV TZ="America/New_York"
@@ -67,27 +67,27 @@ ENV TZ="America/New_York"
 RUN apt update && apt install -y \
     tzdata \
     ca-certificates \
-    libgtk2.0-0 \
-    libavcodec58 \
-    libavformat58 \
-    libswscale5 \
-    libtbb2 \
+    libgtk2.0-0t64 \
+    libavcodec60 \
+    libavformat60 \
+    libswscale7 \
+    libtbb12 \
     libjpeg8 \
-    libpng16-16 \
-    libtiff5 \
-    libdc1394-22 \
+    libpng16-16t64 \
+    libtiff6 \
+    libdc1394-25 \
     libharfbuzz0b \
     libfreetype6 \
-    libavutil56 \
-    libv4l-0 \
-    libswresample3 \
+    libavutil58 \
+    libv4l-0t64 \
+    libswresample4 \
     libgstreamer-plugins-base1.0-0 \
     libgstreamer1.0-0 \
     libxvidcore4 \
-    libx264-155 \
-    libgtk-3-0 \
-    libopenexr24 \
-    libwebp6 \
+    libx264-164 \
+    libgtk-3-0t64 \
+    libopenexr-3-1-30 \
+    libwebp7 \
     libatlas3-base \
     && rm -rf /var/lib/apt/lists/*
 
