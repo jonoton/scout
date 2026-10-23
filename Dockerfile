@@ -88,6 +88,8 @@ RUN apt update && apt install -y \
     libgtk-3-0t64 \
     libopenexr-3-1-30 \
     libwebp7 \
+    libwebpdemux2 \
+    libwebpmux3 \
     libatlas3-base \
     && rm -rf /var/lib/apt/lists/*
 
