@@ -1,31 +1,66 @@
 ---
 layout: default
 title: Usage
-nav_order: 7
+nav_order: 4
+description: "Using the web client, the mobile apps, and Scout's command-line options."
 ---
 
 # Usage
+{: .no_toc }
 
-## Command Line Options
+1. TOC
+{:toc}
 
-- `--version`: Show version
-- `--secure-http-passwords`: Secure HTTP passwords in `http.yaml`
+## Web client
 
-## General Usage
+Open `http://<server-ip>:8080` in any browser. If [logins]({{ site.baseurl }}{% link config/HTTP.md %}#logins) are set up, sign in first (and enter the passcode if two-factor is on).
 
-Scout is designed to run as a background service. Once configured and running, you can interact with it via the Web Client or Mobile Clients.
+**Status bar:** server RAM use, connection status, and the **Grid** menu (Auto, or 1 to 4 columns) and the **Cameras** menu to show or hide cameras.
 
-### Web Client
-Open your browser to the server's address (e.g., `http://localhost:8080`).
+**Each camera card:**
 
-#### Dashboard Controls:
-- **Grid Layout**: Choose between Auto, 1, 2, 3, or 4 column grids from the layout dropdown in the navigation bar.
-- **Stream Settings**: Click the settings icon on any camera feed to adjust its resolution (320p up to 1080p FHD) and JPEG quality (25% to 90%), or apply the settings to all cameras.
-- **Playback Controls**:
-  - **Pause / Resume**: Pause individual camera live streams to conserve bandwidth.
-  - **Fullscreen**: View any individual camera stream in full screen.
-  - **Visibility**: Toggle camera card visibility to focus on specific feeds.
+- Live view, with input and output frame rates.
+- **Pause / Resume** to stop streaming a camera and save bandwidth.
+- **Fullscreen** to view one camera.
+- **Settings** to pick the stream resolution (320p, 480p, 640p, 960p, 720p HD, or 1080p FHD; default 640p) and JPEG quality (25%, 50%, 75%, or 90%; default 50%). **Apply to All Cameras** copies the choice to every camera.
 
-### Mobile Clients
+Layout, hidden cameras, and stream settings are saved in your browser.
 
-Use the **[Android](mobile/ANDROID.md)** or **[iOS](mobile/IOS.md)** apps to monitor your cameras on the go. For setup instructions, see the respective guides.
+The web client is for live viewing. Recordings and alerts are browsed in the mobile apps, or directly on disk (see below).
+
+## Recordings on disk
+
+Everything Scout saves is a plain file in the `data` folder from [`manage.yaml`]({{ site.baseurl }}{% link config/MANAGE.md %}), so you can play, copy, or back it up with any tool (VLC, a file manager, `rsync`):
+
+| Folder | Contents |
+| :--- | :--- |
+| `data/recordings/` | Event clips (`.mp4` by default) |
+| `data/continuous/` | Continuous recording segments |
+| `data/alerts/` | Alert images (`.jpg`) |
+
+File names start with the camera name. Each clip is saved as a full-size *Full* file and a smaller *Portable* copy, unless `portableOnly` is set. With the Docker setup, the folder is `~/scout/data` on the host.
+
+## Mobile apps
+
+The apps connect to the same server as the web client and add alerts, recordings, continuous recordings, and push notifications (Scout Lite is live view only). See [Installation]({{ site.baseurl }}{% link INSTALL.md %}#mobile-apps) for download links and setup.
+
+## Command-line options
+
+Run Scout with no options to start the server. Extra options run a single task and exit:
+
+| Option | What it does |
+| :--- | :--- |
+| `--secure-http-passwords` | Replaces plain-text passwords in `http.yaml` with hashes. See [Hashing passwords]({{ site.baseurl }}{% link config/HTTP.md %}#hashing-passwords). |
+| `--version` | Prints the version. Official builds set it; builds from source print nothing unless built with a version (see [Development]({{ site.baseurl }}{% link DEVELOPMENT.md %})). |
+
+Any other option prints the usage summary.
+
+## Logs
+
+| Log | Where |
+| :--- | :--- |
+| Server log | Standard output (`docker logs scout`). |
+| Web requests | `.logs/access` |
+| Sign-in attempts | `.logs/logins` |
+
+The `access` and `logins` logs are only written when [logins]({{ site.baseurl }}{% link config/HTTP.md %}#logins) are set up. They rotate at 1 MB and keep 5 old files for up to 28 days.

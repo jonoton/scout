@@ -1,0 +1,675 @@
+// Scout docs theme: "Sovereign Vault" + web UI banner blue + hawk gold.
+// Colors come from _sass/color_schemes/scout.scss.
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+.site-title,
+.hero-title {
+  font-family: "Plus Jakarta Sans", $body-font-family;
+  letter-spacing: -0.01em;
+}
+
+.main-content {
+  p,
+  li,
+  td {
+    line-height: 1.65;
+  }
+
+  h1 {
+    font-weight: 800;
+  }
+
+  h2 {
+    font-weight: 700;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid $scout-border;
+  }
+
+  h3 {
+    font-weight: 700;
+  }
+
+  a:not(.btn) {
+    text-decoration: none;
+    background-image: none;
+    border-bottom: 1px solid rgba($scout-blue, 0.35);
+
+    &:hover {
+      border-bottom-color: $scout-blue;
+    }
+  }
+
+  // Heading anchor links should not be underlined.
+  .anchor-heading {
+    border-bottom: 0 !important;
+
+    @media (max-width: 49.99rem) {
+      right: -0.75rem;
+      width: 1.25rem;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Banner bar: matches the web UI header (blue bar, darker bottom border)
+// ---------------------------------------------------------------------------
+.site-header {
+  background-color: $scout-blue;
+  border-bottom: 2px solid $scout-blue-dark;
+}
+
+.site-title {
+  color: #fff !important;
+  font-weight: 800;
+  font-size: 1.25rem !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  padding-left: $sp-4;
+  gap: 0.6rem;
+
+  &:hover {
+    background-image: none;
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+
+  // Logo + wordmark. The theme renders only the logo div when site.logo is
+  // set, so the wordmark is added here.
+  .site-logo {
+    flex: 0 0 2.5rem;
+    height: 2.5rem;
+    width: 2.5rem;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+
+  &::after {
+    content: "Scout";
+  }
+}
+
+.site-header .site-button {
+  color: #fff;
+
+  .icon {
+    color: #fff;
+    fill: #fff;
+  }
+
+  &,
+  &:hover,
+  &:focus,
+  &[aria-expanded="true"] {
+    background-image: none;
+    background-color: transparent;
+  }
+}
+
+@media (min-width: 50rem) {
+  // Sticky header: stays at the top while the page scrolls. The sidebar (with
+  // the logo) is already fixed, so together they read as one bar.
+  .main-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: $scout-blue !important;
+    border-bottom: 2px solid $scout-blue-dark;
+  }
+
+  // Keep headings clear of the sticky header when jumping to an anchor.
+  .main-content {
+    h1,
+    h2,
+    h3,
+    h4 {
+      scroll-margin-top: calc(#{$header-height} + #{$sp-4});
+    }
+  }
+}
+
+// Search sits on the blue bar as a dark field so its text stays readable.
+.search-input-wrap {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+@media (min-width: 50rem) {
+  .main-header .search {
+    display: flex;
+    align-items: center;
+    padding-left: $sp-4;
+  }
+
+  // line the results dropdown up with the search field
+  .main-header .search-results {
+    left: $sp-4;
+    width: calc(100% - #{$sp-4});
+    max-width: 32rem;
+  }
+
+  .main-header .search-input-wrap {
+    width: 100%;
+    max-width: 32rem;
+    height: 2.5rem !important;
+  }
+
+  .main-header .search-input {
+    background-color: rgba(6, 18, 34, 0.55);
+    color: #fff;
+    border-radius: 8px;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    &:focus {
+      background-color: rgba(6, 18, 34, 0.75);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .main-header .search-label .search-icon {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.search-results {
+  background-color: $scout-surface;
+  border: 1px solid $scout-border;
+  border-radius: 10px;
+}
+
+.search-result-title,
+.search-result-doc-title {
+  color: $scout-heading;
+}
+
+.search-result-highlight {
+  font-weight: 700;
+  color: $scout-blue;
+}
+
+// Phone menu drawer: search and GitHub sit on the dark page, so give them a
+// visible surface and border.
+@media (max-width: 49.99rem) {
+  .main-header.nav-open {
+    background-color: $scout-surface;
+    border-bottom: 1px solid $scout-border;
+  }
+
+  .main-header .search-input {
+    background-color: $scout-bg;
+    border: 1px solid $scout-border;
+    border-radius: 8px;
+  }
+
+  .main-header .search-input-wrap {
+    margin: $sp-2 $sp-3;
+    width: auto;
+  }
+
+  .main-header .search-label .search-icon {
+    color: $scout-muted;
+  }
+
+  // a little more room for code inside numbered steps
+  ol.steps div.highlighter-rouge > div.highlight {
+    padding-left: $sp-2;
+    padding-right: $sp-2;
+  }
+
+  .aux-nav .aux-nav-list-item .site-button {
+    background-color: $scout-surface-2 !important;
+    border: 1px solid $scout-border;
+    margin-left: $sp-3 !important;
+  }
+}
+
+// Aux links ("GitHub") as a dark pill on the blue bar, centered vertically.
+.aux-nav .aux-nav-list-item {
+  display: flex;
+  align-items: center;
+}
+
+.aux-nav .aux-nav-list-item .site-button {
+  color: #fff;
+  font-weight: 600;
+  background-color: rgba(6, 18, 34, 0.55);
+  border-radius: 8px;
+  margin: 0 0.75rem 0 0;
+  height: auto;
+  padding: 0.4rem 0.9rem;
+
+  &:hover {
+    background-color: rgba(6, 18, 34, 0.75);
+    background-image: none;
+  }
+}
+
+// Extend the bar to the window edges on wide screens, like the web UI header.
+@media (min-width: 50rem) {
+  body,
+  .side-bar {
+    background-image: linear-gradient(
+      to bottom,
+      $scout-blue 0,
+      $scout-blue calc(#{$header-height} - 2px),
+      $scout-blue-dark calc(#{$header-height} - 2px),
+      $scout-blue-dark $header-height,
+      transparent $header-height
+    );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar navigation
+// ---------------------------------------------------------------------------
+.side-bar {
+  border-right: 1px solid $scout-border;
+}
+
+@include mq(md) {
+  // The sidebar's 1px border made its children 1px too wide, pushing the menu
+  // 1px past the left edge; fit them inside, and inset the items so the
+  // active marker and rounded corners aren't cut off.
+  .side-bar > .site-header,
+  .side-bar > .site-nav,
+  .side-bar > .site-footer {
+    width: 100%;
+  }
+
+  .site-nav > .nav-list {
+    padding: 0 $sp-2;
+  }
+}
+
+// The theme centers the page on wide screens by stretching the sidebar to fill
+// the left margin, so it keeps widening with the window. Keep it a fixed width
+// and start the content right beside it instead.
+@include mq(lg) {
+  .side-bar {
+    width: $nav-width;
+  }
+
+  .side-bar + .main {
+    margin-left: $nav-width;
+    max-width: none;
+  }
+
+  // Header spans the whole width (GitHub docks at the right edge); the page
+  // content gets a comfortable reading width with room for wide tables.
+  .main-content-wrap {
+    max-width: 62rem;
+    margin-left: 0;
+  }
+}
+
+.nav-list .nav-list-item .nav-list-link {
+  color: $scout-muted;
+  border-radius: 6px;
+
+  &:hover {
+    color: $scout-heading;
+    background-image: none;
+    background-color: $scout-surface;
+  }
+
+  &.active {
+    color: #fff;
+    font-weight: 600;
+    background-image: none;
+    background-color: rgba($scout-blue, 0.12);
+    box-shadow: inset 2px 0 0 $scout-gold;
+  }
+}
+
+.nav-list .nav-list-item .nav-list-expander {
+  color: $scout-muted;
+
+  &:hover {
+    background-image: none;
+    background-color: $scout-surface;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Code
+// ---------------------------------------------------------------------------
+:not(pre, figure) > code {
+  font-size: 0.85em;
+  padding: 0.05em 0.3em;
+  // keep the rounded outline on every line when inline code wraps
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  border: 1px solid $scout-border;
+  border-radius: 5px;
+  background-color: $scout-surface;
+}
+
+div.highlighter-rouge,
+div.listingblock > div.content,
+figure.highlight {
+  border: 1px solid $scout-border;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.highlight,
+pre.highlight {
+  background-color: $code-background-color;
+}
+
+// The theme draws its own light border (with smaller corners) on the inner
+// .highlight box; keep only the outer rounded border so corners line up.
+div.highlighter-rouge > div.highlight,
+div.listingblock > div.content > pre,
+figure.highlight > pre,
+figure.highlight > :not(pre) > code {
+  border: 0;
+  border-radius: 0;
+}
+
+pre.highlight code,
+.highlight pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+// Copy button (the theme fills the icon directly, not via currentColor)
+div.highlighter-rouge > button svg {
+  fill: $scout-muted;
+}
+
+// ---------------------------------------------------------------------------
+// Tables
+// ---------------------------------------------------------------------------
+.table-wrapper {
+  border: 1px solid $scout-border;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+th,
+td {
+  border-bottom: 1px solid $scout-border;
+  border-left: 0;
+  vertical-align: top;
+}
+
+@media (max-width: 49.99rem) {
+  th,
+  td {
+    min-width: 4.5rem;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  // the last column is usually the description: keep it readable
+  th:last-child,
+  td:last-child {
+    min-width: 11rem;
+  }
+}
+
+th {
+  color: $scout-muted;
+  font-weight: 600;
+  background-color: $scout-surface;
+}
+
+td:first-child code {
+  color: $scout-blue;
+  white-space: nowrap;
+
+  // On phones let multi-word values (log messages) wrap at spaces; single
+  // field names stay whole.
+  @media (max-width: 49.99rem) {
+    white-space: normal;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Callouts: {: .note }, {: .tip }, {: .important }, {: .warning }
+// ---------------------------------------------------------------------------
+@mixin scout-callout($color, $label) {
+  border: 1px solid rgba($color, 0.35) !important;
+  border-left: 3px solid $color !important;
+  border-radius: 8px !important;
+  background-color: rgba($color, 0.08);
+  box-shadow: none !important;
+  color: $scout-text;
+
+  &::before {
+    content: $label;
+    color: $color !important;
+    letter-spacing: 0.06em;
+  }
+}
+
+p.note,
+blockquote.note {
+  @include scout-callout($scout-blue, "Note");
+}
+
+p.tip,
+blockquote.tip {
+  @include scout-callout($scout-gold-light, "Tip");
+}
+
+p.important,
+blockquote.important {
+  @include scout-callout(#a78bfa, "Important");
+}
+
+p.warning,
+blockquote.warning {
+  @include scout-callout(#f59e0b, "Warning");
+}
+
+// ---------------------------------------------------------------------------
+// Buttons
+// ---------------------------------------------------------------------------
+.btn {
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.btn-primary {
+  background-image: none;
+  background-color: $scout-blue-deep;
+  color: #fff !important;
+
+  &:hover,
+  &:focus {
+    background-image: none;
+    background-color: darken($scout-blue-deep, 5%);
+  }
+}
+
+.btn-ghost {
+  background-image: none;
+  background-color: rgba(255, 255, 255, 0.07);
+  color: $scout-heading !important;
+  box-shadow: inset 0 0 0 1px $scout-border;
+
+  &:hover,
+  &:focus {
+    background-image: none;
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Home page components
+// ---------------------------------------------------------------------------
+.hero {
+  position: relative;
+  overflow: hidden;
+  margin: $sp-2 0 $sp-8;
+  padding: $sp-8 $sp-6;
+  border: 1px solid $scout-border;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at top left, rgba($scout-blue, 0.22), transparent 60%),
+    $scout-surface;
+
+  @include mq(md) {
+    padding: $sp-8 $sp-8;
+  }
+
+  .hero-eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: $scout-blue;
+  }
+
+  .hero-title {
+    margin: $sp-2 0 $sp-2;
+    font-size: 2.75rem;
+    line-height: 1.05;
+    font-weight: 800;
+    color: $scout-heading;
+    border: 0;
+
+    @include mq(md) {
+      font-size: 3.5rem;
+    }
+  }
+
+  .hero-tagline {
+    max-width: 28rem;
+
+    @include mq(md) {
+      // leave room for the hawk on the right
+      max-width: Min(28rem, calc(100% - 12.5rem));
+    }
+
+    margin: 0 0 $sp-6;
+    font-size: 1.125rem;
+    color: $scout-text;
+  }
+
+  .hero-buttons .btn {
+    margin: 0 $sp-2 0 0;
+  }
+
+  .hero-hawk {
+    display: none;
+    position: absolute;
+    right: $sp-6;
+    top: 50%;
+    width: 11rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+
+    @include mq(md) {
+      display: block;
+    }
+  }
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: $sp-4;
+  margin: $sp-4 0 $sp-8;
+}
+
+.feature-card {
+  padding: $sp-5;
+  border: 1px solid $scout-border;
+  border-radius: 12px;
+  background-color: $scout-surface;
+
+  .feature-title {
+    margin: $sp-1 0 0;
+    font-family: "Plus Jakarta Sans", $body-font-family;
+    font-size: 1rem;
+    font-weight: 700;
+    color: $scout-heading;
+  }
+
+  p:not(.feature-title) {
+    margin: $sp-2 0 0;
+    color: $scout-muted;
+    font-size: 0.9rem;
+  }
+}
+
+.feature-kicker {
+  display: inline-block;
+  font-family: $mono-font-family;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $scout-gold-light;
+}
+
+// "Cloud NVR vs Scout" comparison: highlight Scout's column.
+.compare td:last-child {
+  color: $scout-blue;
+  font-weight: 600;
+}
+
+.compare td:nth-child(2) {
+  color: $scout-muted;
+}
+
+// Numbered steps (quick start)
+.main-content ol.steps {
+  counter-reset: step;
+  list-style: none;
+  padding-left: 0;
+
+  > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2rem;
+
+    @include mq(md) {
+      padding-left: 2.5rem;
+    }
+    margin-bottom: $sp-4;
+
+    &::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0.05rem;
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 50%;
+      background-color: rgba($scout-blue, 0.14);
+      border: 1px solid rgba($scout-blue, 0.45);
+      color: $scout-blue;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.5rem;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Footer
+// ---------------------------------------------------------------------------
+.site-footer {
+  color: $scout-muted;
+}

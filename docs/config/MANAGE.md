@@ -1,25 +1,39 @@
 ---
 layout: default
-title: Manage Config
+title: Manage
 parent: Configuration
 nav_order: 1
+description: "manage.yaml: the data folder and the list of cameras."
 ---
 
-# Manage Configuration (`manage.yaml`)
+# Manage (`manage.yaml`)
 
-> ❗ **Important**
-> `manage.yaml` is a **required** filename and must exist in the `.config` directory.
+`manage.yaml` is the only file Scout requires. It sets where saved files go and lists your cameras. The filename is fixed and the file must be in the `.config` folder.
 
-The `manage.yaml` file is the master configuration that tells Scout where to store data and which monitors to load.
-
-| Field | Type | Req. | Default | Description |
+| Field | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `data` | string | No | `./data` | The root directory where all alerts, recordings, and logs will be saved. (Relative to the Scout executable by default). |
-| `monitors` | list | **Yes** | - | A list of monitor configurations. |
+| `data` | string | Yes, to save anything | none | Folder for recordings, continuous recordings, and alert images. Scout creates `recordings/`, `continuous/`, and `alerts/` inside it. In Docker use `/scout/data`. |
+| `monitors` | list | Yes | none | Your cameras. See below. |
 
-### Monitor Entry (Required)
+{: .warning }
+If `data` is missing or empty, Scout still shows live video, but recording, continuous recording, and alerts are silently turned off.
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `name` | string | **Yes** | - | A unique name for the monitor (e.g., `front_door`). |
-| `config` | string | **Yes** | - | Path to the specific [Monitor Configuration](MONITOR) file (e.g., `cam1.yaml` relative to `.config/`, or an absolute path). |
+## Monitor entries
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | string | Yes | Unique camera name, shown in the apps and used as the prefix of saved file names (for example `front-door`). |
+| `config` | string | Yes | The camera's [monitor config]({{ site.baseurl }}{% link config/MONITOR.md %}) file, relative to `.config` or an absolute path. |
+
+## Example
+
+```yaml
+data: /scout/data
+monitors:
+  - name: front-door
+    config: front-door.yaml
+  - name: driveway
+    config: driveway.yaml
+```
+
+Changes to `manage.yaml` take effect after restarting Scout.

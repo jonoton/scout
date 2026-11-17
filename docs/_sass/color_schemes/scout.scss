@@ -1,0 +1,23 @@
+// Scout color scheme: "Sovereign Vault" dark base with the web UI banner blue
+// (palette in _sass/custom/setup.scss).
+@import "./color_schemes/dark";
+
+$color-scheme: dark;
+
+$body-background-color: $scout-bg;
+$body-heading-color: $scout-heading;
+$body-text-color: $scout-text;
+$link-color: $scout-blue;
+$nav-child-link-color: $scout-muted;
+$sidebar-color: $scout-bg;
+$base-button-color: $scout-surface-2;
+$btn-primary-color: $scout-blue-deep;
+$code-background-color: #111318;
+$feedback-color: $scout-surface;
+$table-background-color: #111318;
+$search-background-color: $scout-surface;
+$search-result-preview-color: $scout-muted;
+$border-color: $scout-border;
+
+$body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$mono-font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

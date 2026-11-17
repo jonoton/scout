@@ -2,53 +2,91 @@
 layout: default
 title: Home
 nav_order: 1
-description: "Welcome to the Scout documentation."
+description: "Scout is self-hosted video security with motion, object, and face detection. No cloud, no monthly fees."
 permalink: /
 ---
 
-<div class="hero-section">
+<div class="hero">
+  <img class="hero-hawk" src="{{ '/assets/images/hawk-wing.png' | relative_url }}" alt="">
+  <p class="hero-eyebrow">Open source · Self-hosted</p>
   <h1 class="hero-title">Scout</h1>
-  <p class="hero-subtitle">High-performance computer vision for DIY video security. Standalone, open source, and privacy-first.</p>
+  <p class="hero-tagline">Your cameras. Your network. Your storage. Video security with motion, object, and face detection, and no cloud required.</p>
   <div class="hero-buttons">
-    <a href="{{ '/INSTALL' | relative_url }}" class="btn-premium">Get Started</a>
-    <a href="https://github.com/jonoton/scout" class="btn-premium" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); margin-left: 10px;">GitHub</a>
+    <a href="{{ site.baseurl }}{% link server/DOCKER.md %}" class="btn btn-primary">Get started</a>
+    <a href="https://github.com/jonoton/scout" class="btn btn-ghost">GitHub</a>
   </div>
 </div>
 
-## Why Scout?
+Scout connects to your IP cameras, watches for people, cars, and other objects, and records clips and sends alerts when it finds them. It runs on a computer you own, saves everything to your own disk, and has apps for Android, iOS, and the web.
 
-Scout is a standalone open source software solution for DIY video security that puts you in control.
+## Why Scout
 
-<div class="features-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
-  <div class="feature-card" style="padding: 24px; background: var(--secondary-bg); border-radius: 12px; border: 1px solid var(--border-color);">
-    <h3 style="margin-top: 0; color: var(--primary-color);">🔒 Privacy First</h3>
-    <p>Lives on your device, on your network. You own your data. No cloud dependencies or monthly fees.</p>
+| | Typical cloud camera service | Scout |
+| :--- | :--- | :--- |
+| Monthly fee | Often required for recording history | None |
+| Where video is stored | The provider's servers | Your own disk |
+| Works without internet | Usually not | Yes, on your local network |
+| Cameras | The provider's own | Any camera with an RTSP or HTTP stream |
+| Source code | Closed | Open source ([MIT](https://github.com/jonoton/scout/blob/master/LICENSE)) |
+{: .compare }
+
+<div class="feature-grid">
+  <div class="feature-card">
+    <span class="feature-kicker">Detection</span>
+    <p class="feature-title">Fewer false alarms</p>
+    <p>Motion, then object, then face detection. An object only counts if it's moving, so spider webs, shadows, and parked cars don't set off alerts.</p>
   </div>
-  <div class="feature-card" style="padding: 24px; background: var(--secondary-bg); border-radius: 12px; border: 1px solid var(--border-color);">
-    <h3 style="margin-top: 0; color: var(--primary-color);">🚀 High Performance</h3>
-    <p>Extends proven libraries for Motion, Object, and Face detection with minimal overhead.</p>
+  <div class="feature-card">
+    <span class="feature-kicker">Recording</span>
+    <p class="feature-title">Clips and 24/7</p>
+    <p>Record when an object is seen, including a few seconds from before it appeared, or record around the clock. Old files are deleted automatically.</p>
   </div>
-  <div class="feature-card" style="padding: 24px; background: var(--secondary-bg); border-radius: 12px; border: 1px solid var(--border-color);">
-    <h3 style="margin-top: 0; color: var(--primary-color);">📱 Multi-Platform</h3>
-    <p>Native apps for Android, iOS, and Amazon devices. Lightweight web client for quick setup.</p>
+  <div class="feature-card">
+    <span class="feature-kicker">Alerts</span>
+    <p class="feature-title">Email and text</p>
+    <p>Get the best snapshots by email or text, with limits so a busy afternoon doesn't flood your inbox.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-kicker">Simple</span>
+    <p class="feature-title">Files, not a database</p>
+    <p>Settings are YAML files and recordings are plain video files. Edit a camera's file and Scout reloads it.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-kicker">Secure</span>
+    <p class="feature-title">Logins and two-factor</p>
+    <p>Optional user accounts with hashed passwords and passcodes sent by email or text.</p>
+  </div>
+  <div class="feature-card">
+    <span class="feature-kicker">Scales</span>
+    <p class="feature-title">Link servers</p>
+    <p>Run Scout on several machines and see every camera from one server.</p>
   </div>
 </div>
 
+## Quick start
 
+With Docker and one camera's stream URL, the [Docker guide]({{ site.baseurl }}{% link server/DOCKER.md %}) gets you from nothing to recording in four steps. The core of it:
 
-## Core Features
+```bash
+docker run -d --name scout --restart unless-stopped \
+  -p 8080:8080 -e TZ=America/Chicago \
+  -v ~/scout/.config:/scout/.config \
+  -v ~/scout/.logs:/scout/.logs \
+  -v ~/scout/data:/scout/data \
+  jonotoninnovation/scout
+```
 
-- **Easy Installation**: Build from source or use pre-built Docker images.
-- **Hassle-free Management**: No database required. Stores images and recordings directly to your local file system.
-- **Intelligent Alerts**: Reduce false positives using advanced computer vision filters (Object, Face, Motion).
-- **Auto-Pruning**: Automatically manage storage by pruning old data based on your configuration.
-- **Scalable**: Link multiple Scout servers together for comprehensive coverage.
+Then open `http://<server-ip>:8080`.
 
+## Explore the docs
 
+- **[Installation]({{ site.baseurl }}{% link INSTALL.md %})**: server options and the mobile apps.
+- **[Configuration]({{ site.baseurl }}{% link CONFIGURE.md %})**: how the YAML files fit together, with a reference for every option.
+- **[Usage]({{ site.baseurl }}{% link USAGE.md %})**: the web client, mobile apps, and command-line options.
+- **[Troubleshooting]({{ site.baseurl }}{% link TROUBLESHOOTING.md %})**: fixes for cameras that don't appear, missing recordings, and more.
+- **[Recipes]({{ site.baseurl }}{% link RECIPES.md %})**: remote access through a reverse proxy, and GPU acceleration.
+- **[Development]({{ site.baseurl }}{% link DEVELOPMENT.md %})**: build from source, profile, and work on these docs.
 
-## Get the Apps
+## Get the apps
 
-[![Android Scout](https://img.shields.io/badge/Android-Scout-blue)](https://play.google.com/store/apps/details?id=com.jonoton.scout)
-[![iOS Scout](https://img.shields.io/badge/iOS-Scout-blue)](https://apps.apple.com/us/app/scout-full/id1658406270)
-[![Amazon Scout](https://img.shields.io/badge/Amazon-Scout-blue)](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout)
-
+[Google Play](https://play.google.com/store/apps/details?id=com.jonoton.scout) · [App Store](https://apps.apple.com/us/app/scout-full/id1658406270) · [Amazon Appstore](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout) · [All apps and setup]({{ site.baseurl }}{% link INSTALL.md %}#mobile-apps)

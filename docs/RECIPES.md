@@ -1,23 +1,38 @@
 ---
 layout: default
 title: Recipes
-nav_order: 4
+nav_order: 6
+description: "Example setups: remote access through a reverse proxy, and GPU acceleration."
 ---
 
 # Recipes
+{: .no_toc }
 
-Recipes are suggested configurations to coordinate Scout with other services. They are optional and can be adapted to your specific needs.
+Example setups for running Scout alongside other services. The files are in [`example/recipes`](https://github.com/jonoton/scout/tree/master/example/recipes); adjust paths and versions to your system.
+{: .fs-5 .fw-300 }
 
-All recipe files can be found in the **[example/recipes directory](https://github.com/jonoton/scout/tree/master/example/recipes)**.
+1. TOC
+{:toc}
 
-## External Route to Scout
+## Remote access with a reverse proxy
 
-If you want to access your Scout server from outside your network, you can use a reverse proxy.
+To use the mobile apps away from home, put Scout behind a reverse proxy that adds HTTPS, rather than exposing port 8080 directly.
 
-### Setup Steps
+{: .warning }
+Set up [logins]({{ site.baseurl }}{% link config/HTTP.md %}#logins), ideally with two-factor passcodes, before Scout is reachable from the internet.
 
-1.  **Port Forwarding**: Configure your router to forward HTTP (80) and HTTPS (443) traffic to your Proxy Server.
-2.  **Reverse Proxy**: Configure a proxy server (like Nginx or Traefik) to route traffic for a particular domain to your Scout server.
-3.  **Dynamic DNS**: (Optional) Use a dynamic DNS client to update your domain's IP address if it changes.
+1. **Forward ports.** On your router, forward ports 80 and 443 to the machine running the proxy.
+2. **Run a reverse proxy** such as [Nginx Proxy Manager](https://nginxproxymanager.com/), Caddy, or Traefik. Route your domain to `http://<scout-ip>:8080` and request a Let's Encrypt certificate.
+3. **Allow WebSockets.** Live video uses WebSocket connections on `/live/<camera>`. In Nginx Proxy Manager, turn on **Websockets Support** for the host; in plain Nginx, pass the `Upgrade` and `Connection` headers.
+4. **Keep your domain pointed home (optional).** If your home IP address changes, run a dynamic DNS client such as [ddclient](https://ddclient.net/).
 
-See the **[docker-compose.rpi.reverse-proxy.yml](https://github.com/jonoton/scout/blob/master/example/recipes/docker-compose.rpi.reverse-proxy.yml)** example for a Raspberry Pi implementation.
+[`docker-compose.rpi.reverse-proxy.yml`](https://github.com/jonoton/scout/blob/master/example/recipes/docker-compose.rpi.reverse-proxy.yml) runs Nginx Proxy Manager (admin UI on port 81), its MariaDB database, and ddclient on a Raspberry Pi.
+
+## NVIDIA GPU acceleration
+
+Object and face detection use CUDA automatically when Scout is built with it and a GPU is available. [`docker-compose.cuda10_2-amd64.scout.yml`](https://github.com/jonoton/scout/blob/master/example/recipes/docker-compose.cuda10_2-amd64.scout.yml) shows the setup: a CUDA build of the image and `runtime: nvidia` (requires the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Add `TZ` to it as in the [Docker guide]({{ site.baseurl }}{% link server/DOCKER.md %}#docker-compose) to get local timestamps.
+
+{: .note }
+The image tag in that file is an older CUDA build. Check [Docker Hub](https://hub.docker.com/r/jonotoninnovation/scout/tags) for current tags.
+
+To force the CPU for one camera, set `forceCpu: true` in its [`tensor` or `face` file]({{ site.baseurl }}{% link config/DETECTION.md %}).

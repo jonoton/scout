@@ -1,71 +1,91 @@
 ---
 layout: default
-title: Detection Config
+title: Detection
 parent: Configuration
 nav_order: 4
+description: "Tune motion, object, and face detection."
 ---
 
-# Detection Configuration
+# Detection
+{: .no_toc }
 
-> 💡 **Tip**
-> Filenames for detection logic (e.g., `motion.yaml`, `tensor.yaml`) can be customized in the [Monitor Config](MONITOR).
+1. TOC
+{:toc}
 
-Scout uses a multi-stage detection pipeline: Motion -> Object -> Face.
+## How detection works
 
-> 💡 **Note on Requirements**
-> While each detection module is optional, once you enable a module in the [Monitor Config](MONITOR), the fields marked as **Yes** in the tables below become required for that module to function correctly.
+Each frame goes through three stages. Each stage only runs when the one before it found something, which keeps CPU use low:
 
-## Motion Detection (Optional, `motion.yaml`)
+```text
+Frame ─▶ Motion ─(motion found)─▶ Object ─(object found)─▶ Face
+```
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `skip` | bool | No | `false` | Completely disable motion detection. |
-| `padding` | int | No | `0` | Add padding (pixels) around detected motion areas. |
-| `scaleWidth` | int | No | `320` | Scale frame width for faster processing. |
-| `minPercentage` | int | No | `2` | Min area (%) change for motion. |
-| `maxPercentage` | int | No | `75` | Max area (%) change for motion. |
-| `thresholdPercent` | int | No | `40` | Sensitivity threshold for pixel changes. |
-| `noiseReduction` | int | No | `10` | Filter out small pixel fluctuations. |
-| `maxMotions` | int | No | `20` | Max number of distinct motion areas for detection. |
-| `overloadPercent` | int | No | `90` | If motion areas exceed this (%) of frame, it is considered an overload and ignored. |
-| `highlightColor` | string | No | `purple` | Color of the bounding box. |
-| `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
-| `backgroundHistory` | int | No | `500` | History length (in frames) for the background subtractor. |
-| `backgroundThreshold` | int | No | `16` | Variance threshold for background pixel-to-model matching. |
-| `detectShadows` | bool | No | `true` | Enable shadow detection in background subtraction. |
-| `closingSize` | int | No | `3` | Kernel size (pixels) for morphological closing (closes gaps). |
-| `minMotionFrames` | int | No | `1` | Number of consecutive frames motion must be detected in a region to be valid. |
-| `mergeOverlapPercent` | int | No | `20` | Minimum overlap (%) of the smaller bounding box to merge overlapping motion regions. |
-| `mergeDistance` | int | No | `10` | Maximum pixel gap distance to merge nearby non-overlapping motion regions. |
-| `gridSize` | int | No | `16` | Pixel grid cell size used for tracking motion regions across frames. |
+1. **Motion** compares the frame with recent frames and marks areas that changed.
+2. **Object** runs an SSD MobileNet model (COCO labels such as `person`, `car`, `dog`) on frames with motion. It keeps an object only if it overlaps a motion area, which filters out things like parked cars.
+3. **Face** runs a face model on frames that contain an object.
 
-## Object Detection (Optional, `tensor.yaml`)
+**All three stages are on by default** with the settings shown below. The `motion`, `tensor`, and `face` files are optional and only change those settings. To turn a stage off, set `skip: true` in its file. Object detection is what triggers [event recordings and alerts]({{ site.baseurl }}{% link config/RECORDING_ALERTS.md %}), and it only runs on frames with motion, so turning off motion detection also stops event recordings and alerts. Continuous recording is not affected.
 
-Uses TensorFlow/SSD models to identify specific objects like "person" or "car".
+Object and face detection use an NVIDIA GPU automatically when Scout is built with CUDA and one is available.
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `skip` | bool | No | `false` | Disable object detection. |
-| `forceCpu` | bool | No | `false` | Force CPU processing even if GPU is available. |
-| `modelFile` | string | **Yes** | `frozen_inference_graph.pb` | Path to the `.pb` model file. |
-| `configFile` | string | No | `ssd_mobilenet_v1...` | Path to the `.pbtxt` or similar config file. |
-| `descFile` | string | No | `coco.names` | Path to the labels/names file. |
-| `scaleWidth` | int | No | `320` | Scale frame width for faster processing. |
-| `minConfidencePercentage` | int | No | `50` | Minimum confidence (1-100) to consider a match. |
-| `minMotionFrames` | int | No | `1` | Min consecutive frames of motion before object detection triggers. |
-| `minPercentage` | int | No | `-1` | Min area (%) change for an object to be valid. |
-| `maxPercentage` | int | No | `0` | Max area (%) change for an object to be valid. |
-| `minOverlapPercentage` | int | No | `75` | Min overlap (%) with a motion area to be valid. |
-| `sameOverlapPercentage` | int | No | `85` | Overlap (%) to consider two detections as the same object. |
-| `allowedList` | list | No | - | List of objects to trigger on (e.g., `person`, `car`). |
-| `priorityList` | list | No | `[{person, 50}]` | List of priority items with custom minimum confidence thresholds. Used to resolve conflicts when multiple different overlapping objects are detected. Earlier items in the list outrank later ones. |
-| `padding` | int | No | `0` | Add padding (pixels) around detected object. |
-| `highlightColor` | string | No | `blue` | Color of the bounding box. |
-| `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
+## Motion detection
 
-### Priority List Format
+Set with the `motion` field of a [camera config]({{ site.baseurl }}{% link config/MONITOR.md %}), for example `motion: motion.yaml`.
 
-The `priorityList` allows you to specify which object classes take precedence when overlapping detections occur (e.g., a "person" bounding box overlapping a "chair" bounding box). You can configure a specific minimum confidence threshold for each priority class:
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `skip` | bool | `false` | Turn motion detection off. |
+| `scaleWidth` | int | `320` | Width (pixels) frames are scaled to before processing. Smaller is faster. |
+| `minPercentage` | int | `2` | Smallest motion area, as a percentage of the frame. |
+| `maxPercentage` | int | `75` | Largest motion area, as a percentage of the frame. |
+| `thresholdPercent` | int | `40` | How different a pixel must be to count as changed. Higher is less sensitive. |
+| `noiseReduction` | int | `11` | Blur size used to ignore small pixel noise. Must be odd; even values are rounded up. |
+| `maxMotions` | int | `20` | Most motion areas in one frame. If a frame has more, all of its motion is ignored, as with `overloadPercent`. |
+| `overloadPercent` | int | `90` | If a single motion area covers this percentage of the frame or more (for example, when the camera switches to night mode), motion in that frame is ignored. |
+| `minMotionFrames` | int | `1` | Frames in a row an area must move before it counts. Raise this to ignore brief flickers. |
+| `backgroundHistory` | int | `500` | Frames of history used to model the background. |
+| `backgroundThreshold` | int | `16` | How closely a pixel must match the background model. |
+| `detectShadows` | bool | `true` | Detect shadows so they aren't treated as motion. |
+| `closingSize` | int | `3` | Size (pixels) used to close small gaps inside motion areas. |
+| `mergeOverlapPercent` | int | `20` | Merge two motion areas when they overlap by at least this percentage of the smaller one. |
+| `mergeDistance` | int | `10` | Merge motion areas that are within this many pixels of each other. |
+| `gridSize` | int | `16` | Grid cell size (pixels) used to track motion between frames. |
+| `padding` | int | `0` | Pixels added around each motion box. |
+| `highlightColor` | string | `purple` | Box color in highlighted images. |
+| `highlightThickness` | int | `3` | Box line thickness. |
+
+{: .tip }
+Getting alerts for swaying branches, rain, or sunlight? Raise `minMotionFrames` and `minPercentage` first, then `thresholdPercent`.
+
+## Object detection
+
+Set with the `tensor` field of a camera config, for example `tensor: tensor.yaml`.
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `skip` | bool | `false` | Turn object detection off. |
+| `allowedList` | list | all labels | Labels that count as detections, such as `person` and `car`. Empty means every [COCO label](https://github.com/jonoton/scout/blob/master/data/tensor/coco.names). |
+| `minConfidencePercentage` | int | `50` | Lowest model confidence (1 to 100) to accept a detection. |
+| `priorityList` | list | `person` at `50` | Which label wins when different objects overlap, with an optional confidence threshold each. See below. |
+| `minMotionFrames` | int | `1` | Frames in a row with motion before object detection runs. |
+| `minPercentage` | int | `2` | Smallest object, as a percentage of the frame. |
+| `maxPercentage` | int | `50` | Largest object, as a percentage of the frame. |
+| `minOverlapPercentage` | int | `75` | How much of the object box must overlap a motion area. Objects that aren't moving are ignored. |
+| `sameOverlapPercentage` | int | `85` | Overlap at which two boxes are treated as the same object. |
+| `scaleWidth` | int | `320` | Width (pixels) frames are scaled to before detection. |
+| `forceCpu` | bool | `false` | Use the CPU even when a CUDA GPU is available. |
+| `modelFile` | string | `frozen_inference_graph.pb` | Model weights. |
+| `configFile` | string | `ssd_mobilenet_v1_coco_2017_11_17.pbtxt` | Model config. |
+| `descFile` | string | `coco.names` | Label names. |
+| `padding` | int | `0` | Pixels added around each object box. |
+| `highlightColor` | string | `blue` | Box color in highlighted images. |
+| `highlightThickness` | int | `3` | Box line thickness. |
+
+Model files are looked up in `data/tensor/` and then `.data/tensor/` next to the Scout executable, or can be absolute paths. The Docker image and the repository already include the defaults.
+
+### Priority list
+
+When boxes for different labels overlap (for example a `person` and a `chair`), Scout usually keeps the one with the higher confidence. A label listed earlier in `priorityList` can also replace a later or unlisted one, as long as it meets its own confidence threshold:
 
 ```yaml
 priorityList:
@@ -75,18 +95,32 @@ priorityList:
     minConfidencePercentage: 60
 ```
 
-## Face Detection (Optional, `face.yaml`)
+### Example
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `skip` | bool | No | `false` | Disable face detection. |
-| `modelFile` | string | **Yes** | `res10_300x300...` | Path to the caffe model or weights. |
-| `configFile` | string | No | `deploy.prototxt` | Path to the `.prototxt` config file. |
-| `minConfidencePercentage` | int | No | `50` | Minimum confidence for face detection. |
-| `maxPercentage` | int | No | `50` | Max area (%) a face can occupy in the frame. |
-| `minOverlapPercentage` | int | No | `75` | Min overlap (%) with an object detection to be valid. |
-| `scaleWidth` | int | No | `320` | Scale width for face detection. |
-| `forceCpu` | bool | No | `false` | Force CPU processing even if GPU is available. |
-| `padding` | int | No | `0` | Add padding (pixels) around detected face. |
-| `highlightColor` | string | No | `green` | Color of the bounding box. |
-| `highlightThickness` | int | No | `3` | Thickness of the bounding box. |
+```yaml
+allowedList:
+  - person
+  - car
+  - truck
+minConfidencePercentage: 60
+```
+
+## Face detection
+
+Set with the `face` field of a camera config, for example `face: face.yaml`. Face detection runs on frames with at least one detected object, and only faces that overlap an object are kept.
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `skip` | bool | `false` | Turn face detection off. |
+| `minConfidencePercentage` | int | `50` | Lowest model confidence (1 to 100) to accept a face. |
+| `maxPercentage` | int | `50` | Largest face, as a percentage of the frame. |
+| `minOverlapPercentage` | int | `75` | How much of the face box must overlap a detected object. |
+| `scaleWidth` | int | `320` | Width (pixels) frames are scaled to before detection. |
+| `forceCpu` | bool | `false` | Use the CPU even when a CUDA GPU is available. |
+| `modelFile` | string | `res10_300x300_ssd_iter_140000.caffemodel` | Model weights. |
+| `configFile` | string | `deploy.prototxt` | Model config. |
+| `padding` | int | `0` | Pixels added around each face box. |
+| `highlightColor` | string | `green` | Box color in highlighted images. |
+| `highlightThickness` | int | `3` | Box line thickness. |
+
+Model files are looked up in `data/face/` and then `.data/face/`, the same way as object detection.

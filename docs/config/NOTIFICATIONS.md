@@ -1,58 +1,69 @@
 ---
 layout: default
-title: Notification Settings
+title: Notifications
 parent: Configuration
 nav_order: 6
+description: "Send alerts and login passcodes by email or text message."
 ---
 
-# Notification Settings
+# Notifications
 
-Scout uses two configuration files for notifications.
+Scout sends alerts, and two-factor login passcodes, through an email account you provide. Text messages are sent through your mobile carrier's email-to-text gateway. Two files are involved:
 
-1.  **`notify-sender.yaml`**: This filename is fixed and **cannot** be customized.
-2.  **`notify-rx.yaml`**: This is the recommended filename for recipient configuration, but it can be customized per monitor using the `notifyRx` field in the [Monitor Config](MONITOR).
+| File | Name fixed? | Purpose |
+| :--- | :--- | :--- |
+| `notify-sender.yaml` | Yes | The SMTP account Scout sends from. One per server. |
+| `notify-rx.yaml` | No | Who receives a camera's alerts. Set with the camera's `notifyRx` field. |
 
-## Outgoing Mail (`notify-sender.yaml`)
+Alerts are only sent for cameras that also have an [`alert` file]({{ site.baseurl }}{% link config/RECORDING_ALERTS.md %}#alerts).
 
-This file configures the SMTP server used to send emails and SMS alerts. The filename `notify-sender.yaml` is required and must reside in the same directory as your other config files.
+## Sender (`notify-sender.yaml`)
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `host` | string | **Yes** | - | SMTP server hostname (e.g., `smtp.gmail.com`). |
-| `port` | int | **Yes** | - | SMTP server port (e.g., `587` for TLS). |
-| `user` | string | **Yes** | - | SMTP account username. |
-| `password` | string | **Yes** | - | SMTP account password or app password. |
+Must be in the `.config` folder. Restart Scout after changing it.
 
-## Recipient List (`notify-rx.yaml`)
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `host` | string | **Yes** | SMTP server, for example `smtp.gmail.com`. |
+| `port` | int | **Yes** | `587` (STARTTLS) or `465` (SSL). |
+| `user` | string | **Yes** | SMTP username, usually the email address. |
+| `password` | string | **Yes** | SMTP password. For Gmail and most other providers, use an [app password](https://support.google.com/accounts/answer/185833), not your normal password. |
 
-This file defines who receives alerts. It supports both direct email and carrier-based SMS (via email-to-text gateways). While `notify-rx.yaml` is the standard name, you can specify a different filename for each monitor in [Monitor Config](MONITOR).
+```yaml
+host: smtp.gmail.com
+port: 587
+user: scout.alerts@example.com
+password: "your-app-password"
+```
 
-### Email Recipients
+{: .tip }
+Use a separate email account for Scout. The password is stored in plain text in this file.
 
-Add a list of email addresses under the `email` key.
+## Recipients (`notify-rx.yaml`)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `email` | list | Email addresses. |
+| `sms` | object | Phone numbers grouped by carrier: `verizon`, `att`, or `tmobile`. |
 
 ```yaml
 email:
-  - "user@example.com"
-```
-
-### SMS Recipients
-
-SMS is handled via email-to-text gateways provided by carriers. List phone numbers under their respective carrier key.
-
-| Carrier | Key |
-| :--- | :--- |
-| Verizon | `verizon` |
-| AT&T | `att` |
-| T-Mobile | `tmobile` |
-| Sprint | `sprint` |
-
-**Example:**
-
-```yaml
+  - you@example.com
 sms:
   verizon:
-    - "1234567890"
-  att:
-    - "0987654321"
+    - "5551234567"
+  tmobile:
+    - "5559876543"
 ```
+
+Phone numbers are 10 digits with no spaces or dashes, because they become email addresses such as `5551234567@vtext.com`.
+
+| Key | Carrier | Gateway |
+| :--- | :--- | :--- |
+| `verizon` | Verizon | `@vtext.com` (images: `@vzwpix.com`) |
+| `att` | AT&T | `@txt.att.net` (images: `@mms.att.net`) |
+| `tmobile` | T-Mobile | `@tmomail.net` |
+
+{: .note }
+Carriers have been retiring their email-to-text gateways. If texts don't arrive, use email (most phones can notify you of new email from a specific sender) or the Scout mobile app.
+
+Email alerts include a summary and, within the `maxSendAttachmentsPerHour` limit, the alert images. Text alerts are a short summary. Images are only sent by text if `textAttachments` is on.

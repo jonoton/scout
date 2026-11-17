@@ -3,30 +3,38 @@ layout: default
 title: Installation
 nav_order: 2
 has_children: true
+description: "Install the Scout server and the mobile apps."
 ---
 
 # Installation
 
-Scout requires a dedicated computer in order to run the server. There are multiple ways to get started depending on your needs.
+Scout has two parts: the **server**, which runs on a machine on your network and does the recording and detection, and the **apps** you watch from.
 
-## Server Installation
+## Server
 
-There are two primary ways to setup the Scout server:
+| Option | Best for |
+| :--- | :--- |
+| **[Docker]({{ site.baseurl }}{% link server/DOCKER.md %})** (recommended) | Most people. OpenCV and the detection models are included, so it's the quickest way to get running. |
+| **[From source]({{ site.baseurl }}{% link DEVELOPMENT.md %})** | Developers, or platforms without Docker. You build OpenCV yourself. |
 
-* **[Docker](server/DOCKER.md) (Recommended)**: The easiest and most reliable way to run Scout.
-* **[From Source](DEVELOPMENT.md)**: For users who want to build Scout themselves.
+The server needs a machine that stays on, on the same network as your cameras. Object detection is the heaviest part. Lowering `maxOutputFps` and detection's `scaleWidth` reduces CPU use, and an NVIDIA GPU can take over detection (see [Recipes]({{ site.baseurl }}{% link RECIPES.md %}#nvidia-gpu-acceleration)).
 
-## Mobile Client Setup
+## Web client
 
-To monitor your cameras on the go, setup the mobile clients:
+Built into the server. Open `http://<server-ip>:8080` in a browser; there's nothing to install. See [Usage]({{ site.baseurl }}{% link USAGE.md %}#web-client).
 
-* **[Android](mobile/ANDROID.md)**
-* **[iOS](mobile/IOS.md)**
+## Mobile apps
 
-## Configuration
+The Scout apps add alerts, recordings, continuous recordings, and notifications on top of live view. Scout Lite (Android and Amazon) is live view only.
 
-After installation, you will need to **[Configure Scout](CONFIGURE.md)** to work with your cameras and network.
+| Platform | Download | Setup |
+| :--- | :--- | :--- |
+| Android | [Scout](https://play.google.com/store/apps/details?id=com.jonoton.scout) · [Scout Lite](https://play.google.com/store/apps/details?id=com.jonoton.scout.lite) | [Android setup]({{ site.baseurl }}{% link mobile/ANDROID.md %}) |
+| Amazon (Fire) | [Scout](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout) · [Scout Lite](https://www.amazon.com/gp/mas/dl/android?p=com.jonoton.scout.lite) | [Android setup]({{ site.baseurl }}{% link mobile/ANDROID.md %}) |
+| iOS | [Scout](https://apps.apple.com/us/app/scout-full/id1658406270) | [iOS setup]({{ site.baseurl }}{% link mobile/IOS.md %}) |
 
-## Recipes
+## After installing
 
-Check out **[Recipes](RECIPES.md)** for coordinating Scout with other services (like reverse proxies).
+1. [Configure Scout]({{ site.baseurl }}{% link CONFIGURE.md %}) with your cameras.
+2. Set up [logins]({{ site.baseurl }}{% link config/HTTP.md %}#logins) before allowing access from outside your network.
+3. Optional: [email and text alerts]({{ site.baseurl }}{% link config/NOTIFICATIONS.md %}).

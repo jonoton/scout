@@ -1,98 +1,112 @@
 ---
 layout: default
-title: HTTP Config
+title: HTTP
 parent: Configuration
 nav_order: 2
+description: "http.yaml: port, logins, two-factor passcodes, and linked servers."
 ---
 
-# HTTP Configuration (`http.yaml`)
+# HTTP (`http.yaml`)
+{: .no_toc }
 
-> ❗ **Important**
-> `http.yaml` is a **required** filename if you wish to use the web server (recommended).
+`http.yaml` configures the web server that the web client and mobile apps connect to. It's optional: without it, Scout serves on port `8080` with no login. The filename is fixed and the file must be in the `.config` folder. Restart Scout after changing it.
 
-The `http.yaml` file configures the web server, security settings, and linking between multiple Scout servers.
+1. TOC
+{:toc}
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `port` | int | No | `8080` | The port the web server will listen on. |
-| `limitPerSecond` | int | No | `100` | Rate limit for general API requests. |
-| `loginLimitPerSecond` | int | No | `10` | Rate limit specifically for login attempts. |
-| `users` | list | No | - | A list of authorized users. If empty, login is disabled. |
-| `signInExpireDays` | int | No | `7` | How many days a login session remains valid. |
-| `links` | list | No | - | Links to other Scout servers to aggregate monitors. |
-| `linkRetry` | int | No | `2` | Number of retries when connecting to linked servers. |
-| `twoFactorTimeoutSec` | int | No | `60` | Timeout for receiving 2FA codes. |
-| `loginSigningKey` | string | No | (Auto) | Random key used to sign tokens. Generated on every start if blank. |
-| `enableSwagger` | bool | No | `false` | Whether to enable the Swagger UI at `/swagger`. |
+## Server
 
-### User Authentication (Optional)
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `port` | int | `8080` | Port to listen on. |
+| `limitPerSecond` | int | `100` | Most requests accepted per second. |
+| `users` | list | none | Accounts allowed to sign in. **If empty, no login is required.** See [Logins](#logins). |
+| `signInExpireDays` | int | `7` | Days a sign-in stays valid. |
+| `loginLimitPerSecond` | int | `10` | Most login attempts accepted per second. |
+| `twoFactorTimeoutSec` | int | `60` | Seconds a two-factor passcode stays valid. |
+| `loginSigningKey` | string | random | Secret used to sign login tokens. If blank, a new one is generated on every start, which signs everyone out when Scout restarts. Set it to a long random string to keep people signed in. |
+| `links` | list | none | Other Scout servers to show cameras from. See [Linked servers](#linked-servers). |
+| `linkRetry` | int | `2` | Retries when a linked server doesn't respond. |
+| `enableSwagger` | bool | `false` | Serve interactive API docs at `/swagger/`. |
 
-> 💡 **Note on Requirements**
-> If you add a user to the `users` list, the `user` and `password` fields below become **required**.
+## Logins
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `user` | string | **Yes** | - | Username. |
-| `password` | string | **Yes** | - | Password. |
-| `twoFactor` | object | No | - | Configuration for receiving 2FA codes. |
+{: .warning }
+Without `users`, anyone who can reach the server can watch your cameras. Add at least one user before making Scout reachable from outside your network.
 
-> 🔒 **Security Tip: Securing Passwords**
-> By default, passwords in `http.yaml` are stored in plaintext so they are easy to set up. You can secure them (hash them) by running Scout with the following argument:
-> ```bash
-> ./scout --secure-http-passwords
-> ```
-> This will replace all plaintext passwords in `http.yaml` with secure bcrypt hashes.
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `user` | string | **Yes** | Username. |
+| `password` | string | **Yes** | Password. Can be stored as a hash (see below). |
+| `twoFactor` | object | No | Where to send a passcode after the password is accepted: `email` (list) and/or `sms` (carrier lists, as in [Notifications]({{ site.baseurl }}{% link config/NOTIFICATIONS.md %}#recipients-notify-rxyaml)). |
 
-#### Two-Factor Configuration (`twoFactor`)
+{: .important }
+The web client keeps you signed in with a browser cookie that only works over HTTPS, or on `localhost`. Over plain HTTP on your network (for example `http://192.168.1.5:8080`), signing in to the web client won't stick. Put Scout behind a [reverse proxy with HTTPS]({{ site.baseurl }}{% link RECIPES.md %}#remote-access-with-a-reverse-proxy) if you use logins with the web client.
 
-If `twoFactor` is configured, users will be prompted for a 6-digit passcode after providing their password.
-
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `email` | list | No | - | List of email addresses to send codes to. |
-| `sms` | object | No | - | SMS configuration grouped by carrier. |
-
-**Supported SMS Carriers:**
-*   `verizon`
-*   `att`
-*   `tmobile`
-*   `sprint`
-
-#### Authentication Example
+With `twoFactor` set, Scout sends a 6-character passcode (letters and numbers) that expires after `twoFactorTimeoutSec`. Passcodes are sent with the account in [`notify-sender.yaml`]({{ site.baseurl }}{% link config/NOTIFICATIONS.md %}#sender-notify-senderyaml), so that must be set up too.
 
 ```yaml
+port: 8080
+signInExpireDays: 7
+loginSigningKey: "replace-with-a-long-random-string"
 users:
-  - user: "admin"
-    password: "secure_password"
+  - user: admin
+    password: "a-strong-password"
     twoFactor:
       email:
-        - "admin@example.com"
+        - admin@example.com
+  - user: family
+    password: "another-strong-password"
+    twoFactor:
       sms:
-        att:
-          - "555-0199"
+        tmobile:
+          - "5551234567"
 ```
 
-#### Checking Authentication Status
-Clients and integrations can check whether user authentication is enforced:
-* `GET /auth/status` (or `GET /login`)
+### Hashing passwords
 
-Example response:
+Passwords start out as plain text. To replace them with hashes, run Scout once with `--secure-http-passwords`:
+
+```bash
+# Docker (uses the same .config folder as your running container)
+docker run --rm -v ~/scout/.config:/scout/.config jonotoninnovation/scout \
+  /scout/scout --secure-http-passwords
+
+# From source
+./scout --secure-http-passwords
+```
+
+User passwords become bcrypt hashes and link passwords become SHA-256 hashes. Passwords that are already hashed are left alone. Then restart Scout.
+
+{: .note }
+This rewrites `http.yaml`, so comments and formatting in the file are lost. Keep a copy if you want them.
+
+### Login status endpoint
+
+Apps and integrations can check whether a login is required with `GET /auth/status` (or `GET /login`):
+
 ```json
 {"required": true}
 ```
-If no users are configured in `http.yaml`, `"required"` will be `false`.
 
-### Server Links (Optional)
+## Linked servers
 
-> 💡 **Note on Requirements**
-> If you add a server link to the `links` list, the `url` field below becomes **required**.
+Linking lets one Scout server show the cameras of other Scout servers, so the apps only need to connect to one.
 
-| Field | Type | Req. | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `name` | string | No | - | Friendly name for the linked server. |
-| `url` | string | **Yes** | - | The base URL of the remote Scout server (e.g., `http://192.168.1.10:8080`). |
-| `user` | string | No | - | Username for the remote server. |
-| `password` | string | No | - | Password for the remote server. |
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `url` | string | **Yes** | Base URL of the other server, for example `http://192.168.1.10:8080`. |
+| `name` | string | No | Prefix for the linked server's cameras. With `name: garage`, a camera called `door` there appears as `garage-door`. |
+| `user` | string | No | Username on the other server, if it requires a login. |
+| `password` | string | No | That user's password, in plain text or as the SHA-256 hash written by `--secure-http-passwords`. |
 
-> 🔒 **Security Tip: Securing Link Passwords**
-> Similar to user passwords, link passwords can be secured using the `--secure-http-passwords` argument. When run, it will convert link passwords to secure hashes.
+```yaml
+links:
+  - name: garage
+    url: http://192.168.1.10:8080
+    user: admin
+    password: "garage-server-password"
+```
+
+{: .note }
+Linked servers can't use two-factor logins. Use an account without `twoFactor` on the other server for linking.
